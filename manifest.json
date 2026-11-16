@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "IG Web Music Player - Nghe nhạc Instagram PC",
-  "version": "1.9.8",
-  "description": "Tự động phát nhạc bài viết, hỗ trợ tải toàn bộ ảnh/video bài viết và tải Story Instagram trên PC.",
+  "version": "2.0.0",
+  "description": "Tự động phát nhạc bài viết, tải toàn bộ ảnh/video bài viết, tải Story và tải trọn gói Profile Instagram (ZIP) trên PC.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",

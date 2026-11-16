@@ -185,8 +185,8 @@
       const localHeader = new Uint8Array(30 + nameBytes.length);
       const view = new DataView(localHeader.buffer);
       view.setUint32(0, 0x04034b50, true);
-      view.setUint16(4, 10, true);
-      view.setUint16(6, 0, true);
+      view.setUint16(4, 20, true);
+      view.setUint16(6, 0x0800, true);
       view.setUint16(8, 0, true);
       view.setUint16(10, 0, true);
       view.setUint16(12, 0, true);
@@ -217,8 +217,8 @@
       const view = new DataView(cd.buffer);
       view.setUint32(0, 0x02014b50, true);
       view.setUint16(4, 20, true);
-      view.setUint16(6, 10, true);
-      view.setUint16(8, 0, true);
+      view.setUint16(6, 20, true);
+      view.setUint16(8, 0x0800, true);
       view.setUint16(10, 0, true);
       view.setUint16(12, 0, true);
       view.setUint16(14, 0, true);
@@ -1830,6 +1830,564 @@
     }
   }
 
+  // --- 7.3. TẢI TOÀN BỘ NỘI DUNG PROFILE (TẤT CẢ, ẢNH, VIDEO, STORY & HIGHLIGHTS) ---
+  function getProfileUsername() {
+    const path = window.location.pathname;
+    const segments = path.split('/').filter(Boolean);
+    if (segments.length === 0) return null;
+
+    const reserved = new Set([
+      'explore', 'reels', 'stories', 'direct', 'accounts', 'emails',
+      'developer', 'about', 'legal', 'directory', 'lite', 'help',
+      'api', 'graphql', 'p', 'reel', 'tv'
+    ]);
+
+    const firstSeg = segments[0].toLowerCase();
+    if (reserved.has(firstSeg)) return null;
+
+    if (segments.length > 1) {
+      const validSubTabs = new Set(['reels', 'saved', 'tagged', 'channel']);
+      if (!validSubTabs.has(segments[1].toLowerCase())) {
+        return null;
+      }
+    }
+
+    return segments[0];
+  }
+
+  function findProfileButtonPlacement(username) {
+    const header = document.querySelector('header');
+    if (!header) return null;
+
+    // 1. Tìm nút bánh răng (Settings) hoặc nút Ba chấm (Options)
+    const optionSvgs = Array.from(header.querySelectorAll('svg')).filter(svg => {
+      const label = (svg.getAttribute('aria-label') || '').toLowerCase();
+      const title = (svg.querySelector('title')?.textContent || '').toLowerCase();
+      return label.includes('option') || label.includes('tùy chọn') || label.includes('cài đặt') || label.includes('settings') ||
+             title.includes('option') || title.includes('tùy chọn') || title.includes('cài đặt') || title.includes('settings');
+    });
+
+    if (optionSvgs.length > 0) {
+      const targetSvg = optionSvgs[0];
+      const btn = targetSvg.closest('button, a, div[role="button"]') || targetSvg;
+      return {
+        parent: btn.parentElement,
+        insertAfter: btn
+      };
+    }
+
+    // 2. Tìm nút "Chỉnh sửa trang cá nhân" / "Edit profile" hoặc "Theo dõi" / "Follow"
+    const actionBtn = header.querySelector('a[href*="/accounts/edit/"], a[href*="/archive/"], button');
+    if (actionBtn && actionBtn.parentElement) {
+      return {
+        parent: actionBtn.parentElement,
+        insertAfter: actionBtn
+      };
+    }
+
+    // 3. Fallback: Dòng đầu tiên của section trong header
+    const section = header.querySelector('section');
+    if (section && section.firstElementChild) {
+      return {
+        parent: section.firstElementChild,
+        appendChild: true
+      };
+    }
+
+    return null;
+  }
+
+  function scanAndAttachProfileDownload() {
+    const username = getProfileUsername();
+    if (!username) {
+      document.querySelectorAll('.ig-profile-download-btn').forEach(b => b.remove());
+      return;
+    }
+
+    const existingBtn = document.querySelector('.ig-profile-download-btn');
+    if (existingBtn) {
+      if (existingBtn._igUsername === username && document.body.contains(existingBtn)) {
+        return;
+      }
+      existingBtn.remove();
+    }
+
+    const placement = findProfileButtonPlacement(username);
+    if (!placement || !placement.parent) return;
+
+    const btn = document.createElement('button');
+    btn.className = 'ig-profile-download-btn';
+    btn.type = 'button';
+    btn._igUsername = username;
+    btn.title = `Tải toàn bộ nội dung profile @${username} (ảnh, video, story, highlights)`;
+    btn.innerHTML = `
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="7 10 12 15 17 10"></polyline>
+        <line x1="12" y1="15" x2="12" y2="3"></line>
+      </svg>
+      <span class="ig-profile-btn-text">Tải Profile</span>
+    `;
+
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openProfileDownloadDialog(username);
+    });
+
+    if (placement.insertAfter && placement.insertAfter.parentElement === placement.parent) {
+      placement.insertAfter.insertAdjacentElement('afterend', btn);
+    } else {
+      placement.parent.appendChild(btn);
+    }
+  }
+
+  function formatBytes(bytes) {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  }
+
+  function openProfileDownloadDialog(username) {
+    const existingOverlay = document.querySelector('.ig-profile-modal-overlay');
+    if (existingOverlay) existingOverlay.remove();
+
+    const headerImg = document.querySelector('header img');
+    const avatarSrc = headerImg ? (headerImg.currentSrc || headerImg.src) : '';
+
+    const overlay = document.createElement('div');
+    overlay.className = 'ig-profile-modal-overlay';
+
+    overlay.innerHTML = `
+      <div class="ig-profile-modal">
+        <div class="ig-profile-modal-header">
+          <div class="ig-profile-header-user">
+            ${avatarSrc ? `<img class="ig-profile-header-avatar" src="${avatarSrc}" alt="${username}">` : '<div class="ig-profile-header-avatar" style="display:flex;align-items:center;justify-content:center;font-size:20px;">👤</div>'}
+            <div class="ig-profile-header-meta">
+              <div class="ig-profile-header-title">@${username}</div>
+              <div class="ig-profile-header-sub">Tải xuống & Đóng gói dữ liệu tài khoản</div>
+            </div>
+          </div>
+          <button class="ig-profile-modal-close" type="button" title="Đóng">&times;</button>
+        </div>
+
+        <div class="ig-profile-options-grid">
+          <div class="ig-profile-opt-card active" data-mode="all">
+            <div class="ig-opt-card-top">
+              <div class="ig-opt-icon">📦</div>
+              <span class="ig-opt-badge">Đầy đủ</span>
+            </div>
+            <div class="ig-opt-title">Tất cả (All in One)</div>
+            <div class="ig-opt-desc">Gom toàn bộ ảnh, video bài viết, story & tin nổi bật vào 1 file ZIP.</div>
+          </div>
+
+          <div class="ig-profile-opt-card" data-mode="photos">
+            <div class="ig-opt-card-top">
+              <div class="ig-opt-icon">🖼️</div>
+            </div>
+            <div class="ig-opt-title">File ảnh (Photos)</div>
+            <div class="ig-opt-desc">Chỉ tải ảnh gốc chất lượng cao từ tất cả bài viết (kể cả carousel).</div>
+          </div>
+
+          <div class="ig-profile-opt-card" data-mode="videos">
+            <div class="ig-opt-card-top">
+              <div class="ig-opt-icon">🎬</div>
+            </div>
+            <div class="ig-opt-title">File video (Videos & Reels)</div>
+            <div class="ig-opt-desc">Chỉ tải toàn bộ video bài viết và Instagram Reels kèm âm thanh gốc.</div>
+          </div>
+
+          <div class="ig-profile-opt-card" data-mode="stories">
+            <div class="ig-opt-card-top">
+              <div class="ig-opt-icon">💫</div>
+            </div>
+            <div class="ig-opt-title">Story & Highlights</div>
+            <div class="ig-opt-desc">Tải trọn bộ Story 24h hiện tại và tất cả album Tin nổi bật còn lưu.</div>
+          </div>
+        </div>
+
+        <div class="ig-profile-limit-row">
+          <span>Giới hạn số lượng bài viết:</span>
+          <select class="ig-profile-limit-select">
+            <option value="0" selected>Tất cả bài viết (Toàn bộ)</option>
+            <option value="50">50 bài gần nhất</option>
+            <option value="30">30 bài gần nhất</option>
+            <option value="12">12 bài mới nhất</option>
+          </select>
+        </div>
+
+        <button class="ig-profile-start-btn" type="button">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Bắt đầu tải về & Đóng gói ZIP</span>
+        </button>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    let selectedMode = 'all';
+
+    const cards = overlay.querySelectorAll('.ig-profile-opt-card');
+    cards.forEach(card => {
+      card.addEventListener('click', () => {
+        cards.forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        selectedMode = card.getAttribute('data-mode') || 'all';
+      });
+    });
+
+    const closeBtn = overlay.querySelector('.ig-profile-modal-close');
+    closeBtn.addEventListener('click', () => overlay.remove());
+
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.remove();
+    });
+
+    const startBtn = overlay.querySelector('.ig-profile-start-btn');
+    startBtn.addEventListener('click', () => {
+      const limitSelect = overlay.querySelector('.ig-profile-limit-select');
+      const postLimit = parseInt(limitSelect?.value || '0', 10);
+      startProfileBatchDownload(username, selectedMode, postLimit, overlay);
+    });
+  }
+
+  async function startProfileBatchDownload(username, selectedMode, postLimit, overlay) {
+    const modal = overlay.querySelector('.ig-profile-modal');
+    if (!modal) return;
+
+    let isCancelled = false;
+    let stopEarlyAndZip = false;
+    const requestId = 'req_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+
+    const modeLabels = {
+      all: '📦 Tất cả',
+      photos: '🖼️ File ảnh',
+      videos: '🎬 File video',
+      stories: '💫 Story & Highlights'
+    };
+
+    modal.innerHTML = `
+      <div class="ig-profile-modal-header">
+        <div class="ig-profile-header-user">
+          <div class="ig-profile-header-meta">
+            <div class="ig-profile-header-title">Đang xử lý @${username}</div>
+            <div class="ig-profile-header-sub">Chế độ: ${modeLabels[selectedMode] || selectedMode}</div>
+          </div>
+        </div>
+        <button class="ig-profile-modal-close ig-btn-cancel-top" type="button" title="Hủy bỏ">&times;</button>
+      </div>
+
+      <div class="ig-profile-progress-view">
+        <div class="ig-progress-hero">
+          <div class="ig-progress-hero-text">
+            <div class="ig-progress-stage-title">Đang kết nối & quét dữ liệu...</div>
+            <div class="ig-progress-stage-sub">Đang trích xuất danh sách bài viết & story</div>
+          </div>
+          <div class="ig-progress-percentage-big">0%</div>
+        </div>
+
+        <div class="ig-progress-bar-track">
+          <div class="ig-progress-bar-fill"></div>
+        </div>
+
+        <div class="ig-progress-stats-row">
+          <div class="ig-stat-box">
+            <span>Đã tải</span>
+            <strong class="ig-stat-files">0 / 0</strong>
+          </div>
+          <div class="ig-stat-box">
+            <span>Dung lượng</span>
+            <strong class="ig-stat-bytes">0.0 MB</strong>
+          </div>
+          <div class="ig-stat-box">
+            <span>Trạng thái</span>
+            <strong class="ig-stat-status">Đang quét...</strong>
+          </div>
+        </div>
+
+        <div class="ig-progress-ticker">
+          <div class="ig-ticker-dot"></div>
+          <span class="ig-ticker-text">Đang phân tích cấu trúc tài khoản @${username}...</span>
+        </div>
+
+        <div class="ig-progress-actions">
+          <button class="ig-btn-stop-save" type="button" disabled>Dừng & Nén ngay (0 file)</button>
+          <button class="ig-btn-cancel" type="button">Hủy bỏ</button>
+        </div>
+      </div>
+    `;
+
+    const percentEl = modal.querySelector('.ig-progress-percentage-big');
+    const stageTitleEl = modal.querySelector('.ig-progress-stage-title');
+    const stageSubEl = modal.querySelector('.ig-progress-stage-sub');
+    const fillEl = modal.querySelector('.ig-progress-bar-fill');
+    const statFilesEl = modal.querySelector('.ig-stat-files');
+    const statBytesEl = modal.querySelector('.ig-stat-bytes');
+    const statStatusEl = modal.querySelector('.ig-stat-status');
+    const tickerTextEl = modal.querySelector('.ig-ticker-text');
+    const stopSaveBtn = modal.querySelector('.ig-btn-stop-save');
+    const cancelBtn = modal.querySelector('.ig-btn-cancel');
+    const cancelTopBtn = modal.querySelector('.ig-btn-cancel-top');
+
+    function cancelProcess() {
+      if (isCancelled) return;
+      isCancelled = true;
+      cleanupListeners();
+      overlay.remove();
+    }
+
+    cancelBtn.addEventListener('click', cancelProcess);
+    cancelTopBtn.addEventListener('click', cancelProcess);
+
+    stopSaveBtn.addEventListener('click', () => {
+      stopEarlyAndZip = true;
+      stopSaveBtn.disabled = true;
+      stopSaveBtn.textContent = 'Đang hoàn tất đóng gói...';
+      statStatusEl.textContent = 'Đang dừng...';
+    });
+
+    function setProgress(percent, stageTitle, stageSub, tickerText) {
+      if (isCancelled) return;
+      const cleanPct = Math.min(100, Math.max(0, Math.floor(percent)));
+      if (percentEl) percentEl.textContent = `${cleanPct}%`;
+      if (fillEl) fillEl.style.width = `${cleanPct}%`;
+      if (stageTitle && stageTitleEl) stageTitleEl.textContent = stageTitle;
+      if (stageSub && stageSubEl) stageSubEl.textContent = stageSub;
+      if (tickerText && tickerTextEl) tickerTextEl.textContent = tickerText;
+    }
+
+    const onScanProgress = (e) => {
+      if (isCancelled) return;
+      if (e.detail?.requestId !== requestId) return;
+      const { stage, message, currentCount } = e.detail;
+      if (currentCount !== undefined && statFilesEl) {
+        statFilesEl.textContent = `Tìm thấy ${currentCount}`;
+      }
+      if (message) {
+        if (stageTitleEl) stageTitleEl.textContent = message;
+        if (tickerTextEl) tickerTextEl.textContent = message;
+      }
+      if (stage === 'init') setProgress(5);
+      else if (stage === 'profile_loaded') setProgress(10);
+      else if (stage === 'scanning_posts') setProgress(15);
+      else if (stage === 'scanning_stories') setProgress(20);
+      else if (stage === 'scanning_highlights') setProgress(25);
+    };
+
+    window.addEventListener('__IG_PROFILE_SCAN_PROGRESS__', onScanProgress);
+
+    const items = await new Promise((resolve) => {
+      const onResult = (e) => {
+        if (e.detail?.requestId !== requestId) return;
+        cleanupResultListener();
+        if (e.detail.error) {
+          resolve({ error: e.detail.error });
+        } else {
+          resolve({ items: e.detail.items || [], user: e.detail.user });
+        }
+      };
+
+      function cleanupResultListener() {
+        window.removeEventListener('__IG_PROFILE_MEDIA_RESULT__', onResult);
+      }
+
+      window.addEventListener('__IG_PROFILE_MEDIA_RESULT__', onResult);
+
+      window.dispatchEvent(new CustomEvent('__IG_REQUEST_PROFILE_MEDIA__', {
+        detail: {
+          requestId,
+          username,
+          options: {
+            type: selectedMode,
+            postLimit: postLimit,
+            includePosts: selectedMode !== 'stories',
+            includeStories: selectedMode === 'all' || selectedMode === 'stories',
+            includeHighlights: selectedMode === 'all' || selectedMode === 'stories'
+          }
+        }
+      }));
+    });
+
+    function cleanupListeners() {
+      window.removeEventListener('__IG_PROFILE_SCAN_PROGRESS__', onScanProgress);
+    }
+
+    if (isCancelled) {
+      cleanupListeners();
+      return;
+    }
+
+    if (items.error) {
+      cleanupListeners();
+      modal.innerHTML = `
+        <div class="ig-profile-modal-header">
+          <div class="ig-profile-header-title">Thông báo</div>
+          <button class="ig-profile-modal-close" type="button">&times;</button>
+        </div>
+        <div style="padding: 20px 0; text-align: center; color: #ef4444; font-size: 14px; line-height: 1.5;">
+          ${items.error}
+        </div>
+        <button class="ig-profile-start-btn" style="background:#3f3f46;" type="button">Đóng</button>
+      `;
+      modal.querySelector('.ig-profile-modal-close').addEventListener('click', () => overlay.remove());
+      modal.querySelector('.ig-profile-start-btn').addEventListener('click', () => overlay.remove());
+      return;
+    }
+
+    const mediaList = items.items || [];
+    if (mediaList.length === 0) {
+      cleanupListeners();
+      modal.innerHTML = `
+        <div class="ig-profile-modal-header">
+          <div class="ig-profile-header-title">Không tìm thấy nội dung</div>
+          <button class="ig-profile-modal-close" type="button">&times;</button>
+        </div>
+        <div style="padding: 20px 0; text-align: center; color: rgba(255,255,255,0.7); font-size: 13.5px; line-height: 1.5;">
+          Không tìm thấy hình ảnh hay video nào phù hợp với tùy chọn của bạn trong tài khoản @${username}.
+        </div>
+        <button class="ig-profile-start-btn" style="background:#3f3f46;" type="button">Đóng</button>
+      `;
+      modal.querySelector('.ig-profile-modal-close').addEventListener('click', () => overlay.remove());
+      modal.querySelector('.ig-profile-start-btn').addEventListener('click', () => overlay.remove());
+      return;
+    }
+
+    // BẮT ĐẦU TẢI DỮ LIỆU MEDIA CONCURRENT (3 luồng song song)
+    setProgress(30, 'Bắt đầu tải dữ liệu media...', `Tổng cộng ${mediaList.length} file`, `Chuẩn bị tải ${mediaList.length} file về máy...`);
+    statStatusEl.textContent = '3 luồng tải';
+    stopSaveBtn.disabled = false;
+    stopSaveBtn.textContent = `Dừng & Nén ngay (0/${mediaList.length})`;
+
+    const filesToZip = [];
+    let downloadedCount = 0;
+    let totalBytes = 0;
+    let fileIndex = 0;
+    const concurrency = 3;
+
+    async function downloadWorker() {
+      while (fileIndex < mediaList.length) {
+        if (isCancelled || stopEarlyAndZip) break;
+        const idx = fileIndex++;
+        const item = mediaList[idx];
+
+        try {
+          const res = await fetch(item.url, { credentials: 'omit' });
+          if (res.ok) {
+            const arrayBuf = await res.arrayBuffer();
+            const byteLen = arrayBuf.byteLength;
+            totalBytes += byteLen;
+            downloadedCount++;
+
+            filesToZip.push({
+              name: item.filename,
+              data: new Uint8Array(arrayBuf)
+            });
+
+            if (isCancelled) break;
+
+            const pct = 30 + Math.floor((downloadedCount / mediaList.length) * 58);
+            const currentMB = (totalBytes / (1024 * 1024)).toFixed(1);
+
+            setProgress(
+              pct,
+              `Đang tải media: ${downloadedCount} / ${mediaList.length} file...`,
+              `Đã tải ${currentMB} MB (${Math.round((downloadedCount / mediaList.length) * 100)}%)`,
+              `✓ ${item.filename} (${formatBytes(byteLen)})`
+            );
+
+            if (statFilesEl) statFilesEl.textContent = `${downloadedCount} / ${mediaList.length}`;
+            if (statBytesEl) statBytesEl.textContent = `${currentMB} MB`;
+            if (stopSaveBtn) stopSaveBtn.textContent = `Dừng & Nén ngay (${downloadedCount}/${mediaList.length})`;
+          }
+        } catch (err) {
+          console.warn('[Profile Downloader] fetch media error:', item.url, err);
+        }
+      }
+    }
+
+    const workers = [];
+    const numWorkers = Math.min(concurrency, mediaList.length);
+    for (let w = 0; w < numWorkers; w++) {
+      workers.push(downloadWorker());
+    }
+
+    await Promise.all(workers);
+
+    if (isCancelled) {
+      cleanupListeners();
+      return;
+    }
+
+    if (filesToZip.length === 0) {
+      cleanupListeners();
+      alert('Không thể tải các tệp tin media. Vui lòng kiểm tra lại kết nối mạng.');
+      overlay.remove();
+      return;
+    }
+
+    // BƯỚC ĐÓNG GÓI .ZIP (88% -> 98%)
+    setProgress(90, 'Đang đóng gói file nén .ZIP...', 'Đang ghi cấu trúc thư mục & kiểm tra mã CRC32...', 'Tối ưu hóa file nén chất lượng cao...');
+    statStatusEl.textContent = 'Đang nén ZIP...';
+    stopSaveBtn.disabled = true;
+
+    await new Promise(r => setTimeout(r, 60));
+
+    const zipBlob = createZipBlob(filesToZip);
+    const totalZipSizeMB = (zipBlob.size / (1024 * 1024)).toFixed(1);
+    const zipFilename = `instagram_${username}_${selectedMode}_${Date.now()}.zip`;
+
+    // Kích hoạt download
+    setProgress(98, 'Đang lưu file về máy...', `Dung lượng file ZIP: ${totalZipSizeMB} MB`, 'Đang kích hoạt trình duyệt lưu file...');
+
+    const blobUrl = URL.createObjectURL(zipBlob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = zipFilename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
+
+    setProgress(100, 'Hoàn tất đóng gói!', 'File ZIP đã được lưu vào máy tính', `✓ Hoàn thành ${filesToZip.length} file`);
+
+    await new Promise(r => setTimeout(r, 350));
+
+    // MÀN HÌNH CHÚC MỪNG THÀNH CÔNG (CELEBRATION VIEW)
+    modal.innerHTML = `
+      <div class="ig-profile-success-view">
+        <div class="ig-success-icon-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+        <div class="ig-success-title">Tải xuống & Đóng gói thành công!</div>
+        <div class="ig-success-desc">
+          Toàn bộ dữ liệu của <strong>@${username}</strong> đã được nén an toàn và lưu về máy tính của bạn.
+        </div>
+        <div class="ig-success-stats-pill">
+          <span>📁 <strong>${filesToZip.length}</strong> file</span>
+          <span>•</span>
+          <span>💾 <strong>${totalZipSizeMB} MB</strong></span>
+          <span>•</span>
+          <span>📦 <strong>${modeLabels[selectedMode] || selectedMode}</strong></span>
+        </div>
+        <div style="font-size:11.5px;color:rgba(255,255,255,0.5);word-break:break-all;margin-top:2px;">
+          Tên tệp: ${zipFilename}
+        </div>
+        <button class="ig-success-close-btn" type="button">Xong & Đóng</button>
+      </div>
+    `;
+
+    cleanupListeners();
+    modal.querySelector('.ig-success-close-btn').addEventListener('click', () => overlay.remove());
+  }
+
   // --- 8. QUAN SÁT THEO MÀN HÌNH (Viewport Priority) CHO HOME FEED ---
   const feedObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
@@ -1979,12 +2537,14 @@
   // --- 10. SỰ KIỆN ĐIỀU HƯỚNG VÀ ĐÓNG BÀI VIẾT ---
   window.addEventListener('__IG_NAVIGATED__', () => {
     cleanupIfPostClosed();
+    scanAndAttachProfileDownload();
     setTimeout(scanAndAttachPlayers, 80);
     setTimeout(scanAndAttachPlayers, 350);
   });
 
   window.addEventListener('popstate', () => {
     setTimeout(cleanupIfPostClosed, 40);
+    setTimeout(scanAndAttachProfileDownload, 50);
     setTimeout(scanAndAttachPlayers, 150);
   });
 
@@ -2019,11 +2579,13 @@
   setInterval(() => {
     cleanupIfPostClosed();
     scanAndAttachStoryDownload();
+    scanAndAttachProfileDownload();
   }, 250);
 
   let debounceTimer = null;
   const observer = new MutationObserver((mutations) => {
     scanAndAttachStoryDownload();
+    scanAndAttachProfileDownload();
     // Chỉ kích hoạt khi có phần tử mới được thêm/bớt vào DOM (ví dụ cuộn thêm bài mới vào feed)
     // Bỏ qua các thay đổi style/attribute trong khi Instagram animate chuyển ảnh carousel
     let hasStructuralChanges = false;
@@ -2050,4 +2612,6 @@
 
   setTimeout(scanAndAttachPlayers, 150);
   setTimeout(scanAndAttachPlayers, 600);
+  setTimeout(scanAndAttachProfileDownload, 200);
+  setTimeout(scanAndAttachProfileDownload, 800);
 })();

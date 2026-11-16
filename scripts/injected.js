@@ -22,6 +22,7 @@
   const capturedVideoUrls = [];
   const activeStoryVideos = [];
   let lastKnownPostDocId = localStorage.getItem('__ig_post_doc_id__') || '8845758582119845';
+  let lastKnownProfileDocId = localStorage.getItem('__ig_profile_doc_id__') || '6936306999797079';
 
   function isDashAudioUrl(url) {
     if (!url || typeof url !== 'string') return false;
@@ -730,9 +731,15 @@
         const bodyStr = typeof args[1]?.body === 'string' ? args[1].body : '';
         if (bodyStr.includes('doc_id=')) {
           const match = bodyStr.match(/doc_id=([0-9]+)/);
-          if (match && (bodyStr.includes('shortcode') || bodyStr.includes('PolarisPost'))) {
-            lastKnownPostDocId = match[1];
-            localStorage.setItem('__ig_post_doc_id__', lastKnownPostDocId);
+          if (match) {
+            if (bodyStr.includes('shortcode') || bodyStr.includes('PolarisPost')) {
+              lastKnownPostDocId = match[1];
+              localStorage.setItem('__ig_post_doc_id__', lastKnownPostDocId);
+            }
+            if (bodyStr.includes('PolarisProfile') || bodyStr.includes('edge_owner_to_timeline_media')) {
+              lastKnownProfileDocId = match[1];
+              localStorage.setItem('__ig_profile_doc_id__', lastKnownProfileDocId);
+            }
           }
         }
       }
@@ -761,11 +768,17 @@
   XMLHttpRequest.prototype.send = function (...args) {
     try {
       const bodyStr = typeof args[0] === 'string' ? args[0] : '';
-      if (bodyStr.includes('doc_id=') && (bodyStr.includes('shortcode') || bodyStr.includes('PolarisPost'))) {
+      if (bodyStr.includes('doc_id=')) {
         const match = bodyStr.match(/doc_id=([0-9]+)/);
         if (match) {
-          lastKnownPostDocId = match[1];
-          localStorage.setItem('__ig_post_doc_id__', lastKnownPostDocId);
+          if (bodyStr.includes('shortcode') || bodyStr.includes('PolarisPost')) {
+            lastKnownPostDocId = match[1];
+            localStorage.setItem('__ig_post_doc_id__', lastKnownPostDocId);
+          }
+          if (bodyStr.includes('PolarisProfile') || bodyStr.includes('edge_owner_to_timeline_media')) {
+            lastKnownProfileDocId = match[1];
+            localStorage.setItem('__ig_profile_doc_id__', lastKnownProfileDocId);
+          }
         }
       }
     } catch (_) {}
@@ -1458,6 +1471,448 @@
     } catch (_) {
       window.dispatchEvent(new CustomEvent('__IG_ACTIVE_STORY_MEDIA_RESULT__', { detail: null }));
     }
+  });
+
+  // --- 8. PROFILE MEDIA EXTRACTOR (POSTS, STORIES, HIGHLIGHTS) ---
+  function sanitizePathTitle(name) {
+    if (!name) return 'Highlight';
+    return String(name).replace(/[\/\\?%*:|"<>]/g, '_').trim() || 'Highlight';
+  }
+
+  async function fetchUserProfileMedia(requestId, username, options = {}) {
+    const {
+      type = 'all', // 'all', 'photos', 'videos', 'stories'
+      postLimit = 0, // 0 for all
+      includePosts = true,
+      includeStories = true,
+      includeHighlights = true
+    } = options;
+
+    const cleanUser = String(username || '').toLowerCase().replace(/^@/, '').trim();
+    if (!cleanUser) {
+      window.dispatchEvent(new CustomEvent('__IG_PROFILE_MEDIA_RESULT__', {
+        detail: { requestId, error: 'Tên người dùng không hợp lệ' }
+      }));
+      return;
+    }
+
+    const csrfToken = getCsrfToken();
+    const headers = {
+      'X-IG-App-ID': '936619743392459',
+      'X-ASBD-ID': '129477',
+      'X-CSRFToken': csrfToken,
+      'X-Requested-With': 'XMLHttpRequest',
+      'Accept': '*/*'
+    };
+
+    function sendProgress(stage, message, extra = {}) {
+      window.dispatchEvent(new CustomEvent('__IG_PROFILE_SCAN_PROGRESS__', {
+        detail: { requestId, stage, message, ...extra }
+      }));
+    }
+
+    try {
+      sendProgress('init', `Đang kết nối và lấy thông tin tài khoản @${cleanUser}...`);
+
+      let userData = null;
+      let userId = null;
+      let timelineEdges = [];
+      let pageInfo = { has_next_page: false, end_cursor: null };
+
+      // 1. Lấy web_profile_info
+      try {
+        const profileRes = await originalFetch(`/api/v1/users/web_profile_info/?username=${encodeURIComponent(cleanUser)}`, {
+          headers,
+          credentials: 'include'
+        });
+        if (profileRes.ok) {
+          const profileJson = await profileRes.json();
+          userData = profileJson?.data?.user;
+          userId = userData?.id;
+          const timeline = userData?.edge_owner_to_timeline_media;
+          if (timeline) {
+            timelineEdges = timeline.edges || [];
+            pageInfo = timeline.page_info || { has_next_page: false, end_cursor: null };
+          }
+        }
+      } catch (err) {
+        console.warn('[Profile Downloader] web_profile_info fetch error:', err);
+      }
+
+      // Fallback tìm userId trong cache reelMediaMap hoặc DOM
+      if (!userId) {
+        for (const [k, v] of reelMediaMap.entries()) {
+          if (Array.isArray(v) && v.length > 0 && v[0]?.user === cleanUser && v[0]?.userId) {
+            userId = v[0].userId;
+            break;
+          }
+        }
+      }
+
+      if (!userData && !userId) {
+        window.dispatchEvent(new CustomEvent('__IG_PROFILE_MEDIA_RESULT__', {
+          detail: { requestId, error: `Không thể tìm thấy thông tin của @${cleanUser}. Có thể tài khoản là riêng tư hoặc bị giới hạn truy cập.` }
+        }));
+        return;
+      }
+
+      const totalPostsInProfile = userData?.edge_owner_to_timeline_media?.count || timelineEdges.length;
+      const userMeta = {
+        id: userId,
+        username: cleanUser,
+        fullName: userData?.full_name || cleanUser,
+        avatarUrl: userData?.profile_pic_url_hd || userData?.profile_pic_url || '',
+        postCount: totalPostsInProfile
+      };
+
+      sendProgress('profile_loaded', `Đã tìm thấy @${cleanUser} (${totalPostsInProfile} bài viết)`, { user: userMeta });
+
+      const collectedMedia = [];
+      const seenMediaUrls = new Set();
+
+      function addMediaItem(item) {
+        if (!item || !item.url || seenMediaUrls.has(item.url)) return;
+        seenMediaUrls.add(item.url);
+        collectedMedia.push(item);
+      }
+
+      // 2. Thu thập bài viết (Posts)
+      if (includePosts) {
+        sendProgress('scanning_posts', `Đang đọc danh sách bài viết đợt 1 (${timelineEdges.length} bài)...`, { currentCount: collectedMedia.length });
+
+        for (let i = 0; i < timelineEdges.length; i++) {
+          const edge = timelineEdges[i];
+          const node = edge?.node;
+          if (!node) continue;
+          const postMedia = extractMediaFromPostNode(node);
+          const shortcode = node.shortcode || node.code || `post_${i + 1}`;
+          for (let mIdx = 0; mIdx < postMedia.length; mIdx++) {
+            const m = postMedia[mIdx];
+            if (type === 'photos' && m.type !== 'image') continue;
+            if (type === 'videos' && m.type !== 'video') continue;
+
+            const ext = m.type === 'video' ? 'mp4' : 'jpg';
+            const suffix = postMedia.length > 1 ? `_${mIdx + 1}` : '';
+            addMediaItem({
+              type: m.type,
+              url: m.url,
+              category: 'post',
+              shortcode: shortcode,
+              id: node.id || shortcode,
+              filename: `posts/post_${shortcode}${suffix}.${ext}`,
+              timestamp: node.taken_at_timestamp || Math.floor(Date.now() / 1000)
+            });
+          }
+        }
+
+        // Lấy thêm trang bài viết nếu còn và nằm trong giới hạn
+        let hasNext = pageInfo?.has_next_page;
+        let cursor = pageInfo?.end_cursor;
+        let pageCount = 1;
+        const maxPages = postLimit > 0 ? Math.ceil(postLimit / 12) : 50;
+
+        while (hasNext && cursor && pageCount < maxPages && (!postLimit || collectedMedia.length < postLimit)) {
+          pageCount++;
+          sendProgress('scanning_posts', `Đang tải thêm danh sách bài viết (trang ${pageCount})...`, {
+            currentCount: collectedMedia.length
+          });
+
+          let newEdges = [];
+          let nextCursor = null;
+          let nextHasNext = false;
+          let fetchedOk = false;
+
+          // Thử 1: GraphQL với doc_ids
+          const docIds = [
+            lastKnownProfileDocId,
+            '6936306999797079',
+            '7181657375267862',
+            '17991443634024225'
+          ].filter(Boolean);
+
+          for (const docId of Array.from(new Set(docIds))) {
+            try {
+              const bodyParams = new URLSearchParams();
+              bodyParams.set('doc_id', docId);
+              bodyParams.set('variables', JSON.stringify({
+                id: userId,
+                first: 12,
+                after: cursor
+              }));
+
+              const gRes = await originalFetch('/graphql/query', {
+                method: 'POST',
+                headers: {
+                  ...headers,
+                  'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                credentials: 'include',
+                body: bodyParams.toString()
+              });
+
+              if (gRes.ok) {
+                const gJson = await gRes.json();
+                const tl = gJson?.data?.user?.edge_owner_to_timeline_media;
+                if (tl && Array.isArray(tl.edges)) {
+                  newEdges = tl.edges;
+                  nextCursor = tl.page_info?.end_cursor;
+                  nextHasNext = tl.page_info?.has_next_page;
+                  lastKnownProfileDocId = docId;
+                  localStorage.setItem('__ig_profile_doc_id__', docId);
+                  fetchedOk = true;
+                  break;
+                }
+              }
+            } catch (_) {}
+          }
+
+          // Thử 2: REST Endpoint v1
+          if (!fetchedOk) {
+            try {
+              const restRes = await originalFetch(`/api/v1/feed/user/${encodeURIComponent(userId)}/?count=12&max_id=${encodeURIComponent(cursor)}`, {
+                headers,
+                credentials: 'include'
+              });
+              if (restRes.ok) {
+                const restJson = await restRes.json();
+                if (Array.isArray(restJson.items)) {
+                  for (const it of restJson.items) {
+                    const postMedia = extractMediaFromPostNode(it);
+                    const sc = it.code || `post_${it.id}`;
+                    for (let mIdx = 0; mIdx < postMedia.length; mIdx++) {
+                      const m = postMedia[mIdx];
+                      if (type === 'photos' && m.type !== 'image') continue;
+                      if (type === 'videos' && m.type !== 'video') continue;
+                      const ext = m.type === 'video' ? 'mp4' : 'jpg';
+                      const suffix = postMedia.length > 1 ? `_${mIdx + 1}` : '';
+                      addMediaItem({
+                        type: m.type,
+                        url: m.url,
+                        category: 'post',
+                        shortcode: sc,
+                        id: it.id || sc,
+                        filename: `posts/post_${sc}${suffix}.${ext}`,
+                        timestamp: it.taken_at || Math.floor(Date.now() / 1000)
+                      });
+                    }
+                  }
+                  nextCursor = restJson.next_max_id;
+                  nextHasNext = restJson.more_available;
+                  fetchedOk = true;
+                }
+              }
+            } catch (_) {}
+          }
+
+          if (newEdges.length > 0) {
+            for (let i = 0; i < newEdges.length; i++) {
+              const edge = newEdges[i];
+              const node = edge?.node;
+              if (!node) continue;
+              const postMedia = extractMediaFromPostNode(node);
+              const shortcode = node.shortcode || node.code || `post_${collectedMedia.length + 1}`;
+              for (let mIdx = 0; mIdx < postMedia.length; mIdx++) {
+                const m = postMedia[mIdx];
+                if (type === 'photos' && m.type !== 'image') continue;
+                if (type === 'videos' && m.type !== 'video') continue;
+                const ext = m.type === 'video' ? 'mp4' : 'jpg';
+                const suffix = postMedia.length > 1 ? `_${mIdx + 1}` : '';
+                addMediaItem({
+                  type: m.type,
+                  url: m.url,
+                  category: 'post',
+                  shortcode: shortcode,
+                  id: node.id || shortcode,
+                  filename: `posts/post_${shortcode}${suffix}.${ext}`,
+                  timestamp: node.taken_at_timestamp || Math.floor(Date.now() / 1000)
+                });
+              }
+            }
+          }
+
+          if (postLimit > 0 && collectedMedia.length >= postLimit) {
+            break;
+          }
+
+          if (!fetchedOk || !nextHasNext || !nextCursor) {
+            break;
+          }
+
+          cursor = nextCursor;
+          hasNext = nextHasNext;
+          await new Promise(r => setTimeout(r, 180));
+        }
+      }
+
+      // 3. Thu thập Story 24h
+      if (includeStories && userId) {
+        sendProgress('scanning_stories', 'Đang quét Story 24h...', { currentCount: collectedMedia.length });
+        try {
+          const userStoryRes = await originalFetch(`/api/v1/feed/reels_media/?reel_ids=${encodeURIComponent(userId)}`, {
+            headers,
+            credentials: 'include'
+          });
+          if (userStoryRes.ok) {
+            const storyJson = await userStoryRes.json();
+            const reel = storyJson?.reels?.[userId];
+            const storyItems = reel?.items || [];
+
+            for (let sIdx = 0; sIdx < storyItems.length; sIdx++) {
+              const sit = storyItems[sIdx];
+              const isVid = sit.media_type === 2 || sit.is_video === true;
+              let bestUrl = null;
+              if (isVid && Array.isArray(sit.video_versions) && sit.video_versions.length > 0) {
+                bestUrl = sit.video_versions.sort((a, b) => (b.width * b.height) - (a.width * a.height))[0]?.url;
+              }
+              if (!bestUrl && Array.isArray(sit.image_versions2?.candidates) && sit.image_versions2.candidates.length > 0) {
+                bestUrl = sit.image_versions2.candidates.sort((a, b) => (b.width * b.height) - (a.width * a.height))[0]?.url;
+              }
+              if (bestUrl) {
+                const finalType = isVid ? 'video' : 'image';
+                if (type === 'photos' && finalType !== 'image') continue;
+                if (type === 'videos' && finalType !== 'video') continue;
+                const ext = finalType === 'video' ? 'mp4' : 'jpg';
+                addMediaItem({
+                  type: finalType,
+                  url: bestUrl,
+                  category: 'story',
+                  id: sit.id || `story_${sIdx + 1}`,
+                  filename: `stories/story_${sIdx + 1}_${sit.id || Date.now()}.${ext}`,
+                  timestamp: sit.taken_at || Math.floor(Date.now() / 1000)
+                });
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('[Profile Downloader] fetch stories error:', err);
+        }
+      }
+
+      // 4. Thu thập Highlights (Tin nổi bật)
+      if (includeHighlights && userId) {
+        sendProgress('scanning_highlights', 'Đang quét danh sách Tin nổi bật (Highlights)...', { currentCount: collectedMedia.length });
+        let highlightTrays = [];
+
+        try {
+          const trayRes = await originalFetch(`/api/v1/highlights/${encodeURIComponent(userId)}/highlights_tray/`, {
+            headers,
+            credentials: 'include'
+          });
+          if (trayRes.ok) {
+            const trayJson = await trayRes.json();
+            if (Array.isArray(trayJson.tray)) {
+              highlightTrays = trayJson.tray;
+            }
+          }
+        } catch (err) {
+          console.warn('[Profile Downloader] highlights_tray API error:', err);
+        }
+
+        // Quét thêm DOM nếu API rỗng
+        if (highlightTrays.length === 0) {
+          const domHighlightLinks = Array.from(document.querySelectorAll('a[href*="/stories/highlights/"]'));
+          const seenReels = new Set();
+          for (const a of domHighlightLinks) {
+            const href = a.getAttribute('href') || '';
+            const m = href.match(/\/stories\/highlights\/([^\/]+)/);
+            if (m && !seenReels.has(m[1])) {
+              const reelId = m[1];
+              seenReels.add(reelId);
+              const titleEl = a.querySelector('span, div') || a;
+              const title = (titleEl.textContent || 'Highlight').trim();
+              highlightTrays.push({
+                id: reelId.startsWith('highlight:') ? reelId : `highlight:${reelId}`,
+                title: title
+              });
+            }
+          }
+        }
+
+        if (highlightTrays.length > 0) {
+          sendProgress('scanning_highlights', `Tìm thấy ${highlightTrays.length} album Tin nổi bật. Đang đọc nội dung...`, { currentCount: collectedMedia.length });
+
+          const reelIds = highlightTrays.map(t => String(t.id).startsWith('highlight:') ? String(t.id) : `highlight:${t.id}`);
+          const chunkSize = 5;
+
+          for (let c = 0; c < reelIds.length; c += chunkSize) {
+            const chunk = reelIds.slice(c, c + chunkSize);
+            const queryParams = chunk.map(id => `reel_ids=${encodeURIComponent(id)}`).join('&');
+            try {
+              const res = await originalFetch(`/api/v1/feed/reels_media/?${queryParams}`, {
+                headers,
+                credentials: 'include'
+              });
+              if (res.ok) {
+                const reelsJson = await res.json();
+                const reels = reelsJson.reels || {};
+
+                for (const reelKey of Object.keys(reels)) {
+                  const rObj = reels[reelKey];
+                  const rawId = rObj?.id || reelKey;
+                  const cleanReelId = String(rawId).replace(/^highlight:/, '');
+                  const trayInfo = highlightTrays.find(t => String(t.id).includes(cleanReelId));
+                  const albumTitle = sanitizePathTitle(trayInfo?.title || rObj?.title || 'Highlight');
+                  const rItems = rObj?.items || [];
+
+                  for (let i = 0; i < rItems.length; i++) {
+                    const hItem = rItems[i];
+                    const isVid = hItem.media_type === 2 || hItem.is_video === true;
+                    let bestUrl = null;
+                    if (isVid && Array.isArray(hItem.video_versions) && hItem.video_versions.length > 0) {
+                      bestUrl = hItem.video_versions.sort((a, b) => (b.width * b.height) - (a.width * a.height))[0]?.url;
+                    }
+                    if (!bestUrl && Array.isArray(hItem.image_versions2?.candidates) && hItem.image_versions2.candidates.length > 0) {
+                      bestUrl = hItem.image_versions2.candidates.sort((a, b) => (b.width * b.height) - (a.width * a.height))[0]?.url;
+                    }
+                    if (bestUrl) {
+                      const finalType = isVid ? 'video' : 'image';
+                      if (type === 'photos' && finalType !== 'image') continue;
+                      if (type === 'videos' && finalType !== 'video') continue;
+                      const ext = finalType === 'video' ? 'mp4' : 'jpg';
+                      addMediaItem({
+                        type: finalType,
+                        url: bestUrl,
+                        category: 'highlight',
+                        albumTitle: albumTitle,
+                        id: hItem.id || `highlight_${i + 1}`,
+                        filename: `highlights/${albumTitle}/slide_${i + 1}_${hItem.id || Date.now()}.${ext}`,
+                        timestamp: hItem.taken_at || Math.floor(Date.now() / 1000)
+                      });
+                    }
+                  }
+                }
+              }
+            } catch (err) {
+              console.warn('[Profile Downloader] fetch highlight chunk error:', err);
+            }
+          }
+        }
+      }
+
+      sendProgress('done', `Quét hoàn tất! Sẵn sàng tải ${collectedMedia.length} file.`, { currentCount: collectedMedia.length });
+
+      window.dispatchEvent(new CustomEvent('__IG_PROFILE_MEDIA_RESULT__', {
+        detail: {
+          requestId,
+          user: userMeta,
+          items: collectedMedia
+        }
+      }));
+
+    } catch (err) {
+      console.error('[Profile Downloader] Error in fetchUserProfileMedia:', err);
+      window.dispatchEvent(new CustomEvent('__IG_PROFILE_MEDIA_RESULT__', {
+        detail: {
+          requestId,
+          error: 'Đã xảy ra lỗi khi quét dữ liệu: ' + (err.message || err)
+        }
+      }));
+    }
+  }
+
+  window.addEventListener('__IG_REQUEST_PROFILE_MEDIA__', (e) => {
+    const { requestId, username, options } = e.detail || {};
+    fetchUserProfileMedia(requestId, username, options);
   });
 
   function checkCurrentStoryUrl() {
