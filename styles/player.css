@@ -661,16 +661,18 @@
   height: 32px !important;
   padding: 0 14px !important;
   margin-left: 10px !important;
-  background: linear-gradient(135deg, rgba(220, 39, 67, 0.15), rgba(188, 24, 136, 0.15)) !important;
-  border: 1px solid rgba(220, 39, 67, 0.45) !important;
+  background: rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid rgba(0, 0, 0, 0.2) !important;
   border-radius: 8px !important;
-  color: #ffffff !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  color: #000000 !important;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
   font-size: 13px !important;
   font-weight: 600 !important;
   cursor: pointer !important;
-  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
   vertical-align: middle !important;
   box-sizing: border-box !important;
   white-space: nowrap !important;
@@ -678,25 +680,48 @@
 }
 
 .ig-profile-download-btn:hover {
-  background: linear-gradient(135deg, rgba(220, 39, 67, 0.35), rgba(188, 24, 136, 0.35)) !important;
-  border-color: rgba(220, 39, 67, 0.8) !important;
-  transform: translateY(-1px) scale(1.02) !important;
-  box-shadow: 0 4px 14px rgba(220, 39, 67, 0.35) !important;
+  background: rgba(0, 0, 0, 0.09) !important;
+  border-color: rgba(0, 0, 0, 0.35) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
 }
 
 .ig-profile-download-btn:active {
   transform: translateY(0) scale(0.98) !important;
+  background: rgba(0, 0, 0, 0.12) !important;
 }
 
 .ig-profile-download-btn svg {
   flex-shrink: 0 !important;
-  stroke: #ff4d6d !important;
+  stroke: #000000 !important;
   transition: transform 0.2s ease !important;
 }
 
 .ig-profile-download-btn:hover svg {
-  stroke: #ffffff !important;
+  stroke: #000000 !important;
   transform: translateY(1px) !important;
+}
+
+/* Tự động thích ứng nếu Instagram ở Dark Mode */
+html[class*="dark"] .ig-profile-download-btn,
+body[class*="dark"] .ig-profile-download-btn,
+[data-theme="dark"] .ig-profile-download-btn {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+html[class*="dark"] .ig-profile-download-btn svg,
+body[class*="dark"] .ig-profile-download-btn svg,
+[data-theme="dark"] .ig-profile-download-btn svg {
+  stroke: #ffffff !important;
+}
+
+html[class*="dark"] .ig-profile-download-btn:hover,
+body[class*="dark"] .ig-profile-download-btn:hover,
+[data-theme="dark"] .ig-profile-download-btn:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
 }
 
 .ig-profile-btn-text {
