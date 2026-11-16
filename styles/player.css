@@ -1,0 +1,647 @@
+/* ========================================================
+   IG Web Music Player - Stylesheet (v1.6.2)
+   1. Thanh Âm Thanh Nằm Ngoài Ảnh Cho Bảng Tin Home:
+      - Chiều dài 100% bằng chiều rộng bài viết để tạo sự cân đối tuyệt đối (Hình 6)
+      - Độc lập nằm giữa ảnh và hàng nút Thích/Bình luận, không đè lên ảnh (Hình 5)
+   2. Giao diện Kính Mờ Nổi cho Modal / Trang Đơn (/p/)
+   ======================================================== */
+
+/* ========================================================
+   A. THANH ÂM THANH NẰM NGOÀI ẢNH CHO BẢNG TIN HOME (Feed Bar)
+   ======================================================== */
+.ig-music-feed-bar {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100%;
+  max-width: 100%;
+  align-self: stretch !important;
+  margin: 8px 0 6px 0;
+  padding: 8px 14px !important;
+  background: rgba(30, 30, 30, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-sizing: border-box !important;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s ease;
+  user-select: none;
+  min-height: 42px !important;
+}
+
+.ig-music-feed-bar:hover {
+  background: rgba(40, 40, 40, 0.95);
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+
+.ig-feed-bar-left {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  cursor: pointer;
+}
+
+.ig-feed-content-area {
+  display: flex !important;
+  align-items: center !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  overflow: hidden;
+}
+
+/* 1. Trạng thái Đang Tải (Loading) */
+.ig-music-feed-bar.state-loading {
+  opacity: 0.8;
+}
+.ig-feed-loading-text {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  animation: ig-feed-pulse 1.3s ease-in-out infinite alternate;
+}
+
+@keyframes ig-feed-pulse {
+  0% { opacity: 0.45; }
+  100% { opacity: 0.95; }
+}
+
+/* 2. Trạng thái Không Có Nhạc */
+.ig-music-feed-bar.state-no-music {
+  opacity: 0.45;
+  background: rgba(20, 20, 20, 0.45);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+.ig-feed-no-music-text {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 3. Nút Loa trên Feed Bar */
+.ig-feed-speaker-btn {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(50, 50, 50, 0.75);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0 !important;
+  margin-left: 10px !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+}
+
+.ig-feed-speaker-btn:hover {
+  background: rgba(65, 65, 65, 0.95);
+  transform: scale(1.08);
+}
+
+.ig-feed-speaker-btn.playing {
+  background: rgba(220, 39, 67, 0.85);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 2px 10px rgba(220, 39, 67, 0.4);
+}
+
+.ig-feed-speaker-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+  pointer-events: none;
+  transform: none;
+}
+
+/* ========================================================
+   B. GIAO DIỆN KÍNH MỜ NỔI (DÀNH CHO MODAL & TRANG ĐƠN /p/)
+   ======================================================== */
+.ig-music-controls-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 25;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 6px 8px;
+  box-sizing: border-box;
+  transition: opacity 0.3s ease;
+}
+
+.ig-music-controls-container:hover .ig-music-badge,
+.ig-music-controls-container:hover .ig-music-speaker-btn {
+  opacity: 1;
+}
+
+/* Nút Loa Tròn */
+.ig-music-speaker-btn {
+  pointer-events: auto;
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(18, 18, 18, 0.5);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #ffffff;
+  opacity: 0.55;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  outline: none;
+}
+
+.ig-music-speaker-btn:hover {
+  opacity: 1 !important;
+  background: rgba(28, 28, 28, 0.85);
+  border-color: rgba(255, 255, 255, 0.35);
+  transform: scale(1.06);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.ig-music-speaker-btn:active {
+  transform: scale(0.94);
+}
+
+.ig-music-speaker-btn.playing {
+  background: rgba(220, 39, 67, 0.65);
+  border-color: rgba(255, 255, 255, 0.35);
+  opacity: 0.75;
+  box-shadow: 0 2px 12px rgba(220, 39, 67, 0.35);
+}
+
+.ig-music-speaker-btn.playing:hover {
+  opacity: 1 !important;
+  background: rgba(220, 39, 67, 0.9);
+  box-shadow: 0 4px 16px rgba(220, 39, 67, 0.55);
+}
+
+/* Nhãn Bài Hát Viên Thuốc */
+.ig-music-badge {
+  pointer-events: auto;
+  position: absolute;
+  left: 8px;
+  bottom: 6px;
+  max-width: 80%;
+  height: 32px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(18, 18, 18, 0.5);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #ffffff;
+  opacity: 0.55;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  transition: all 0.25s ease;
+  user-select: none;
+  overflow: hidden;
+}
+
+.ig-music-badge:hover {
+  opacity: 1 !important;
+  background: rgba(28, 28, 28, 0.85);
+  border-color: rgba(255, 255, 255, 0.35);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.ig-music-badge:active {
+  transform: translateY(0);
+}
+
+.ig-music-badge-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px 0 8px;
+  height: 100%;
+}
+
+.ig-music-icon-box {
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #e0e0e0;
+}
+
+.ig-static-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ig-eq-wave {
+  display: none;
+  align-items: flex-end;
+  gap: 1.5px;
+  height: 12px;
+}
+
+.eq-bar {
+  width: 2.2px;
+  background: #ffffff;
+  border-radius: 1px;
+}
+
+.bar-1 { height: 4px; }
+.bar-2 { height: 10px; }
+.bar-3 { height: 6px; }
+
+/* Trạng thái bài hát đang phát */
+.playing .ig-static-note {
+  display: none !important;
+}
+
+.playing .ig-eq-wave {
+  display: flex !important;
+}
+
+.playing .bar-1 {
+  animation: eq-bounce 0.8s ease-in-out infinite alternate;
+}
+
+.playing .bar-2 {
+  animation: eq-bounce 0.7s ease-in-out infinite alternate 0.2s;
+}
+
+.playing .bar-3 {
+  animation: eq-bounce 0.9s ease-in-out infinite alternate 0.4s;
+}
+
+@keyframes eq-bounce {
+  0% { height: 3px; }
+  100% { height: 12px; }
+}
+
+.ig-track-info {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ig-track-title {
+  font-weight: 600;
+  color: #ffffff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ig-track-divider {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 10px;
+}
+
+.ig-track-artist {
+  color: rgba(255, 255, 255, 0.75);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ig-clip-duration {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 5px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  margin-left: auto !important;
+}
+
+/* Thanh Tiến Trình (Progress bar) */
+.ig-progress-track {
+  width: 100%;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  position: absolute;
+  bottom: 0;
+  left: 0;
+}
+
+.ig-progress-fill {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, #fd1d1d, #fcb045);
+  transition: width 0.15s linear;
+}
+
+/* Responsive khi màn hình nhỏ */
+@media (max-width: 600px) {
+  .ig-track-artist, .ig-track-divider {
+    display: none;
+  }
+}
+
+/* ========================================================
+   C. NÚT TẢI XUỐNG (DOWNLOAD BUTTONS - v1.7.0)
+   1. Feed Bar Download Button (Trang Home Feed & Modal /p/)
+   2. Floating Download Button (Cho bài viết Video đơn lẻ)
+   3. Story Download Button (Cho Instagram Stories)
+   ======================================================== */
+
+/* 1. Nút Tải Toàn Bộ Bài Viết trên Feed Bar (Hình 1 & Hình 3) */
+.ig-feed-download-btn {
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 50% !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  background: rgba(50, 50, 50, 0.75) !important;
+  color: #ffffff !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  flex-shrink: 0 !important;
+  margin-right: 10px !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  outline: none !important;
+}
+
+.ig-feed-download-btn:hover {
+  background: rgba(70, 70, 70, 0.95) !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+  transform: scale(1.08) !important;
+}
+
+.ig-feed-download-btn.downloading {
+  opacity: 0.85 !important;
+  cursor: wait !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.ig-feed-download-btn.success {
+  border-color: rgba(34, 197, 94, 0.6) !important;
+  background: rgba(34, 197, 94, 0.25) !important;
+}
+
+/* 2. Nút Tải Nổi trên Bài Viết Video Đơn Lẻ (Hình 2) */
+.ig-floating-download-btn {
+  position: absolute !important;
+  bottom: 14px !important;
+  left: 14px !important;
+  z-index: 99 !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 50% !important;
+  background: rgba(20, 20, 20, 0.75) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  color: #ffffff !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  outline: none !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5) !important;
+}
+
+.ig-floating-download-btn:hover {
+  background: rgba(35, 35, 35, 0.95) !important;
+  border-color: rgba(255, 255, 255, 0.45) !important;
+  transform: scale(1.08) !important;
+}
+
+.ig-floating-download-btn.downloading {
+  opacity: 0.85 !important;
+  cursor: wait !important;
+}
+
+.ig-floating-download-btn.success {
+  border-color: rgba(34, 197, 94, 0.6) !important;
+  background: rgba(34, 197, 94, 0.3) !important;
+}
+
+/* 3. Nút Tải trên Header Story (Hình 4) */
+.ig-story-download-btn {
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 6px !important;
+  color: #ffffff !important;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6)) !important;
+  transition: all 0.2s ease !important;
+  outline: none !important;
+  margin-right: 4px !important;
+  width: 34px !important;
+  height: 34px !important;
+  vertical-align: middle !important;
+}
+
+.ig-story-download-btn:hover {
+  opacity: 0.85 !important;
+  transform: scale(1.12) !important;
+}
+
+.ig-story-download-btn.downloading {
+  opacity: 0.75 !important;
+  cursor: wait !important;
+}
+
+.ig-story-download-btn.success {
+  color: #22c55e !important;
+}
+
+.ig-story-download-btn svg {
+  width: 20px !important;
+  height: 20px !important;
+  stroke: #ffffff !important;
+}
+
+/* ========================================================
+   D. DIALOG LỰA CHỌN TẢI XUỐNG (.ZIP HOẶC TỪNG FILE)
+   ======================================================== */
+.ig-download-dialog-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 999999 !important;
+  background: rgba(0, 0, 0, 0.65) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  animation: ig-dialog-fadein 0.2s ease-out;
+}
+
+@keyframes ig-dialog-fadein {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.ig-download-dialog {
+  background: #242424 !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 14px !important;
+  padding: 20px !important;
+  width: 90% !important;
+  max-width: 360px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.75) !important;
+  color: #ffffff !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+  animation: ig-dialog-scalein 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box !important;
+}
+
+@keyframes ig-dialog-scalein {
+  from { transform: scale(0.92); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.ig-download-dialog-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 8px !important;
+}
+
+.ig-dl-title {
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+}
+
+.ig-dl-close-btn {
+  background: transparent !important;
+  border: none !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+  font-size: 24px !important;
+  cursor: pointer !important;
+  line-height: 1 !important;
+  padding: 0 4px !important;
+  transition: color 0.15s !important;
+}
+
+.ig-dl-close-btn:hover {
+  color: #ffffff !important;
+}
+
+.ig-download-dialog-desc {
+  font-size: 13px !important;
+  color: rgba(255, 255, 255, 0.75) !important;
+  margin-bottom: 16px !important;
+  line-height: 1.4 !important;
+}
+
+.ig-download-dialog-actions {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+}
+
+.ig-dl-choice-btn {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 10px !important;
+  padding: 12px 14px !important;
+  color: #ffffff !important;
+  cursor: pointer !important;
+  text-align: left !important;
+  transition: all 0.2s ease !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.ig-dl-choice-btn:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  transform: translateY(-1px) !important;
+}
+
+.ig-dl-choice-btn.btn-zip {
+  border-color: rgba(220, 39, 67, 0.5) !important;
+  background: rgba(220, 39, 67, 0.12) !important;
+}
+
+.ig-dl-choice-btn.btn-zip:hover {
+  background: rgba(220, 39, 67, 0.25) !important;
+  border-color: rgba(220, 39, 67, 0.8) !important;
+}
+
+.ig-choice-emoji {
+  font-size: 24px !important;
+  flex-shrink: 0 !important;
+}
+
+.ig-choice-zip-icon {
+  width: 40px !important;
+  height: 40px !important;
+  object-fit: contain !important;
+  flex-shrink: 0 !important;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.45)) !important;
+  display: block !important;
+}
+
+.ig-choice-files-icon {
+  width: 36px !important;
+  height: 36px !important;
+  flex-shrink: 0 !important;
+  display: block !important;
+}
+
+.ig-choice-info {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+}
+
+.ig-choice-info strong {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  color: #ffffff !important;
+}
+
+.ig-choice-info small {
+  font-size: 11px !important;
+  color: rgba(255, 255, 255, 0.65) !important;
+}
