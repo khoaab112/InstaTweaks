@@ -1479,6 +1479,80 @@
     return String(name).replace(/[\/\\?%*:|"<>]/g, '_').trim() || 'Highlight';
   }
 
+  function extractUserFromReactFiber(targetUsername) {
+    try {
+      const targets = Array.from(document.querySelectorAll('header, main, section, [role="main"]'));
+      for (const el of targets) {
+        const fiberKey = Object.keys(el).find(k => k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$'));
+        if (!fiberKey) continue;
+
+        let cur = el[fiberKey];
+        let depth = 0;
+        while (cur && depth < 50) {
+          depth++;
+          const p = cur.memoizedProps;
+          const s = cur.memoizedState;
+          for (const cand of [p, s]) {
+            if (!cand || typeof cand !== 'object') continue;
+            const u = cand.user || cand.profileUser || cand.profileData?.user || cand.data?.user || (cand.edge_owner_to_timeline_media ? cand : null);
+            if (u && (u.id || u.pk)) {
+              if (!targetUsername || String(u.username || '').toLowerCase() === targetUsername.toLowerCase()) {
+                return u;
+              }
+              // Nếu không khớp chính xác, trả về u nếu có edge_owner_to_timeline_media
+              if (u.edge_owner_to_timeline_media) {
+                return u;
+              }
+            }
+          }
+          cur = cur.return;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  function extractUserFromScriptTags(targetUsername) {
+    try {
+      const scripts = document.querySelectorAll('script[type="application/json"], script[data-sjs], script:not([src])');
+      for (const script of scripts) {
+        const text = script.textContent || '';
+        if (!text.includes('edge_owner_to_timeline_media') && !text.includes('profile_pic_url')) continue;
+        try {
+          const json = JSON.parse(text);
+          let found = null;
+          function search(obj, d = 0) {
+            if (!obj || typeof obj !== 'object' || d > 12 || found) return;
+            const isUser = (obj.id || obj.pk) && (obj.edge_owner_to_timeline_media || obj.username);
+            if (isUser) {
+              if (!targetUsername || String(obj.username || '').toLowerCase() === targetUsername.toLowerCase()) {
+                found = obj;
+                return;
+              }
+              if (!found && obj.edge_owner_to_timeline_media) found = obj;
+            }
+            if (obj.user && (obj.user.id || obj.user.pk)) {
+              if (!targetUsername || String(obj.user.username || '').toLowerCase() === targetUsername.toLowerCase()) {
+                found = obj.user;
+                return;
+              }
+              if (!found && obj.user.edge_owner_to_timeline_media) found = obj.user;
+            }
+            if (Array.isArray(obj)) {
+              for (let i = 0; i < obj.length; i++) search(obj[i], d + 1);
+            } else {
+              const keys = Object.keys(obj);
+              for (let i = 0; i < keys.length; i++) search(obj[keys[i]], d + 1);
+            }
+          }
+          search(json);
+          if (found) return found;
+        } catch (_) {}
+      }
+    } catch (_) {}
+    return null;
+  }
+
   async function fetchUserProfileMedia(requestId, username, options = {}) {
     const {
       type = 'all', // 'all', 'photos', 'videos', 'stories'
@@ -1519,27 +1593,97 @@
       let timelineEdges = [];
       let pageInfo = { has_next_page: false, end_cursor: null };
 
-      // 1. Lấy web_profile_info
-      try {
-        const profileRes = await originalFetch(`/api/v1/users/web_profile_info/?username=${encodeURIComponent(cleanUser)}`, {
-          headers,
-          credentials: 'include'
-        });
-        if (profileRes.ok) {
-          const profileJson = await profileRes.json();
-          userData = profileJson?.data?.user;
-          userId = userData?.id;
-          const timeline = userData?.edge_owner_to_timeline_media;
-          if (timeline) {
-            timelineEdges = timeline.edges || [];
-            pageInfo = timeline.page_info || { has_next_page: false, end_cursor: null };
-          }
+      // CHIẾN LƯỢC 1: Lấy trực tiếp từ React Fiber của trang hiện tại (100% không bị 404 vì trang đã tải)
+      const fiberUser = extractUserFromReactFiber(cleanUser);
+      if (fiberUser) {
+        userData = fiberUser;
+        userId = fiberUser.id || fiberUser.pk;
+        if (fiberUser.edge_owner_to_timeline_media) {
+          timelineEdges = fiberUser.edge_owner_to_timeline_media.edges || [];
+          pageInfo = fiberUser.edge_owner_to_timeline_media.page_info || pageInfo;
         }
-      } catch (err) {
-        console.warn('[Profile Downloader] web_profile_info fetch error:', err);
       }
 
-      // Fallback tìm userId trong cache reelMediaMap hoặc DOM
+      // CHIẾN LƯỢC 2: Đọc thẻ Script SSR của trang
+      if (!userData || !userId) {
+        const scriptUser = extractUserFromScriptTags(cleanUser);
+        if (scriptUser) {
+          userData = scriptUser;
+          userId = scriptUser.id || scriptUser.pk;
+          if (scriptUser.edge_owner_to_timeline_media) {
+            timelineEdges = scriptUser.edge_owner_to_timeline_media.edges || [];
+            pageInfo = scriptUser.edge_owner_to_timeline_media.page_info || pageInfo;
+          }
+        }
+      }
+
+      // CHIẾN LƯỢC 3: Gọi API web_profile_info với các biến thể username (xử lý gạch dưới _ và __)
+      if (!userData || !userId) {
+        const userVariants = [cleanUser];
+        // Nếu tên trong DOM header khác tên truyền vào, thêm tên trong DOM
+        const headerHeading = document.querySelector('header h2, header h1, [role="heading"]');
+        if (headerHeading && headerHeading.textContent) {
+          const domName = headerHeading.textContent.trim().replace(/^@/, '').toLowerCase();
+          if (domName && !userVariants.includes(domName)) userVariants.unshift(domName);
+        }
+        if (cleanUser.includes('__')) userVariants.push(cleanUser.replace(/__/g, '_'));
+        if (cleanUser.includes('_') && !cleanUser.includes('__')) userVariants.push(cleanUser.replace(/_/g, '__'));
+
+        for (const u of Array.from(new Set(userVariants))) {
+          try {
+            const profileRes = await originalFetch(`/api/v1/users/web_profile_info/?username=${encodeURIComponent(u)}`, {
+              headers,
+              credentials: 'include'
+            });
+            if (profileRes.ok) {
+              const profileJson = await profileRes.json();
+              userData = profileJson?.data?.user;
+              userId = userData?.id || userData?.pk;
+              const timeline = userData?.edge_owner_to_timeline_media;
+              if (timeline) {
+                timelineEdges = timeline.edges || [];
+                pageInfo = timeline.page_info || { has_next_page: false, end_cursor: null };
+              }
+              break;
+            }
+          } catch (err) {
+            console.warn('[Profile Downloader] web_profile_info fetch error:', u, err);
+          }
+        }
+      }
+
+      // CHIẾN LƯỢC 4: Thử GraphQL Query PolarisProfileRootQuery
+      if (!userData || !userId) {
+        const docIds = ['7181657375267862', '17991443634024225', '6936306999797079'];
+        for (const docId of docIds) {
+          try {
+            const bodyParams = new URLSearchParams();
+            bodyParams.set('doc_id', docId);
+            bodyParams.set('variables', JSON.stringify({ username: cleanUser }));
+            const gRes = await originalFetch('/graphql/query', {
+              method: 'POST',
+              headers: { ...headers, 'Content-Type': 'application/x-www-form-urlencoded' },
+              credentials: 'include',
+              body: bodyParams.toString()
+            });
+            if (gRes.ok) {
+              const gJson = await gRes.json();
+              const u = gJson?.data?.user || gJson?.data?.xdt_users__by_username;
+              if (u && (u.id || u.pk)) {
+                userData = u;
+                userId = u.id || u.pk;
+                if (u.edge_owner_to_timeline_media) {
+                  timelineEdges = u.edge_owner_to_timeline_media.edges || [];
+                  pageInfo = u.edge_owner_to_timeline_media.page_info || pageInfo;
+                }
+                break;
+              }
+            }
+          } catch (_) {}
+        }
+      }
+
+      // CHIẾN LƯỢC 5 (DỰ PHÒNG CUỐI CÙNG): Trích xuất trực tiếp thông tin từ DOM
       if (!userId) {
         for (const [k, v] of reelMediaMap.entries()) {
           if (Array.isArray(v) && v.length > 0 && v[0]?.user === cleanUser && v[0]?.userId) {
@@ -1550,13 +1694,28 @@
       }
 
       if (!userData && !userId) {
+        const domPostLinks = Array.from(document.querySelectorAll('a[href*="/p/"], a[href*="/reel/"]'));
+        const headerImg = document.querySelector('header img');
+        if (domPostLinks.length > 0 || document.querySelector('header')) {
+          userId = 'user_' + cleanUser;
+          userData = {
+            id: userId,
+            username: cleanUser,
+            full_name: document.querySelector('header span, header h1')?.textContent || cleanUser,
+            profile_pic_url_hd: headerImg?.currentSrc || headerImg?.src || '',
+            edge_owner_to_timeline_media: { count: domPostLinks.length, edges: [] }
+          };
+        }
+      }
+
+      if (!userData && !userId) {
         window.dispatchEvent(new CustomEvent('__IG_PROFILE_MEDIA_RESULT__', {
           detail: { requestId, error: `Không thể tìm thấy thông tin của @${cleanUser}. Có thể tài khoản là riêng tư hoặc bị giới hạn truy cập.` }
         }));
         return;
       }
 
-      const totalPostsInProfile = userData?.edge_owner_to_timeline_media?.count || timelineEdges.length;
+      const totalPostsInProfile = userData?.edge_owner_to_timeline_media?.count || timelineEdges.length || document.querySelectorAll('a[href*="/p/"], a[href*="/reel/"]').length;
       const userMeta = {
         id: userId,
         username: cleanUser,
@@ -1741,6 +1900,44 @@
           cursor = nextCursor;
           hasNext = nextHasNext;
           await new Promise(r => setTimeout(r, 180));
+        }
+
+        // Bổ sung: Nếu chưa thu thập được bài viết nào từ API/Fiber, quét trực tiếp các bài viết đang hiển thị trên DOM!
+        if (collectedMedia.length === 0) {
+          const domPostLinks = Array.from(document.querySelectorAll('a[href*="/p/"], a[href*="/reel/"]'));
+          const seenSc = new Set();
+          for (let pIdx = 0; pIdx < domPostLinks.length; pIdx++) {
+            if (postLimit > 0 && collectedMedia.length >= postLimit) break;
+            const a = domPostLinks[pIdx];
+            const href = a.getAttribute('href') || '';
+            const m = href.match(/\/(?:p|reel)\/([A-Za-z0-9_-]+)/);
+            if (!m || seenSc.has(m[1])) continue;
+            seenSc.add(m[1]);
+            const sc = m[1];
+            const img = a.querySelector('img');
+            const isVid = Boolean(a.querySelector('svg[aria-label*="Video"], svg[aria-label*="Reel"], span[aria-label*="Clip"]'));
+            let mediaUrl = img?.currentSrc || img?.src;
+            if (img?.srcset) {
+              const parts = img.srcset.split(',').map(s => s.trim().split(' '));
+              const best = parts.sort((x, y) => parseInt(y[1] || '0') - parseInt(x[1] || '0'))[0];
+              if (best && best[0]) mediaUrl = best[0];
+            }
+            if (mediaUrl) {
+              const finalType = isVid ? 'video' : 'image';
+              if (type === 'photos' && finalType !== 'image') continue;
+              if (type === 'videos' && finalType !== 'video') continue;
+              const ext = finalType === 'video' ? 'mp4' : 'jpg';
+              addMediaItem({
+                type: finalType,
+                url: mediaUrl,
+                category: 'post',
+                shortcode: sc,
+                id: sc,
+                filename: `posts/post_${sc}.${ext}`,
+                timestamp: Math.floor(Date.now() / 1000)
+              });
+            }
+          }
         }
       }
 

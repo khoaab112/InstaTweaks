@@ -873,6 +873,15 @@ body[class*="dark"] .ig-profile-download-btn:hover,
   line-height: 1 !important;
 }
 
+.ig-opt-icon-img {
+  width: 36px !important;
+  height: 36px !important;
+  object-fit: contain !important;
+  flex-shrink: 0 !important;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.25)) !important;
+  display: block !important;
+}
+
 .ig-opt-badge {
   font-size: 10px !important;
   font-weight: 700 !important;

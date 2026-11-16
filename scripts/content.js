@@ -1832,6 +1832,19 @@
 
   // --- 7.3. TẢI TOÀN BỘ NỘI DUNG PROFILE (TẤT CẢ, ẢNH, VIDEO, STORY & HIGHLIGHTS) ---
   function getProfileUsername() {
+    // 1. Ưu tiên đọc username chuẩn xác nhất từ DOM Header (h2, h1, [role="heading"])
+    const header = document.querySelector('header');
+    if (header) {
+      const heading = header.querySelector('h2, h1, [role="heading"]');
+      if (heading && heading.textContent) {
+        const text = heading.textContent.trim().replace(/^@/, '');
+        if (text && !text.includes(' ') && /^[a-zA-Z0-9._]{1,35}$/.test(text)) {
+          return text;
+        }
+      }
+    }
+
+    // 2. Dự phòng: Đọc từ pathname URL
     const path = window.location.pathname;
     const segments = path.split('/').filter(Boolean);
     if (segments.length === 0) return null;
@@ -1957,6 +1970,11 @@
     const headerImg = document.querySelector('header img');
     const avatarSrc = headerImg ? (headerImg.currentSrc || headerImg.src) : '';
 
+    const iconAllUrl = chrome.runtime.getURL('icons/opt_all.png');
+    const iconStoryUrl = chrome.runtime.getURL('icons/opt_story.png');
+    const iconVideoUrl = chrome.runtime.getURL('icons/opt_video.png');
+    const iconPhotosUrl = chrome.runtime.getURL('icons/opt_photos.png');
+
     const overlay = document.createElement('div');
     overlay.className = 'ig-profile-modal-overlay';
 
@@ -1976,35 +1994,35 @@
         <div class="ig-profile-options-grid">
           <div class="ig-profile-opt-card active" data-mode="all">
             <div class="ig-opt-card-top">
-              <div class="ig-opt-icon">📦</div>
+              <img src="${iconAllUrl}" class="ig-opt-icon-img" alt="Tất cả">
               <span class="ig-opt-badge">Đầy đủ</span>
             </div>
             <div class="ig-opt-title">Tất cả (All in One)</div>
             <div class="ig-opt-desc">Gom toàn bộ ảnh, video bài viết, story & tin nổi bật vào 1 file ZIP.</div>
           </div>
 
-          <div class="ig-profile-opt-card" data-mode="photos">
+          <div class="ig-profile-opt-card" data-mode="stories">
             <div class="ig-opt-card-top">
-              <div class="ig-opt-icon">🖼️</div>
+              <img src="${iconStoryUrl}" class="ig-opt-icon-img" alt="Story">
             </div>
-            <div class="ig-opt-title">File ảnh (Photos)</div>
-            <div class="ig-opt-desc">Chỉ tải ảnh gốc chất lượng cao từ tất cả bài viết (kể cả carousel).</div>
+            <div class="ig-opt-title">Story & Highlights</div>
+            <div class="ig-opt-desc">Tải trọn bộ Story 24h hiện tại và tất cả album Tin nổi bật còn lưu.</div>
           </div>
 
           <div class="ig-profile-opt-card" data-mode="videos">
             <div class="ig-opt-card-top">
-              <div class="ig-opt-icon">🎬</div>
+              <img src="${iconVideoUrl}" class="ig-opt-icon-img" alt="Video">
             </div>
             <div class="ig-opt-title">File video (Videos & Reels)</div>
             <div class="ig-opt-desc">Chỉ tải toàn bộ video bài viết và Instagram Reels kèm âm thanh gốc.</div>
           </div>
 
-          <div class="ig-profile-opt-card" data-mode="stories">
+          <div class="ig-profile-opt-card" data-mode="photos">
             <div class="ig-opt-card-top">
-              <div class="ig-opt-icon">💫</div>
+              <img src="${iconPhotosUrl}" class="ig-opt-icon-img" alt="Ảnh">
             </div>
-            <div class="ig-opt-title">Story & Highlights</div>
-            <div class="ig-opt-desc">Tải trọn bộ Story 24h hiện tại và tất cả album Tin nổi bật còn lưu.</div>
+            <div class="ig-opt-title">File ảnh (Photos)</div>
+            <div class="ig-opt-desc">Chỉ tải ảnh gốc chất lượng cao từ tất cả bài viết (kể cả carousel).</div>
           </div>
         </div>
 
@@ -2066,10 +2084,10 @@
     const requestId = 'req_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
 
     const modeLabels = {
-      all: '📦 Tất cả',
-      photos: '🖼️ File ảnh',
-      videos: '🎬 File video',
-      stories: '💫 Story & Highlights'
+      all: 'Tất cả (All in One)',
+      stories: 'Story & Highlights',
+      videos: 'File video (Videos & Reels)',
+      photos: 'File ảnh (Photos)'
     };
 
     modal.innerHTML = `
