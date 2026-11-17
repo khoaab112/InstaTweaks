@@ -1610,6 +1610,7 @@
       <div class="ig-vctl-progress-container" title="Kéo hoặc bấm để tua video">
         <div class="ig-vctl-progress-track">
           <div class="ig-vctl-progress-buffer"></div>
+          <div class="ig-vctl-progress-hover"></div>
           <div class="ig-vctl-progress-fill"></div>
           <div class="ig-vctl-progress-thumb"></div>
         </div>
@@ -1659,6 +1660,7 @@
     const progressContainer = controller.querySelector('.ig-vctl-progress-container');
     const progressTrack = controller.querySelector('.ig-vctl-progress-track');
     const bufferBar = controller.querySelector('.ig-vctl-progress-buffer');
+    const hoverBar = controller.querySelector('.ig-vctl-progress-hover');
     const fillBar = controller.querySelector('.ig-vctl-progress-fill');
     const thumbEl = controller.querySelector('.ig-vctl-progress-thumb');
     const timeBubble = controller.querySelector('.ig-vctl-time-bubble');
@@ -1676,6 +1678,10 @@
     const dlBtn = controller.querySelector('.ig-vctl-dl-btn');
 
     let isDragging = false;
+    let wasPlayingBeforeDrag = false;
+    let cachedTrackRect = null;
+    let pendingSeekFrame = null;
+    let lastSeekTime = -1;
     let hideTimer = null;
     let savedVolume = video.volume > 0 ? video.volume : 0.8;
 
@@ -1744,6 +1750,32 @@
       }
     };
 
+    const getScrubPct = (clientX) => {
+      const r = cachedTrackRect || progressTrack.getBoundingClientRect();
+      if (!r || r.width <= 0) return 0;
+      return Math.max(0, Math.min(1, (clientX - r.left) / r.width));
+    };
+
+    const performSeek = (targetTime) => {
+      if (Math.abs((video.currentTime || 0) - targetTime) < 0.04) return;
+      if (typeof video.fastSeek === 'function') {
+        try { video.fastSeek(targetTime); } catch (_) { video.currentTime = targetTime; }
+      } else {
+        video.currentTime = targetTime;
+      }
+    };
+
+    const scheduleSeek = (targetTime) => {
+      lastSeekTime = targetTime;
+      if (pendingSeekFrame) return;
+      pendingSeekFrame = requestAnimationFrame(() => {
+        pendingSeekFrame = null;
+        if (lastSeekTime >= 0) {
+          performSeek(lastSeekTime);
+        }
+      });
+    };
+
     const updateProgressUI = () => {
       if (isDragging) return;
       const cur = video.currentTime || 0;
@@ -1766,97 +1798,140 @@
       }
     };
 
-    const getScrubPercent = (e) => {
+    // 1. Ghost preview khi hover chuột qua thanh tua (chuẩn YouTube)
+    const onProgressHover = (e) => {
+      if (isDragging) return;
       const rect = progressTrack.getBoundingClientRect();
-      if (rect.width <= 0) return 0;
-      const clientX = e.clientX ?? (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
-      return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      const dur = video.duration || 0;
+      const hoverSec = pct * dur;
+
+      hoverBar.style.setProperty('width', `${(pct * 100).toFixed(2)}%`, 'important');
+      timeBubble.textContent = formatTime(hoverSec);
+      timeBubble.style.setProperty('left', `${(pct * 100).toFixed(2)}%`, 'important');
+      timeBubble.style.opacity = '1';
     };
 
-    const onPointerMove = (e) => {
+    const onProgressLeave = () => {
+      if (!isDragging) {
+        hoverBar.style.setProperty('width', '0%', 'important');
+        timeBubble.style.opacity = '0';
+      }
+    };
+
+    progressContainer.addEventListener('pointerenter', onProgressHover);
+    progressContainer.addEventListener('pointermove', onProgressHover);
+    progressContainer.addEventListener('pointerleave', onProgressLeave);
+
+    // 2. Kéo tua video (Scrubbing mượt mà 60fps chuẩn YouTube)
+    const onScrubMove = (e) => {
       if (!isDragging) return;
-      // An toàn tuyệt đối: Nếu người dùng đã nhả chuột (e.buttons === 0 hoặc không giữ chuột trái) -> ngắt tua ngay lập tức
+      // An toàn: nếu chuột đã nhả phím -> dừng kéo ngay lập tức
       if (e.buttons === 0 || (e.buttons & 1) === 0) {
-        stopScrubbing(e);
+        onScrubEnd(e);
         return;
       }
-      const pct = getScrubPercent(e);
+
+      e.preventDefault();
+      const pct = getScrubPct(e.clientX);
       const dur = video.duration || 0;
-      if (dur > 0) {
-        video.currentTime = pct * dur;
-        fillBar.style.setProperty('width', `${pct * 100}%`, 'important');
-        thumbEl.style.setProperty('left', `${pct * 100}%`, 'important');
-        if (miniFill) miniFill.style.setProperty('width', `${pct * 100}%`, 'important');
-        curTimeEl.textContent = formatTime(pct * dur);
-      }
-      timeBubble.textContent = formatTime(pct * dur);
-      timeBubble.style.setProperty('left', `${(pct * 100).toFixed(1)}%`, 'important');
+      const targetTime = pct * dur;
+
+      // Cập nhật UI tức thời 0ms không độ trễ
+      fillBar.style.setProperty('width', `${(pct * 100).toFixed(2)}%`, 'important');
+      thumbEl.style.setProperty('left', `${(pct * 100).toFixed(2)}%`, 'important');
+      hoverBar.style.setProperty('width', `${(pct * 100).toFixed(2)}%`, 'important');
+      if (miniFill) miniFill.style.setProperty('width', `${(pct * 100).toFixed(2)}%`, 'important');
+      curTimeEl.textContent = formatTime(targetTime);
+
+      timeBubble.textContent = formatTime(targetTime);
+      timeBubble.style.setProperty('left', `${(pct * 100).toFixed(2)}%`, 'important');
+      timeBubble.style.opacity = '1';
+
+      scheduleSeek(targetTime);
     };
 
-    const stopScrubbing = (e) => {
+    const onScrubEnd = (e) => {
       if (!isDragging) return;
       isDragging = false;
       controller.classList.remove('is-dragging');
+
+      if (pendingSeekFrame) {
+        cancelAnimationFrame(pendingSeekFrame);
+        pendingSeekFrame = null;
+      }
+
+      if (lastSeekTime >= 0) {
+        video.currentTime = lastSeekTime;
+        lastSeekTime = -1;
+      }
+
       try {
         if (e?.pointerId && progressContainer.hasPointerCapture?.(e.pointerId)) {
           progressContainer.releasePointerCapture(e.pointerId);
         }
       } catch (_) {}
-      window.removeEventListener('pointermove', onPointerMove, true);
-      window.removeEventListener('pointerup', stopScrubbing, true);
-      window.removeEventListener('pointercancel', stopScrubbing, true);
-      window.removeEventListener('blur', stopScrubbing);
-      progressContainer.removeEventListener('pointerup', stopScrubbing, true);
-      progressContainer.removeEventListener('pointercancel', stopScrubbing, true);
-      progressContainer.removeEventListener('lostpointercapture', stopScrubbing);
+
+      window.removeEventListener('pointermove', onScrubMove, true);
+      window.removeEventListener('pointerup', onScrubEnd, true);
+      window.removeEventListener('pointercancel', onScrubEnd, true);
+      window.removeEventListener('blur', onScrubEnd, true);
+
+      cachedTrackRect = null;
+      hoverBar.style.setProperty('width', '0%', 'important');
       timeBubble.style.opacity = '0';
+
+      // Tiếp tục phát nếu trước khi tua video đang phát
+      if (wasPlayingBeforeDrag) {
+        video.play().catch(() => {});
+      }
+
       showControls();
     };
-
-    progressContainer.addEventListener('pointerenter', () => { if (!isDragging) timeBubble.style.opacity = '1'; });
-    progressContainer.addEventListener('pointerleave', () => { if (!isDragging) timeBubble.style.opacity = '0'; });
-
-    progressContainer.addEventListener('pointermove', (e) => {
-      if (!isDragging) {
-        const pct = getScrubPercent(e);
-        const dur = video.duration || 0;
-        timeBubble.textContent = formatTime(pct * dur);
-        timeBubble.style.setProperty('left', `${(pct * 100).toFixed(1)}%`, 'important');
-      }
-    });
-
-    progressContainer.addEventListener('pointerup', stopScrubbing);
-    progressContainer.addEventListener('pointercancel', stopScrubbing);
-    progressContainer.addEventListener('lostpointercapture', stopScrubbing);
 
     progressContainer.addEventListener('pointerdown', (e) => {
       if (e.button !== 0) return; // Chỉ nhận chuột trái
       e.preventDefault();
       e.stopPropagation();
+
       isDragging = true;
       controller.classList.add('is-dragging');
-      try { progressContainer.setPointerCapture(e.pointerId); } catch (_) {}
 
-      const pct = getScrubPercent(e);
-      const dur = video.duration || 0;
-      if (dur > 0) {
-        video.currentTime = pct * dur;
-        fillBar.style.setProperty('width', `${pct * 100}%`, 'important');
-        thumbEl.style.setProperty('left', `${pct * 100}%`, 'important');
-        if (miniFill) miniFill.style.setProperty('width', `${pct * 100}%`, 'important');
-        curTimeEl.textContent = formatTime(pct * dur);
+      // Tạm dừng để bộ giải mã không bị giật lag
+      wasPlayingBeforeDrag = !video.paused;
+      if (wasPlayingBeforeDrag) {
+        video.pause();
       }
-      timeBubble.style.opacity = '1';
-      timeBubble.textContent = formatTime(pct * dur);
-      timeBubble.style.setProperty('left', `${(pct * 100).toFixed(1)}%`, 'important');
 
-      window.addEventListener('pointermove', onPointerMove, true);
-      window.addEventListener('pointerup', stopScrubbing, true);
-      window.addEventListener('pointercancel', stopScrubbing, true);
-      window.addEventListener('blur', stopScrubbing);
-      progressContainer.addEventListener('pointerup', stopScrubbing, true);
-      progressContainer.addEventListener('pointercancel', stopScrubbing, true);
-      progressContainer.addEventListener('lostpointercapture', stopScrubbing);
+      cachedTrackRect = progressTrack.getBoundingClientRect();
+      const pct = getScrubPct(e.clientX);
+      const dur = video.duration || 0;
+      const targetTime = pct * dur;
+
+      fillBar.style.setProperty('width', `${(pct * 100).toFixed(2)}%`, 'important');
+      thumbEl.style.setProperty('left', `${(pct * 100).toFixed(2)}%`, 'important');
+      hoverBar.style.setProperty('width', `${(pct * 100).toFixed(2)}%`, 'important');
+      if (miniFill) miniFill.style.setProperty('width', `${(pct * 100).toFixed(2)}%`, 'important');
+      curTimeEl.textContent = formatTime(targetTime);
+
+      timeBubble.textContent = formatTime(targetTime);
+      timeBubble.style.setProperty('left', `${(pct * 100).toFixed(2)}%`, 'important');
+      timeBubble.style.opacity = '1';
+
+      try {
+        progressContainer.setPointerCapture(e.pointerId);
+      } catch (_) {}
+
+      scheduleSeek(targetTime);
+
+      // Đăng ký toàn cục với capture: true
+      window.addEventListener('pointermove', onScrubMove, true);
+      window.addEventListener('pointerup', onScrubEnd, true);
+      window.addEventListener('pointercancel', onScrubEnd, true);
+      window.addEventListener('blur', onScrubEnd, true);
+      progressContainer.addEventListener('pointerup', onScrubEnd, true);
+      progressContainer.addEventListener('pointercancel', onScrubEnd, true);
+      progressContainer.addEventListener('lostpointercapture', onScrubEnd);
     });
 
     playBtn.addEventListener('click', (e) => {
@@ -2017,10 +2092,17 @@
     // DỌN DẸP SẠCH SẼ TẤT CẢ EVENT LISTENER KHI VIDEO RA KHỎI VIEWPORT HOẶC BỊ HỦY (CHỐNG LEAK RAM)
     video._controllerCleanup = () => {
       stopTicker();
-      stopScrubbing();
-      progressContainer.removeEventListener('pointerup', stopScrubbing);
-      progressContainer.removeEventListener('pointercancel', stopScrubbing);
-      progressContainer.removeEventListener('lostpointercapture', stopScrubbing);
+      if (isDragging) onScrubEnd();
+      progressContainer.removeEventListener('pointerenter', onProgressHover);
+      progressContainer.removeEventListener('pointermove', onProgressHover);
+      progressContainer.removeEventListener('pointerleave', onProgressLeave);
+      progressContainer.removeEventListener('pointerup', onScrubEnd);
+      progressContainer.removeEventListener('pointercancel', onScrubEnd);
+      progressContainer.removeEventListener('lostpointercapture', onScrubEnd);
+      window.removeEventListener('pointermove', onScrubMove, true);
+      window.removeEventListener('pointerup', onScrubEnd, true);
+      window.removeEventListener('pointercancel', onScrubEnd, true);
+      window.removeEventListener('blur', onScrubEnd, true);
       video.removeEventListener('timeupdate', updateProgressUI);
       video.removeEventListener('progress', updateProgressUI);
       video.removeEventListener('loadedmetadata', updateProgressUI);
@@ -2267,11 +2349,6 @@
     trackWrap.onpointerleave = () => { if (!isDraggingStory) tooltip.style.opacity = '0'; };
 
     trackWrap.onpointermove = (e) => {
-      if (isDraggingStory && (e.buttons === 0 || (e.buttons & 1) === 0)) {
-        onStoryScrubEnd(e);
-        return;
-      }
-
       const pct = getStoryScrubPct(e);
       const dur = storyVideo.duration || 0;
       tooltip.textContent = formatTime(pct * dur);
@@ -2286,7 +2363,6 @@
     };
 
     trackWrap.onpointerdown = (e) => {
-      if (e.button !== 0) return;
       e.stopPropagation();
       e.preventDefault();
       isDraggingStory = true;
@@ -2304,9 +2380,6 @@
       tooltip.style.opacity = '1';
       tooltip.textContent = formatTime(pct * dur);
       tooltip.style.left = `${(pct * 100).toFixed(1)}%`;
-
-      window.addEventListener('pointerup', onStoryScrubEnd, true);
-      window.addEventListener('pointercancel', onStoryScrubEnd, true);
     };
 
     const onStoryScrubEnd = (e) => {
@@ -2314,8 +2387,6 @@
       isDraggingStory = false;
       bar.classList.remove('is-dragging');
       try { trackWrap.releasePointerCapture(e.pointerId); } catch (_) {}
-      window.removeEventListener('pointerup', onStoryScrubEnd, true);
-      window.removeEventListener('pointercancel', onStoryScrubEnd, true);
       tooltip.style.opacity = '0';
     };
 
