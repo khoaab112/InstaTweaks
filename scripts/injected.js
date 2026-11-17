@@ -53,6 +53,7 @@
   function isValidVideoMp4Url(url) {
     if (!url || typeof url !== 'string' || !url.startsWith('http')) return false;
     if (isDashAudioUrl(url)) return false;
+    if (url.includes('bytestart=') || url.includes('byteend=')) return false;
     if (/\.(jpg|jpeg|png|webp|gif|mp3|m4a|aac|wav|ogg)(\?|$)/i.test(url)) return false;
     if (url.includes('.mp4') || url.includes('/v/t50.') || url.includes('/o1/v/')) return true;
     return false;
@@ -110,7 +111,8 @@
       (url.includes('/o1/v/') && (url.includes('cdninstagram') || url.includes('fbcdn'))) ||
       (url.includes('/v/t') && url.includes('cdninstagram'))
     ) {
-      let cleanUrl = url.replace(/[?&]bytestart=\d+&byteend=\d+/g, '');
+      if (url.includes('bytestart=') || url.includes('byteend=')) return;
+      let cleanUrl = url;
 
       // Ghi nhận video stream chuẩn xác để dự phòng khi tải Story
       const existing = activeStoryVideos.find(it => it.url === cleanUrl);
@@ -371,9 +373,19 @@
 
     const getBestVidUrl = (versions) => {
       if (!Array.isArray(versions) || versions.length === 0) return null;
-      const valid = versions.filter(v => ((v.width || v.config_width || 0) > 0) && ((v.height || v.config_height || 0) > 0));
-      const list = valid.length > 0 ? valid : versions;
-      const sorted = [...list].sort((a, b) => (((b.width || b.config_width || 0) * (b.height || b.config_height || 0)) - ((a.width || a.config_width || 0) * (a.height || a.config_height || 0))));
+      const valid = versions.filter(v => {
+        const u = v?.url || v?.src;
+        if (!u || typeof u !== 'string') return false;
+        if (isDashAudioUrl(u)) return false;
+        if (u.includes('bytestart=') || u.includes('byteend=')) return false;
+        return true;
+      });
+      if (valid.length === 0) return null;
+
+      const prog = valid.find(v => (v.url || v.src || '').includes('progressive') || v.type === 101);
+      if (prog) return prog.url || prog.src;
+
+      const sorted = [...valid].sort((a, b) => (((b.width || b.config_width || 0) * (b.height || b.config_height || 0)) - ((a.width || a.config_width || 0) * (a.height || a.config_height || 0))));
       return sorted[0]?.url || sorted[0]?.src || null;
     };
 
@@ -497,24 +509,28 @@
     // A. Lấy URL Video (không lọc bỏ phiên bản hợp lệ nếu thiếu width/height)
     let videoUrl = null;
     if (Array.isArray(cand.video_versions) && cand.video_versions.length > 0) {
-      const valid = cand.video_versions.filter(v => v && typeof (v.url || v.src) === 'string' && !isDashAudioUrl(v.url || v.src));
+      const valid = cand.video_versions.filter(v => {
+        const u = v && (v.url || v.src);
+        return u && typeof u === 'string' && !isDashAudioUrl(u) && !u.includes('bytestart=') && !u.includes('byteend=');
+      });
       if (valid.length > 0) {
-        const prog = valid.find(v => (v.url || v.src || '').includes('progressive'));
+        const prog = valid.find(v => (v.url || v.src || '').includes('progressive') || v.type === 101);
         const sorted = [...valid].sort((a, b) => ((b.width || b.config_width || 0) * (b.height || b.config_height || 0)) - ((a.width || a.config_width || 0) * (a.height || a.config_height || 0)));
-        const best = (prog?.url || prog?.src) || (sorted[0]?.url || sorted[0]?.src);
-        if (best) videoUrl = best.replace(/[?&]bytestart=\d+&byteend=\d+/g, '');
+        videoUrl = (prog?.url || prog?.src) || (sorted[0]?.url || sorted[0]?.src) || null;
       }
-    } else if (typeof cand.video_url === 'string' && cand.video_url.startsWith('http') && !isDashAudioUrl(cand.video_url)) {
-      videoUrl = cand.video_url.replace(/[?&]bytestart=\d+&byteend=\d+/g, '');
+    } else if (typeof cand.video_url === 'string' && cand.video_url.startsWith('http') && !isDashAudioUrl(cand.video_url) && !cand.video_url.includes('bytestart=')) {
+      videoUrl = cand.video_url;
     } else if (Array.isArray(cand.video_resources) && cand.video_resources.length > 0) {
-      const valid = cand.video_resources.filter(v => v && typeof (v.src || v.url) === 'string' && !isDashAudioUrl(v.src || v.url));
+      const valid = cand.video_resources.filter(v => {
+        const u = v && (v.src || v.url);
+        return u && typeof u === 'string' && !isDashAudioUrl(u) && !u.includes('bytestart=') && !u.includes('byteend=');
+      });
       if (valid.length > 0) {
         const sorted = [...valid].sort((a, b) => ((b.config_width || b.width || 0) * (b.config_height || b.height || 0)) - ((a.config_width || a.width || 0) * (a.config_height || a.height || 0)));
-        const best = sorted[0]?.src || sorted[0]?.url;
-        if (best) videoUrl = best.replace(/[?&]bytestart=\d+&byteend=\d+/g, '');
+        videoUrl = sorted[0]?.src || sorted[0]?.url || null;
       }
-    } else if (typeof cand.playbackUrl === 'string' && cand.playbackUrl.startsWith('http') && !isDashAudioUrl(cand.playbackUrl)) {
-      videoUrl = cand.playbackUrl.replace(/[?&]bytestart=\d+&byteend=\d+/g, '');
+    } else if (typeof cand.playbackUrl === 'string' && cand.playbackUrl.startsWith('http') && !isDashAudioUrl(cand.playbackUrl) && !cand.playbackUrl.includes('bytestart=')) {
+      videoUrl = cand.playbackUrl;
     }
 
     // B. Lấy URL Ảnh (lấy ảnh gốc chất lượng cao nhất)
@@ -583,30 +599,30 @@
 
     if (typeof obj === 'string') {
       if (isValidVideoMp4Url(obj)) {
-        return obj.replace(/[?&]bytestart=\d+&byteend=\d+/g, '');
+        return obj;
       }
       return null;
     }
     if (Array.isArray(obj.video_versions) && obj.video_versions.length > 0) {
       const valid = obj.video_versions.filter(v => v && typeof (v.url || v.src) === 'string' && isValidVideoMp4Url(v.url || v.src));
       if (valid.length > 0) {
-        const prog = valid.find(v => (v.url || v.src || '').includes('progressive'));
+        const prog = valid.find(v => (v.url || v.src || '').includes('progressive') || v.type === 101);
         const sorted = [...valid].sort((a, b) => ((b.width || b.config_width || 0) * (b.height || b.config_height || 0)) - ((a.width || a.config_width || 0) * (a.height || a.config_height || 0)));
         const best = (prog?.url || prog?.src) || (sorted[0]?.url || sorted[0]?.src);
-        if (best && isValidVideoMp4Url(best)) return best.replace(/[?&]bytestart=\d+&byteend=\d+/g, '');
+        if (best && isValidVideoMp4Url(best)) return best;
       }
     }
     const directProps = [obj.video_url, obj.playbackUrl, obj.videoUrl, obj.src, obj.url];
     for (const p of directProps) {
       if (typeof p === 'string' && isValidVideoMp4Url(p)) {
-        return p.replace(/[?&]bytestart=\d+&byteend=\d+/g, '');
+        return p;
       }
     }
     if (Array.isArray(obj.sources)) {
       for (const s of obj.sources) {
         const u = s?.src || s?.url;
         if (typeof u === 'string' && isValidVideoMp4Url(u)) {
-          return u.replace(/[?&]bytestart=\d+&byteend=\d+/g, '');
+          return u;
         }
       }
     }
@@ -1275,17 +1291,17 @@
             for (const raw of rawCandidates) {
               const c = raw?.media || raw?.node || raw;
               if (c && typeof c === 'object') {
-                // 1. ƯU TIÊN 1: Lấy URL Video trực tiếp từ video_versions (CHUẨN 100% VIDEO MP4, TUYỆT ĐỐI KHÔNG LẤY AUDIO)
+                // 1. ƯU TIÊN 1: Lấy URL Video trực tiếp từ video_versions (CHUẨN 100% VIDEO MP4, TUYỆT ĐỐI KHÔNG LẤY AUDIO & CHUNK)
                 if (Array.isArray(c.video_versions) && c.video_versions.length > 0) {
-                  const valid = c.video_versions.filter(v => v && typeof (v.url || v.src) === 'string' && !isDashAudioUrl(v.url || v.src));
+                  const valid = c.video_versions.filter(v => v && typeof (v.url || v.src) === 'string' && isValidVideoMp4Url(v.url || v.src));
                   if (valid.length > 0) {
-                    const prog = valid.find(v => (v.url || v.src || '').includes('progressive'));
+                    const prog = valid.find(v => (v.url || v.src || '').includes('progressive') || v.type === 101);
                     const sorted = [...valid].sort((a, b) => ((b.width || b.config_width || 0) * (b.height || b.config_height || 0)) - ((a.width || a.config_width || 0) * (a.height || a.config_height || 0)));
                     const best = (prog?.url || prog?.src) || (sorted[0]?.url || sorted[0]?.src);
-                    if (best && !isDashAudioUrl(best)) {
+                    if (best && isValidVideoMp4Url(best)) {
                       const sc = (c.code && !['audio', 'reels', 'videos', 'comments'].includes(c.code.toLowerCase())) ? c.code : null;
                       return {
-                        url: best.replace(/[?&]bytestart=\d+&byteend=\d+/g, ''),
+                        url: best,
                         shortcode: sc
                       };
                     }
@@ -1295,7 +1311,7 @@
                 // 2. ƯU TIÊN 2: Dùng extractMediaFromPostNode
                 const items = extractMediaFromPostNode(c);
                 if (items && items.length > 0) {
-                  const vidItem = items.find(it => it.type === 'video' && !isDashAudioUrl(it.url));
+                  const vidItem = items.find(it => it.type === 'video' && isValidVideoMp4Url(it.url));
                   if (vidItem?.url) {
                     const sc = (c.code && !['audio', 'reels', 'videos', 'comments'].includes(c.code.toLowerCase())) ? c.code : null;
                     if (sc) safeMapSet(postMediaMap, sc, items, 60);
@@ -1309,7 +1325,7 @@
 
                 // 3. ƯU TIÊN 3: Quét sâu trong object (đã lọc bỏ audio keys)
                 const url = findVideoUrlInObject(c);
-                if (url && !isDashAudioUrl(url)) {
+                if (url && isValidVideoMp4Url(url)) {
                   const sc = (c.code && !['audio', 'reels', 'videos', 'comments'].includes(c.code.toLowerCase())) ? c.code : null;
                   return {
                     url,
@@ -1321,7 +1337,7 @@
 
             // Fallback: Quét props tổng thể
             const fallbackUrl = findVideoUrlInObject(props);
-            if (fallbackUrl && !isDashAudioUrl(fallbackUrl)) {
+            if (fallbackUrl && isValidVideoMp4Url(fallbackUrl)) {
               return { url: fallbackUrl, shortcode: null };
             }
           }
@@ -1335,30 +1351,90 @@
     return null;
   }
 
+  function findVideoUrlFromDomScripts(targetShortcode) {
+    if (!targetShortcode) return null;
+    try {
+      const scripts = document.querySelectorAll('script[type="application/json"], script[data-sjs]');
+      for (let i = 0; i < scripts.length; i++) {
+        const text = scripts[i].textContent || '';
+        if (!text.includes(targetShortcode)) continue;
+        if (!text.includes('video_versions') && !text.includes('video_url')) continue;
+
+        try {
+          const json = JSON.parse(text);
+          let foundUrl = null;
+          function walk(obj, depth = 0) {
+            if (!obj || typeof obj !== 'object' || depth > 20 || foundUrl) return;
+            if (obj.code === targetShortcode || obj.shortcode === targetShortcode) {
+              if (Array.isArray(obj.video_versions) && obj.video_versions.length > 0) {
+                const valid = obj.video_versions.filter(v => v && typeof (v.url || v.src) === 'string' && isValidVideoMp4Url(v.url || v.src));
+                if (valid.length > 0) {
+                  const prog = valid.find(v => (v.url || v.src || '').includes('progressive') || v.type === 101);
+                  const sorted = [...valid].sort((a, b) => ((b.width || b.config_width || 0) * (b.height || b.config_height || 0)) - ((a.width || a.config_width || 0) * (a.height || a.config_height || 0)));
+                  foundUrl = (prog?.url || prog?.src) || (sorted[0]?.url || sorted[0]?.src);
+                  return;
+                }
+              }
+              if (obj.video_url && isValidVideoMp4Url(obj.video_url)) {
+                foundUrl = obj.video_url;
+                return;
+              }
+            }
+            if (Array.isArray(obj)) {
+              for (let j = 0; j < obj.length; j++) walk(obj[j], depth + 1);
+            } else {
+              const keys = Object.keys(obj);
+              for (let j = 0; j < keys.length; j++) walk(obj[keys[j]], depth + 1);
+            }
+          }
+          walk(json);
+          if (foundUrl) return foundUrl;
+        } catch (_) {}
+      }
+    } catch (_) {}
+    return null;
+  }
+
   window.addEventListener('__IG_REQUEST_ACTIVE_VIDEO_URL__', async (e) => {
     const { shortcode } = e.detail || {};
+
+    // 1. NẾU CÓ SHORTCODE: ƯU TIÊN TRA TRONG postMediaMap ĐÃ CÓ
+    if (shortcode && postMediaMap.has(shortcode)) {
+      const items = postMediaMap.get(shortcode);
+      const vid = items?.find(it => it.type === 'video' && isValidVideoMp4Url(it.url));
+      if (vid?.url) {
+        window.dispatchEvent(new CustomEvent('__IG_ACTIVE_VIDEO_URL_RESULT__', {
+          detail: { url: vid.url, shortcode, items }
+        }));
+        return;
+      }
+    }
+
+    // 2. NẾU CÓ SHORTCODE: GỌI fetchPostFullMedia(shortcode) ĐỂ LẤY URL VIDEO ĐẦY ĐỦ TRỰC TIẾP TỪ REST/GRAPHQL
+    if (shortcode) {
+      const fetched = await fetchPostFullMedia(shortcode);
+      const vid = fetched?.find(it => it.type === 'video' && isValidVideoMp4Url(it.url));
+      if (vid?.url) {
+        window.dispatchEvent(new CustomEvent('__IG_ACTIVE_VIDEO_URL_RESULT__', {
+          detail: { url: vid.url, shortcode, items: fetched }
+        }));
+        return;
+      }
+    }
+
+    // 3. THỬ TRÍCH XUẤT TỪ REACT FIBER (CHỈ CHẤP NHẬN VIDEO HOÀN CHỈNH, KHÔNG LẤY CHUNK)
     let result = findActiveVideoMedia();
-    if (result && result.url) {
+    if (result && result.url && isValidVideoMp4Url(result.url)) {
       window.dispatchEvent(new CustomEvent('__IG_ACTIVE_VIDEO_URL_RESULT__', { detail: result }));
       return;
     }
 
+    // 4. QUÉT CÁC THẺ SCRIPT SSR TRONG DOM
     if (shortcode) {
-      if (postMediaMap.has(shortcode)) {
-        const items = postMediaMap.get(shortcode);
-        const vid = items?.find(it => it.type === 'video');
-        if (vid?.url) {
-          window.dispatchEvent(new CustomEvent('__IG_ACTIVE_VIDEO_URL_RESULT__', {
-            detail: { url: vid.url, shortcode, items }
-          }));
-          return;
-        }
-      }
-      const fetched = await fetchPostFullMedia(shortcode);
-      const vid = fetched?.find(it => it.type === 'video');
-      if (vid?.url) {
+      const domUrl = findVideoUrlFromDomScripts(shortcode);
+      if (domUrl) {
         window.dispatchEvent(new CustomEvent('__IG_ACTIVE_VIDEO_URL_RESULT__', {
-          detail: { url: vid.url, shortcode, items: fetched }
+          detail: { url: domUrl, shortcode }
         }));
         return;
       }

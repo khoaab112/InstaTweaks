@@ -533,10 +533,41 @@
   }
 
   async function downloadUrlAsBlob(url, filename) {
+    if (!url) return false;
+
+    // 1. ƯU TIÊN 1: Tải qua Background Service Worker (chrome.downloads API)
+    // Tải gốc thông qua browser download manager, bỏ qua CORS, tránh cấp phát dung lượng Blob vào RAM
+    try {
+      const bgSuccess = await new Promise((resolve) => {
+        if (!chrome?.runtime?.sendMessage) return resolve(false);
+        chrome.runtime.sendMessage({
+          action: 'download_file',
+          url: url,
+          filename: filename
+        }, (res) => {
+          if (chrome.runtime.lastError || !res?.success) {
+            resolve(false);
+          } else {
+            resolve(true);
+          }
+        });
+      });
+      if (bgSuccess) return true;
+    } catch (_) {}
+
+    // 2. DỰ PHÒNG: Tải qua Blob trực tiếp (có kiểm tra content-type và kích thước)
     try {
       const res = await fetch(url, { credentials: 'omit' });
       if (!res.ok) throw new Error('Fetch status ' + res.status);
+      const ct = (res.headers.get('content-type') || '').toLowerCase();
+      // TUYỆT ĐỐI KHÔNG TẢI TRANG LỖI HTML (tránh lưu file 403 HTML gây hỏng video)
+      if (ct.includes('text/html') || ct.includes('application/json')) {
+        throw new Error('Invalid content-type (error page): ' + ct);
+      }
       const blob = await res.blob();
+      if (blob.size < 50000) {
+        throw new Error('Blob file quá nhỏ, không phải video hợp lệ: ' + blob.size);
+      }
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = blobUrl;
@@ -547,15 +578,8 @@
       setTimeout(() => URL.revokeObjectURL(blobUrl), 20000);
       return true;
     } catch (err) {
-      console.warn('[IG Downloader] Direct blob fetch failed, falling back to link click:', err);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.target = '_blank';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      return true;
+      console.warn('[IG Downloader] Direct download failed:', err);
+      return false;
     }
   }
 
@@ -3115,11 +3139,11 @@
           ? window.performance.getEntriesByType('resource')
           : [];
         const videoEntries = perfEntries
-          .filter(r => r.name && (r.name.includes('.mp4') || r.name.includes('/o1/v/') || r.name.includes('/v/t')) && (r.name.includes('fbcdn.net') || r.name.includes('cdninstagram.com')) && !isDashAudioUrl(r.name))
+          .filter(r => r.name && (r.name.includes('.mp4') || r.name.includes('/o1/v/') || r.name.includes('/v/t')) && (r.name.includes('fbcdn.net') || r.name.includes('cdninstagram.com')) && !isDashAudioUrl(r.name) && !r.name.includes('bytestart=') && !r.name.includes('byteend='))
           .sort((a, b) => b.startTime - a.startTime);
 
         if (videoEntries.length > 0) {
-          fallbackVideoUrl = videoEntries[0].name.replace(/[?&]bytestart=\d+&byteend=\d+/g, '');
+          fallbackVideoUrl = videoEntries[0].name;
         }
       }
 
