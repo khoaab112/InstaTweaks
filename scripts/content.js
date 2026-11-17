@@ -1437,11 +1437,11 @@
 
     let cur = (container || video);
     for (let depth = 0; cur && depth < 18; depth++, cur = cur.parentElement) {
-      const reelLinks = Array.from(cur.querySelectorAll('a[href*="/reel/"], a[href*="/p/"]'));
+      const reelLinks = Array.from(cur.querySelectorAll('a[href*="/reel/"], a[href*="/reels/"], a[href*="/p/"]'));
       for (const a of reelLinks) {
         const href = a.getAttribute('href') || '';
         if (href.includes('/audio/') || href.includes('/comments/') || href.includes('/liked_by/')) continue;
-        const m = href.match(/\/(?:reel|p)\/([A-Za-z0-9_-]+)/);
+        const m = href.match(/\/(?:reels|reel|p)\/([A-Za-z0-9_-]+)/);
         if (m && m[1] && !['audio', 'reels', 'videos', 'comments', 'explore'].includes(m[1].toLowerCase())) {
           return m[1];
         }
@@ -1637,55 +1637,22 @@
 
     container.querySelectorAll('.ig-video-controller, .ig-vctl-mini-progress').forEach(el => el.remove());
 
-    // Ẩn triệt để nút loa mặc định của Instagram khi đã có controller tùy chỉnh
+    // Ẩn nút loa mặc định của Instagram trong phạm vi container (phần còn lại CSS đã xử lý triệt để)
     const hideNativeAudioButtons = () => {
-      const scopes = [
-        container,
-        container.parentElement,
-        container.parentElement?.parentElement,
-        container.closest('article'),
-        container.closest('div[role="dialog"]'),
-        container.closest('main')
-      ];
-      scopes.forEach(sc => {
-        if (!sc) return;
-        const candidates = sc.querySelectorAll('button:not(.ig-vctl-btn), [role="button"]:not(.ig-vctl-btn)');
-        candidates.forEach(el => {
-          if (el.closest('.ig-video-controller')) return;
-          const label = (
-            (el.getAttribute('aria-label') || '') + ' ' +
-            (el.querySelector('svg')?.getAttribute('aria-label') || '') + ' ' +
-            (el.querySelector('title')?.textContent || '')
-          ).toLowerCase();
-
-          if (/audio|sound|volume|mute|unmute|âm thanh|tiếng|tắt tiếng|bật tiếng/i.test(label)) {
-            el.style.setProperty('display', 'none', 'important');
-            el.style.setProperty('opacity', '0', 'important');
-            el.style.setProperty('visibility', 'hidden', 'important');
-            el.style.setProperty('pointer-events', 'none', 'important');
-            el.setAttribute('data-ig-native-audio-hidden', 'true');
-          }
-        });
-      });
-
-      // Phương án dự phòng quét theo tọa độ góc dưới bên phải video (nếu Instagram đổi nhãn hoặc không có nhãn)
       try {
-        const vRect = video.getBoundingClientRect();
-        if (vRect.width > 0 && vRect.height > 0) {
-          const root = container.closest('article') || container.closest('div[role="dialog"]') || container.parentElement || container;
-          root.querySelectorAll('button:not(.ig-vctl-btn), [role="button"]:not(.ig-vctl-btn)').forEach(el => {
+        const scopes = [container, container.parentElement];
+        scopes.forEach(sc => {
+          if (!sc) return;
+          const candidates = sc.querySelectorAll('button:not(.ig-vctl-btn), [role="button"]:not(.ig-vctl-btn)');
+          candidates.forEach(el => {
             if (el.closest('.ig-video-controller')) return;
-            if (el.getAttribute('data-ig-native-audio-hidden') === 'true') return;
-            const eRect = el.getBoundingClientRect();
-            const isBottomRight = (
-              eRect.width > 0 && eRect.width <= 65 &&
-              eRect.height > 0 && eRect.height <= 65 &&
-              eRect.right <= vRect.right + 25 &&
-              eRect.right >= vRect.right - 90 &&
-              eRect.bottom <= vRect.bottom + 25 &&
-              eRect.bottom >= vRect.bottom - 90
-            );
-            if (isBottomRight && el.querySelector('svg')) {
+            const label = (
+              (el.getAttribute('aria-label') || '') + ' ' +
+              (el.querySelector('svg')?.getAttribute('aria-label') || '') + ' ' +
+              (el.querySelector('title')?.textContent || '')
+            ).toLowerCase();
+
+            if (/audio|sound|volume|mute|unmute|âm thanh|tiếng|tắt tiếng|bật tiếng/i.test(label)) {
               el.style.setProperty('display', 'none', 'important');
               el.style.setProperty('opacity', '0', 'important');
               el.style.setProperty('visibility', 'hidden', 'important');
@@ -1693,25 +1660,12 @@
               el.setAttribute('data-ig-native-audio-hidden', 'true');
             }
           });
-        }
+        });
       } catch (_) { }
     };
 
     hideNativeAudioButtons();
-    setTimeout(hideNativeAudioButtons, 100);
-    setTimeout(hideNativeAudioButtons, 300);
-    setTimeout(hideNativeAudioButtons, 700);
-    setTimeout(hideNativeAudioButtons, 1500);
-
-    const nativeAudioObserver = new MutationObserver(() => {
-      hideNativeAudioButtons();
-    });
-    try {
-      nativeAudioObserver.observe(container, { childList: true, subtree: true });
-      if (container.parentElement) {
-        nativeAudioObserver.observe(container.parentElement, { childList: true, subtree: true });
-      }
-    } catch (_) { }
+    setTimeout(hideNativeAudioButtons, 250);
 
     // 1. Tạo vạch tiến trình mini (hiển thị mỏng ở đáy khi ẩn thanh điều khiển)
     const miniProgress = document.createElement('div');
@@ -1866,11 +1820,16 @@
     }
 
     let rafTicker = null;
+    let lastProgressTick = 0;
     const startTicker = () => {
       stopTicker();
-      const tick = () => {
+      const tick = (now) => {
         if (!video.paused && !video.ended) {
-          updateProgressUI();
+          const interval = controller.classList.contains('is-active') ? 70 : 200;
+          if (!lastProgressTick || (now - lastProgressTick >= interval)) {
+            lastProgressTick = now;
+            updateProgressUI();
+          }
           rafTicker = requestAnimationFrame(tick);
         }
       };
@@ -1893,15 +1852,18 @@
       thumbEl.style.setProperty('left', `${pct}%`, 'important');
       if (miniFill) miniFill.style.setProperty('width', `${pct}%`, 'important');
 
-      curTimeEl.textContent = formatTime(cur);
-      if (dur > 0) durTimeEl.textContent = formatTime(dur);
+      // CHỈ CẬP NHẬT TEXT & BUFFER KHI CONTROLLER ĐANG MỞ (Tiết kiệm CPU & RAM tối đa)
+      if (controller.classList.contains('is-active')) {
+        curTimeEl.textContent = formatTime(cur);
+        if (dur > 0) durTimeEl.textContent = formatTime(dur);
 
-      if (video.buffered && video.buffered.length > 0 && dur > 0) {
-        try {
-          const bufEnd = video.buffered.end(video.buffered.length - 1);
-          const bufPct = Math.min(100, Math.max(0, (bufEnd / dur) * 100));
-          bufferBar.style.setProperty('width', `${bufPct}%`, 'important');
-        } catch (_) { }
+        if (video.buffered && video.buffered.length > 0 && dur > 0) {
+          try {
+            const bufEnd = video.buffered.end(video.buffered.length - 1);
+            const bufPct = Math.min(100, Math.max(0, (bufEnd / dur) * 100));
+            bufferBar.style.setProperty('width', `${bufPct}%`, 'important');
+          } catch (_) { }
+        }
       }
     };
 
@@ -2140,6 +2102,9 @@
 
       try {
         let shortcode = getReelOrPostShortcode(container, video);
+        if (!shortcode) {
+          shortcode = getPageShortcode();
+        }
         video.setAttribute('data-ig-target-video', 'true');
         const mediaRes = await requestActiveVideoMedia(shortcode);
         video.removeAttribute('data-ig-target-video');
@@ -2178,8 +2143,16 @@
           videoUrl = video.src;
         }
 
-        // Đảm bảo không tải nhầm file audio dashinit
-        if (videoUrl && (videoUrl.includes('audio_dashinit') || videoUrl.includes('_audio') || videoUrl.includes('/audio/'))) {
+        // Đảm bảo không tải nhầm file audio dashinit hoặc ảnh
+        if (videoUrl && (
+          videoUrl.includes('audio_dashinit') ||
+          videoUrl.includes('_audio') ||
+          videoUrl.includes('/audio/') ||
+          videoUrl.includes('audio/mp4') ||
+          videoUrl.includes('heaac') ||
+          videoUrl.includes('t39.1172') ||
+          /\.(jpg|jpeg|png|webp|mp3|m4a|aac)(\?|$)/i.test(videoUrl)
+        )) {
           videoUrl = null;
         }
 
@@ -2244,18 +2217,12 @@
     video.addEventListener('pause', onPause);
     video.addEventListener('ended', onEnded);
     video.addEventListener('volumechange', updateVolumeUI);
-    video.addEventListener('play', hideNativeAudioButtons);
-    video.addEventListener('playing', hideNativeAudioButtons);
-    video.addEventListener('pause', hideNativeAudioButtons);
-    container.addEventListener('pointerenter', hideNativeAudioButtons);
-
     // DỌN DẸP SẠCH SẼ TẤT CẢ EVENT LISTENER KHI VIDEO RA KHỎI VIEWPORT HOẶC BỊ HỦY (CHỐNG LEAK RAM)
     video._controllerCleanup = () => {
       stopTicker();
       if (isDragging) {
         onScrubEnd();
       }
-      try { nativeAudioObserver.disconnect(); } catch (_) { }
       window.removeEventListener('pointermove', onScrubMove, true);
       window.removeEventListener('pointerup', onScrubEnd, true);
       window.removeEventListener('pointercancel', onScrubEnd, true);
@@ -2269,10 +2236,6 @@
       video.removeEventListener('pause', onPause);
       video.removeEventListener('ended', onEnded);
       video.removeEventListener('volumechange', updateVolumeUI);
-      video.removeEventListener('play', hideNativeAudioButtons);
-      video.removeEventListener('playing', hideNativeAudioButtons);
-      video.removeEventListener('pause', hideNativeAudioButtons);
-      container.removeEventListener('pointerenter', hideNativeAudioButtons);
       video.removeEventListener('pointerenter', showControls);
       video.removeEventListener('pointermove', showControls);
       video.removeEventListener('pointerleave', hideControlsImmediate);
@@ -2644,11 +2607,15 @@
     };
 
     let storyRafTicker = null;
+    let lastStoryTick = 0;
     const startStoryTicker = () => {
       stopStoryTicker();
-      const tick = () => {
+      const tick = (now) => {
         if (!storyVideo.paused && !storyVideo.ended) {
-          updateStoryUI();
+          if (!lastStoryTick || (now - lastStoryTick >= 80)) {
+            lastStoryTick = now;
+            updateStoryUI();
+          }
           storyRafTicker = requestAnimationFrame(tick);
         }
       };
@@ -4628,12 +4595,12 @@
     } else {
       scanAndAttachVideoControllers();
     }
-  }, 1200);
+  }, 3500);
 
   let debounceTimer = null;
   const observer = new MutationObserver((mutations) => {
-    // Chỉ kích hoạt khi có phần tử mới được thêm/bớt vào DOM (ví dụ cuộn thêm bài mới vào feed)
-    // Bỏ qua các thay đổi style/attribute trong khi Instagram animate chuyển ảnh carousel
+    if (document.hidden) return;
+    // Chỉ kích hoạt khi có phần tử thực sự thêm/bớt trong DOM
     let hasStructuralChanges = false;
     for (let i = 0; i < mutations.length; i++) {
       if (mutations[i].addedNodes.length > 0 || mutations[i].removedNodes.length > 0) {
@@ -4645,6 +4612,7 @@
 
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
+      if (document.hidden) return;
       cleanupIfPostClosed();
       scanAndAttachStoryDownload();
       scanAndAttachProfileDownload();
@@ -4659,7 +4627,7 @@
       } else {
         scanAndAttachPlayers();
       }
-    }, 350);
+    }, 450);
   });
 
   observer.observe(document.body, { childList: true, subtree: true });
