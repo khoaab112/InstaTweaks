@@ -1010,17 +1010,28 @@
     const video = postElement.querySelector('video');
     if (!video) return false;
 
-    // Nếu bài viết có thanh điều hướng carousel nhiều slide ảnh/video
-    const hasCarouselNav = Boolean(
-      postElement.querySelector(
-        'button[aria-label*="Next"], button[aria-label*="Go back"], button[aria-label*="Tiếp"], button[aria-label*="Quay lại"]'
-      )
-    );
-    const carouselDots = postElement.querySelectorAll('div[role="tablist"] [role="tab"], .coreSpriteMediaNavigationDot');
-
-    if (hasCarouselNav || carouselDots.length > 1) {
+    // 1. Nếu có tham số carousel ?img_index trên URL -> đây là Carousel
+    if (window.location.search.includes('img_index=')) {
       return false;
     }
+
+    // 2. Nếu có vùng chỉ thị trang dots (div[role="tablist"] chỉ có duy nhất ở Carousel)
+    if (postElement.querySelector('div[role="tablist"], .coreSpriteMediaNavigationDot, ._acnb')) {
+      return false;
+    }
+
+    // 3. Nếu có nút Next / Back / Previous điều hướng carousel
+    const hasCarouselNav = Boolean(
+      postElement.querySelector(
+        'button[aria-label*="Next"], button[aria-label*="Previous"], button[aria-label*="Go back"], button[aria-label*="Tiếp"], button[aria-label*="Quay lại"], button[aria-label*="Sau"], button[aria-label*="Trước"], button._afxw'
+      )
+    );
+    if (hasCarouselNav) return false;
+
+    // 4. Nếu có container slide carousel
+    const carouselSlides = postElement.querySelectorAll('div[role="region"] ul > li, ul[style*="transform"] > li');
+    if (carouselSlides.length > 1) return false;
+
     return true;
   }
 
@@ -1042,8 +1053,8 @@
 
     // 2. Nếu đang xem trong Dialog:
     if (activeDialog) {
-      // Nếu bài viết trong dialog là Video (hoặc Reels được repost) -> tắt nhạc ngoài ngay
-      if (activeDialog.querySelector('video') || isSingleVideoPost(activeDialog)) {
+      // Chỉ tắt nhạc ngoài khi bài viết này thuần túy là 1 video đơn lẻ (Single Video Post)
+      if (isSingleVideoPost(activeDialog)) {
         pauseCurrentAudio();
         return;
       }
@@ -1061,7 +1072,8 @@
         pauseCurrentAudio();
         return;
       }
-      if (document.querySelector('main video, article video')) {
+      const mainPost = document.querySelector('main article, article');
+      if (mainPost && isSingleVideoPost(mainPost)) {
         pauseCurrentAudio();
         return;
       }
@@ -1089,7 +1101,7 @@
         return;
       }
 
-      if (parentDialog && (parentDialog.querySelector('video') || isSingleVideoPost(parentDialog))) {
+      if (parentDialog && isSingleVideoPost(parentDialog)) {
         pauseCurrentAudio();
         return;
       }
@@ -4529,12 +4541,11 @@
   });
 
   function handleFeedPostInViewport(post) {
-    // Nếu trang hiện tại là Reels hoặc bài viết chứa video:
-    // Tuyệt đối không chèn thanh phát nhạc để tránh phát đè và tiết kiệm băng thông
+    // Nếu trang hiện tại là Reels hoặc bài viết thuần túy là 1 video đơn lẻ (Single Video Post):
+    // Tuyệt đối không chèn thanh phát nhạc để tránh phát đè và tiết kiệm băng thông (vẫn giữ thanh nhạc cho bài Carousel)
     if (window.location.pathname.includes('/reels') || 
         window.location.pathname.includes('/reel') || 
-        isSingleVideoPost(post) || 
-        post.querySelector('video')) {
+        isSingleVideoPost(post)) {
       post.querySelectorAll('.ig-music-controls-container, .ig-music-feed-bar').forEach(el => el.remove());
       attachFloatingDownloadButton(post);
       return;
@@ -4597,8 +4608,7 @@
     posts.forEach((post) => {
       if (window.location.pathname.includes('/reels') || 
           window.location.pathname.includes('/reel') || 
-          isSingleVideoPost(post) || 
-          post.querySelector('video')) {
+          isSingleVideoPost(post)) {
         pauseCurrentAudio();
         post.querySelectorAll('.ig-music-controls-container, .ig-music-feed-bar').forEach(el => el.remove());
         attachFloatingDownloadButton(post);
@@ -4645,8 +4655,8 @@
       }
 
       if (activePost) {
-        // Nếu bài viết này là Video hoặc Reels: Nhường âm thanh cho video gốc
-        if (isSingleVideoPost(activePost) || activePost.querySelector('video')) {
+        // Nếu bài viết này là Video đơn lẻ hoặc Reels: Nhường âm thanh cho video gốc
+        if (isSingleVideoPost(activePost)) {
           pauseCurrentAudio();
           return;
         }

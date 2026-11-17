@@ -250,9 +250,8 @@
   function extractAudioTracks(obj, found = new Map(), inheritedCode = null, inheritedId = null) {
     if (!obj || typeof obj !== 'object') return found;
 
-    // BỎ QUA HOÀN TOÀN BÀI VIẾT LÀ VIDEO / REELS:
-    // Video và Reels tự phát âm thanh gốc của chính nó, không trích xuất track rời để tiết kiệm băng thông và tránh phát đè
-    if (obj.is_video === true || obj.media_type === 2 || obj.product_type === 'clips' || (Array.isArray(obj.video_versions) && obj.video_versions.length > 0)) {
+    // Bỏ qua trích xuất khi đang ở trang Reels (/reels/ hoặc /reel/) để tiết kiệm băng thông
+    if (window.location.pathname.includes('/reels') || window.location.pathname.includes('/reel')) {
       return found;
     }
 
