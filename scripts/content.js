@@ -620,7 +620,7 @@
     });
   }
 
-  function requestActiveVideoMedia(shortcode) {
+  function requestActiveVideoMedia(shortcode, slideIndex = -1) {
     return new Promise((resolve) => {
       let done = false;
       const onResult = (e) => {
@@ -641,9 +641,62 @@
 
       window.addEventListener('__IG_ACTIVE_VIDEO_URL_RESULT__', onResult);
       window.dispatchEvent(new CustomEvent('__IG_REQUEST_ACTIVE_VIDEO_URL__', {
-        detail: { shortcode: shortcode || null }
+        detail: { 
+          shortcode: shortcode || null,
+          slideIndex: (typeof slideIndex === 'number' && !isNaN(slideIndex)) ? slideIndex : -1
+        }
       }));
     });
+  }
+
+  function getCurrentSlideIndex(video, postContainer) {
+    // 1. Ưu tiên 1: Lấy trực tiếp từ query param trên URL (?img_index=10)
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const imgIndexVal = searchParams.get('img_index');
+      if (imgIndexVal) {
+        const idx = parseInt(imgIndexVal, 10);
+        if (!isNaN(idx) && idx >= 1) {
+          return idx - 1; // đổi 1-based thành 0-based index
+        }
+      }
+    } catch (_) {}
+
+    // 2. Ưu tiên 2: Tìm vị trí của slide li chứa video trong carousel ul > li
+    if (video) {
+      try {
+        const slideLi = video.closest('ul li, li');
+        if (slideLi && slideLi.parentElement) {
+          const allSlides = Array.from(slideLi.parentElement.children);
+          const liIdx = allSlides.indexOf(slideLi);
+          if (liIdx !== -1 && allSlides.length > 1) {
+            return liIdx;
+          }
+        }
+      } catch (_) {}
+    }
+
+    // 3. Ưu tiên 3: Quét các chấm chỉ thị trang (Carousel Dots: div[role="tablist"])
+    const post = postContainer || video?.closest('article, div[role="dialog"]');
+    if (post) {
+      try {
+        const tablist = post.querySelector('div[role="tablist"]');
+        if (tablist) {
+          const tabs = Array.from(tablist.querySelectorAll('[role="tab"], div > div, div'));
+          for (let i = 0; i < tabs.length; i++) {
+            const tab = tabs[i];
+            if (tab.getAttribute('aria-selected') === 'true' || 
+                tab.getAttribute('tabindex') === '0' ||
+                tab.classList.contains('active') ||
+                window.getComputedStyle(tab).opacity === '1') {
+              return i;
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    return -1;
   }
 
   function getPostMediaFromDOM(postContainer) {
@@ -2217,8 +2270,10 @@
         if (!shortcode) {
           shortcode = getPageShortcode();
         }
+        const slideIndex = getCurrentSlideIndex(video, container);
+
         video.setAttribute('data-ig-target-video', 'true');
-        const mediaRes = await requestActiveVideoMedia(shortcode);
+        const mediaRes = await requestActiveVideoMedia(shortcode, slideIndex);
         video.removeAttribute('data-ig-target-video');
 
         let videoUrl = mediaRes?.url;
@@ -2228,8 +2283,14 @@
 
         if (!videoUrl && shortcode) {
           const items = await requestPostMedia(shortcode);
-          const vidItem = items?.find(i => i.type === 'video');
-          if (vidItem?.url) videoUrl = vidItem.url;
+          if (Array.isArray(items) && items.length > 0) {
+            if (slideIndex >= 0 && slideIndex < items.length && items[slideIndex]?.type === 'video') {
+              videoUrl = items[slideIndex].url;
+            } else {
+              const vidItem = items.find(i => i.type === 'video');
+              if (vidItem?.url) videoUrl = vidItem.url;
+            }
+          }
         }
 
         if (!videoUrl) {
@@ -2270,7 +2331,8 @@
 
         if (videoUrl) {
           const cleanShortcode = (shortcode && !['audio', 'reels', 'videos', 'comments'].includes(shortcode.toLowerCase())) ? shortcode : (window.location.pathname.includes('/reels') ? 'reel' : 'video');
-          const filename = `instagram_${cleanShortcode}_${Date.now()}.mp4`;
+          const slideSuffix = slideIndex >= 0 ? `_slide_${slideIndex + 1}` : '';
+          const filename = `instagram_${cleanShortcode}${slideSuffix}_${Date.now()}.mp4`;
           await downloadUrlAsBlob(videoUrl, filename);
           dlBtn.innerHTML = SVG_CHECKMARK;
           setTimeout(() => {

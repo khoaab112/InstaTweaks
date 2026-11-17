@@ -1267,7 +1267,7 @@
   });
 
   // Lấy media trực tiếp từ React Fiber của video đang xem (Hoạt động trên Reels / Feed / Explore / Dialog)
-  function findActiveVideoMedia() {
+  function findActiveVideoMedia(targetIdx = -1) {
     const targetVid = document.querySelector('video[data-ig-target-video="true"]') ||
       Array.from(document.querySelectorAll('video')).find(v => {
         const r = v.getBoundingClientRect();
@@ -1321,15 +1321,21 @@
                   }
                 }
 
-                // 2. ƯU TIÊN 2: Dùng extractMediaFromPostNode
+                // 2. ƯU TIÊN 2: Dùng extractMediaFromPostNode (chọn đúng slideIndex nếu có)
                 const items = extractMediaFromPostNode(c);
                 if (items && items.length > 0) {
-                  const vidItem = items.find(it => it.type === 'video' && isValidVideoMp4Url(it.url));
-                  if (vidItem?.url) {
+                  let vidUrl = null;
+                  if (targetIdx >= 0 && targetIdx < items.length && items[targetIdx]?.type === 'video' && isValidVideoMp4Url(items[targetIdx].url)) {
+                    vidUrl = items[targetIdx].url;
+                  } else {
+                    const vidItem = items.find(it => it.type === 'video' && isValidVideoMp4Url(it.url));
+                    if (vidItem?.url) vidUrl = vidItem.url;
+                  }
+                  if (vidUrl) {
                     const sc = (c.code && !['audio', 'reels', 'videos', 'comments'].includes(c.code.toLowerCase())) ? c.code : null;
                     if (sc) safeMapSet(postMediaMap, sc, items, 60);
                     return {
-                      url: vidItem.url,
+                      url: vidUrl,
                       shortcode: sc,
                       items
                     };
@@ -1409,15 +1415,45 @@
   }
 
   window.addEventListener('__IG_REQUEST_ACTIVE_VIDEO_URL__', async (e) => {
-    const { shortcode } = e.detail || {};
+    const { shortcode, slideIndex } = e.detail || {};
+    const targetIdx = (typeof slideIndex === 'number' && slideIndex >= 0) ? slideIndex : -1;
+
+    // Helper: Chọn video chính xác theo slideIndex (img_index)
+    const pickVideoFromItems = (items) => {
+      if (!Array.isArray(items) || items.length === 0) return null;
+
+      // 1. Nếu có slideIndex chính xác và vị trí đó là video: Lấy đúng video này!
+      if (targetIdx >= 0 && targetIdx < items.length) {
+        const itemAtIdx = items[targetIdx];
+        if (itemAtIdx?.type === 'video' && isValidVideoMp4Url(itemAtIdx.url)) {
+          return itemAtIdx.url;
+        }
+      }
+
+      // 2. Nếu tại targetIdx không phải video (hoặc không có slideIndex), tìm video gần targetIdx nhất
+      const allVideos = [];
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type === 'video' && isValidVideoMp4Url(items[i].url)) {
+          allVideos.push({ index: i, item: items[i] });
+        }
+      }
+      if (allVideos.length === 0) return null;
+
+      if (targetIdx >= 0) {
+        allVideos.sort((a, b) => Math.abs(a.index - targetIdx) - Math.abs(b.index - targetIdx));
+        return allVideos[0].item.url;
+      }
+
+      return allVideos[0].item.url;
+    };
 
     // 1. NẾU CÓ SHORTCODE: ƯU TIÊN TRA TRONG postMediaMap ĐÃ CÓ
     if (shortcode && postMediaMap.has(shortcode)) {
       const items = postMediaMap.get(shortcode);
-      const vid = items?.find(it => it.type === 'video' && isValidVideoMp4Url(it.url));
-      if (vid?.url) {
+      const url = pickVideoFromItems(items);
+      if (url) {
         window.dispatchEvent(new CustomEvent('__IG_ACTIVE_VIDEO_URL_RESULT__', {
-          detail: { url: vid.url, shortcode, items }
+          detail: { url, shortcode, items }
         }));
         return;
       }
@@ -1426,17 +1462,17 @@
     // 2. NẾU CÓ SHORTCODE: GỌI fetchPostFullMedia(shortcode) ĐỂ LẤY URL VIDEO ĐẦY ĐỦ TRỰC TIẾP TỪ REST/GRAPHQL
     if (shortcode) {
       const fetched = await fetchPostFullMedia(shortcode);
-      const vid = fetched?.find(it => it.type === 'video' && isValidVideoMp4Url(it.url));
-      if (vid?.url) {
+      const url = pickVideoFromItems(fetched);
+      if (url) {
         window.dispatchEvent(new CustomEvent('__IG_ACTIVE_VIDEO_URL_RESULT__', {
-          detail: { url: vid.url, shortcode, items: fetched }
+          detail: { url, shortcode, items: fetched }
         }));
         return;
       }
     }
 
     // 3. THỬ TRÍCH XUẤT TỪ REACT FIBER (CHỈ CHẤP NHẬN VIDEO HOÀN CHỈNH, KHÔNG LẤY CHUNK)
-    let result = findActiveVideoMedia();
+    let result = findActiveVideoMedia(targetIdx);
     if (result && result.url && isValidVideoMp4Url(result.url)) {
       window.dispatchEvent(new CustomEvent('__IG_ACTIVE_VIDEO_URL_RESULT__', { detail: result }));
       return;
