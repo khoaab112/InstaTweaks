@@ -1781,21 +1781,16 @@
     controller.addEventListener('pointermove', showControls);
     controller.addEventListener('pointerleave', hideControlsImmediate);
 
-    // Ngăn chặn sự kiện tương tác trên toolbar nổi bọt lên các lớp cha/overlay của Instagram (ngăn chặn chuyển sang Reels trên Home feed)
+    // Ngăn chặn sự kiện tương tác trên toolbar nổi bọt lên các lớp cha/overlay của Instagram (ở bubbling phase để các nút con hoạt động bình thường)
     const stopBubble = (e) => {
       // TUYỆT ĐỐI KHÔNG chặn pointerup, pointercancel, mouseup - để window luôn bắt được sự kiện nhả chuột!
       if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'mouseup') return;
-      e.preventDefault();
       e.stopPropagation();
-      e.stopImmediatePropagation();
     };
-    ['click', 'pointerdown', 'mousedown', 'dblclick'].forEach(evt => {
-      controller.addEventListener(evt, stopBubble, true);
-      miniProgress.addEventListener(evt, stopBubble, true);
-    });
-    controller.addEventListener('touchstart', (e) => {
-      e.stopPropagation();
-    }, { passive: true });
+    controller.addEventListener('click', stopBubble);
+    controller.addEventListener('pointerdown', stopBubble);
+    controller.addEventListener('mousedown', stopBubble);
+    controller.addEventListener('touchstart', stopBubble, { passive: true });
 
     let rafTicker = null;
     const startTicker = () => {
@@ -1940,9 +1935,15 @@
       progressContainer.addEventListener('pointercancel', onScrubEnd);
     };
 
-    progressContainer.addEventListener('pointerdown', onScrubStart, true);
-    progressContainer.addEventListener('mousedown', stopBubble, true);
-    progressContainer.addEventListener('click', stopBubble, true);
+    progressContainer.addEventListener('pointerdown', onScrubStart);
+    progressContainer.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    progressContainer.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
 
     // Hover preview (vạch ghost mờ và bong bóng thời gian giống YouTube)
     progressContainer.addEventListener('pointerenter', () => {

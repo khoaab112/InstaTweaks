@@ -2005,19 +2005,6 @@ div:has(> [data-ig-vctl-container="true"]) > div > [role="button"]:not(.ig-vctl-
 }
 
 /* ========================================================
-   E. THANH TRƯỢT STORY & HIGHLIGHTS TRÊN ĐỈNH (v2.5.0)
-   Custom trực tiếp từ thanh tiến trình mặc định của Instagram
-   ======================================================== */
-
-/* Ẩn triệt để thanh đáy cũ nếu còn tồn tại */
-.ig-story-scrubber-bar {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-}
-
-/* ========================================================
    E. THANH TIẾN TRÌNH CUSTOME TRÊN ĐỈNH STORY (v2.5.0)
    Đặt ở sát mép trên cùng của Story (trên các vạch - - - - gốc của IG)
    ======================================================== */
