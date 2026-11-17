@@ -1781,16 +1781,32 @@
     controller.addEventListener('pointermove', showControls);
     controller.addEventListener('pointerleave', hideControlsImmediate);
 
-    // Ngăn chặn sự kiện tương tác trên toolbar nổi bọt lên các lớp cha/overlay của Instagram (ở bubbling phase để các nút con hoạt động bình thường)
+    // Ngăn chặn sự kiện tương tác trên toolbar nổi bọt lên các lớp cha/overlay của Instagram
     const stopBubble = (e) => {
       // TUYỆT ĐỐI KHÔNG chặn pointerup, pointercancel, mouseup - để window luôn bắt được sự kiện nhả chuột!
       if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'mouseup') return;
+      if (e.type === 'click') {
+        e.preventDefault();
+      }
       e.stopPropagation();
     };
     controller.addEventListener('click', stopBubble);
     controller.addEventListener('pointerdown', stopBubble);
     controller.addEventListener('mousedown', stopBubble);
     controller.addEventListener('touchstart', stopBubble, { passive: true });
+
+    // Nếu controller nằm trong thẻ <a> (thường gặp ở Home feed video post)
+    // Đảm bảo click vào group controller KHÔNG BAO GIỜ bị nhảy link sang Reels,
+    // trong khi click vào vùng trên của video (ngoài controller) vẫn nhảy link bình thường
+    const enclosingLink = container.closest('a') || controller.closest('a');
+    if (enclosingLink) {
+      enclosingLink.addEventListener('click', (e) => {
+        if (controller.contains(e.target)) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }, true);
+    }
 
     let rafTicker = null;
     const startTicker = () => {
@@ -2180,13 +2196,22 @@
   }
 
   // GLOBAL FULLSCREEN LISTENER (Chỉ đăng ký 1 lần duy nhất, không nhân bản theo từng video)
-  document.addEventListener('fullscreenchange', () => {
-    const fsEl = document.fullscreenElement;
+  const onGlobalFullscreenChange = () => {
+    const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
     document.querySelectorAll('.ig-vctl-fullscreen-btn').forEach(btn => {
       const isFs = Boolean(fsEl && (fsEl.contains(btn) || btn.closest(fsEl.tagName)));
       btn.innerHTML = isFs ? SVG_FULLSCREEN_EXIT : SVG_FULLSCREEN;
+      btn.title = isFs ? 'Thoát toàn màn hình (Esc)' : 'Toàn màn hình';
     });
-  });
+    if (fsEl && fsEl.getAttribute('data-ig-vctl-container') === 'true') {
+      const vid = fsEl.querySelector('video');
+      if (vid) {
+        vid.style.setProperty('object-fit', 'contain', 'important');
+      }
+    }
+  };
+  document.addEventListener('fullscreenchange', onGlobalFullscreenChange);
+  document.addEventListener('webkitfullscreenchange', onGlobalFullscreenChange);
 
   // VIRTUAL SCROLLING OBSERVER CHO VIDEO (CHỈ GẮN CONTROLLER CHO VIDEO ĐANG Ở TRONG VIEWPORT)
   const videoIntersectionObserver = (typeof IntersectionObserver !== 'undefined')
@@ -2288,14 +2313,17 @@
       activeStoryScrubber.cleanup();
     }
 
-    // 2. Trả nguyên các vạch - - - - của Instagram gốc về vị trí cũ (hoàn toàn không can thiệp hay ẩn)
+    // 2. Tách biệt rõ ràng thanh custom và vạch - - - - gốc của Instagram (không đè lên nhau)
     progressContainer.classList.remove('ig-story-native-progress-hidden');
     progressContainer.style.removeProperty('display');
     progressContainer.style.removeProperty('visibility');
     progressContainer.style.removeProperty('opacity');
     progressContainer.style.removeProperty('height');
+    progressContainer.style.setProperty('position', 'relative', 'important');
+    progressContainer.style.setProperty('top', 'auto', 'important');
+    progressContainer.style.setProperty('margin-top', '7px', 'important');
 
-    // 3. Đưa thanh tiến trình custom lên trên hẳn sát mép đỉnh của Story (phía trên các vạch gốc)
+    // 3. Đưa thanh tiến trình custom lên trên hẳn sát mép đỉnh của Story (tách biệt phía trên vạch gốc)
     let topBar = document.querySelector('.ig-story-top-progress-bar');
     if (!topBar) {
       topBar = document.createElement('div');
@@ -2312,15 +2340,11 @@
     }
     topBar.style.display = 'flex';
 
-    // Đính vào container cha chứa progress bar ở sát mép trên cùng
+    // Đính vào container cha TRƯỚC progressContainer để nằm tách biệt phía trên
     const mountParent = progressContainer.parentElement;
     if (mountParent) {
-      const pos = window.getComputedStyle(mountParent).position;
-      if (pos === 'static' || !pos) {
-        mountParent.style.position = 'relative';
-      }
-      if (topBar.parentElement !== mountParent) {
-        mountParent.appendChild(topBar);
+      if (topBar.parentElement !== mountParent || topBar.nextElementSibling !== progressContainer) {
+        mountParent.insertBefore(topBar, progressContainer);
       }
     }
 
@@ -2529,6 +2553,9 @@
         topBar.removeEventListener('pointerleave', onPointerLeave);
 
         progressContainer.classList.remove('ig-story-native-progress-hidden');
+        progressContainer.style.removeProperty('position');
+        progressContainer.style.removeProperty('top');
+        progressContainer.style.removeProperty('margin-top');
         if (topBar) topBar.style.display = 'none';
 
         const timeElem = document.querySelector('.ig-story-header-time');

@@ -2006,7 +2006,7 @@ div:has(> [data-ig-vctl-container="true"]) > div > [role="button"]:not(.ig-vctl-
 
 /* ========================================================
    E. THANH TIẾN TRÌNH CUSTOME TRÊN ĐỈNH STORY (v2.5.0)
-   Đặt ở sát mép trên cùng của Story (trên các vạch - - - - gốc của IG)
+   Đặt ở sát mép trên cùng của Story, tách biệt rõ ràng phía trên vạch - - - - gốc
    ======================================================== */
 
 /* Ẩn triệt để thanh đáy cũ nếu còn tồn tại */
@@ -2017,20 +2017,17 @@ div:has(> [data-ig-vctl-container="true"]) > div > [role="button"]:not(.ig-vctl-
   pointer-events: none !important;
 }
 
-/* Thanh tiến trình custom ở sát mép trên đỉnh của Story */
+/* Thanh tiến trình custom ở sát mép trên đỉnh của Story, tách biệt khỏi vạch gốc */
 .ig-story-top-progress-bar {
-  position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
+  position: relative !important;
   width: 100% !important;
-  height: 10px !important;
-  padding: 0 0 6px 0 !important;
+  height: 8px !important;
+  padding: 0 !important;
   margin: 0 !important;
   box-sizing: border-box !important;
   z-index: 10020 !important;
   display: flex !important;
-  align-items: flex-start !important;
+  align-items: center !important;
   cursor: pointer !important;
   touch-action: none !important;
   user-select: none !important;
@@ -2041,6 +2038,7 @@ div:has(> [data-ig-vctl-container="true"]) > div > [role="button"]:not(.ig-vctl-
   width: 100% !important;
   height: 3.5px !important;
   background: rgba(255, 255, 255, 0.22) !important;
+  border-radius: 2px !important;
   overflow: visible !important;
   transition: height 0.12s ease !important;
 }
@@ -2048,6 +2046,7 @@ div:has(> [data-ig-vctl-container="true"]) > div > [role="button"]:not(.ig-vctl-
 .ig-story-top-progress-bar:hover .ig-story-top-track,
 .ig-story-top-progress-bar.is-dragging .ig-story-top-track {
   height: 5.5px !important;
+  border-radius: 3px !important;
 }
 
 .ig-story-top-hover {
@@ -2057,6 +2056,7 @@ div:has(> [data-ig-vctl-container="true"]) > div > [role="button"]:not(.ig-vctl-
   bottom: 0 !important;
   width: 0% !important;
   background: rgba(255, 255, 255, 0.45) !important;
+  border-radius: inherit !important;
   pointer-events: none !important;
   transition: width 0.05s ease !important;
 }
@@ -2069,6 +2069,7 @@ div:has(> [data-ig-vctl-container="true"]) > div > [role="button"]:not(.ig-vctl-
   width: 0% !important;
   background: linear-gradient(90deg, #ff8a00, #e52e71, #ff3366) !important;
   box-shadow: 0 0 8px rgba(229, 46, 113, 0.7) !important;
+  border-radius: inherit !important;
   pointer-events: none !important;
 }
 
@@ -2113,6 +2114,46 @@ div:has(> [data-ig-vctl-container="true"]) > div > [role="button"]:not(.ig-vctl-
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6) !important;
   border: 1px solid rgba(255, 255, 255, 0.15) !important;
   z-index: 10022 !important;
+}
+
+/* ========================================================
+   G. CHẾ ĐỘ TOÀN MÀN HÌNH (FULLSCREEN) CHUẨN KHÔNG MÉO/VỠ
+   Giữ nguyên 100% tỷ lệ gốc của video (object-fit: contain)
+   ======================================================== */
+[data-ig-vctl-container="true"]:fullscreen,
+[data-ig-vctl-container="true"]:-webkit-full-screen {
+  background: #000000 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  overflow: hidden !important;
+}
+
+[data-ig-vctl-container="true"]:fullscreen video,
+[data-ig-vctl-container="true"]:-webkit-full-screen video,
+video:fullscreen,
+video:-webkit-full-screen {
+  object-fit: contain !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  margin: auto !important;
+  background: #000000 !important;
+}
+
+[data-ig-vctl-container="true"]:fullscreen .ig-video-controller,
+[data-ig-vctl-container="true"]:-webkit-full-screen .ig-video-controller {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100vw !important;
+  z-index: 2147483647 !important;
 }
 
 /* Ẩn nút loa trong Header Story (do đã auto phát nhạc/tiếng) */
