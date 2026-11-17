@@ -971,7 +971,53 @@
     return true;
   }
 
+  // Kiểm tra bài nhạc đang phát có khớp với bài viết đang hiển thị trên màn hình hay không
+  function verifyActiveAudioMatchesCurrentView() {
+    if (!currentActive?.audio || currentActive.audio.paused) return;
+
+    const path = window.location.pathname;
+    const isDirectPost = path.includes('/p/');
+    const isHome = path === '/';
+    const activeDialog = getActivePostDialog();
+
+    // 1. Nếu không ở Home Feed, không ở trang /p/, và không có Dialog nào mở (ví dụ: đang ở grid profile /reposts/):
+    // -> Tắt ngay lập tức, không để nhạc chạy ngầm trên trang profile/reposts
+    if (!isHome && !isDirectPost && !activeDialog) {
+      pauseCurrentAudio();
+      return;
+    }
+
+    // 2. Nếu đang xem trong Dialog:
+    if (activeDialog) {
+      // Nếu bài viết trong dialog là Video (hoặc Reels được repost) -> tắt nhạc ngoài ngay
+      if (activeDialog.querySelector('video') || isSingleVideoPost(activeDialog)) {
+        pauseCurrentAudio();
+        return;
+      }
+
+      // Nếu shortcode bài viết trong dialog khác với mã bài đang phát -> tắt nhạc bài cũ ngay
+      const dialogSc = getShortcodeFromPost(activeDialog) || getPageShortcode();
+      if (dialogSc && currentActive.track?.code && dialogSc !== currentActive.track.code) {
+        pauseCurrentAudio();
+        return;
+      }
+    } else if (isDirectPost) {
+      // 3. Nếu đang xem trang /p/ trực tiếp:
+      const pageSc = getPageShortcode();
+      if (pageSc && currentActive.track?.code && pageSc !== currentActive.track.code) {
+        pauseCurrentAudio();
+        return;
+      }
+      if (document.querySelector('main video, article video')) {
+        pauseCurrentAudio();
+        return;
+      }
+    }
+  }
+
   function cleanupIfPostClosed() {
+    verifyActiveAudioMatchesCurrentView();
+
     if (!isPostViewingContext() || window.location.pathname.includes('/reels') || window.location.pathname.includes('/reel')) {
       pauseCurrentAudio();
       document.querySelectorAll('.ig-music-controls-container, .ig-music-feed-bar').forEach(el => el.remove());
@@ -987,6 +1033,12 @@
       const parentDialog = currentActive.wrapper.closest('div[role="dialog"]');
       if (parentDialog && (parentDialog.getAttribute('aria-hidden') === 'true' || parentDialog.offsetWidth <= 0)) {
         pauseCurrentAudio();
+        return;
+      }
+
+      if (parentDialog && (parentDialog.querySelector('video') || isSingleVideoPost(parentDialog))) {
+        pauseCurrentAudio();
+        return;
       }
     }
   }
@@ -4485,9 +4537,7 @@
           window.location.pathname.includes('/reel') || 
           isSingleVideoPost(post) || 
           post.querySelector('video')) {
-        if (currentActive?.wrapper && post.contains(currentActive.wrapper)) {
-          pauseCurrentAudio();
-        }
+        pauseCurrentAudio();
         post.querySelectorAll('.ig-music-controls-container, .ig-music-feed-bar').forEach(el => el.remove());
         attachFloatingDownloadButton(post);
         return;
@@ -4575,6 +4625,7 @@
 
   // --- 10. SỰ KIỆN ĐIỀU HƯỚNG VÀ ĐÓNG BÀI VIẾT ---
   window.addEventListener('__IG_NAVIGATED__', () => {
+    verifyActiveAudioMatchesCurrentView();
     cleanupIfPostClosed();
     scanAndAttachProfileDownload();
     setTimeout(scanAndAttachPlayers, 100);
@@ -4582,6 +4633,7 @@
   });
 
   window.addEventListener('popstate', () => {
+    pauseCurrentAudio();
     setTimeout(cleanupIfPostClosed, 40);
     setTimeout(scanAndAttachProfileDownload, 60);
     setTimeout(scanAndAttachPlayers, 150);
@@ -4589,6 +4641,7 @@
 
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      pauseCurrentAudio();
       setTimeout(cleanupIfPostClosed, 40);
       setTimeout(cleanupIfPostClosed, 150);
       return;
@@ -4643,6 +4696,7 @@
       );
       const isDialogBackdrop = target.getAttribute && target.getAttribute('role') === 'dialog';
       if (isCloseBtn || isDialogBackdrop) {
+        pauseCurrentAudio();
         setTimeout(cleanupIfPostClosed, 30);
         setTimeout(cleanupIfPostClosed, 120);
       }
@@ -4655,6 +4709,13 @@
       if (post) adjustFeedBarWidth(bar, post);
     });
   }, { passive: true });
+
+  // Kiểm tra đồng bộ âm thanh liên tục (dừng ngay nếu người dùng đóng bài viết hoặc đổi bài)
+  setInterval(() => {
+    if (currentActive && !currentActive.audio?.paused) {
+      verifyActiveAudioMatchesCurrentView();
+    }
+  }, 250);
 
   setInterval(() => {
     if (document.hidden) return;
