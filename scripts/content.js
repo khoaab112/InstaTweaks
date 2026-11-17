@@ -2026,7 +2026,7 @@
           </div>
         </div>
 
-        <div class="ig-profile-limit-row" style="margin-bottom: 10px;">
+        <div class="ig-profile-limit-row" style="margin-bottom: 12px;">
           <span>Giới hạn số lượng bài viết:</span>
           <select class="ig-profile-limit-select">
             <option value="0" selected>Tất cả bài viết (Toàn bộ)</option>
@@ -2036,12 +2036,39 @@
           </select>
         </div>
 
-        <div class="ig-profile-limit-row">
-          <span>Cấu trúc xuất file:</span>
-          <select class="ig-profile-struct-select">
-            <option value="folders" selected>Theo thư mục (Mỗi bài 1 folder, Story xuất thẳng)</option>
-            <option value="bulk">Xuất hàng loạt (Tất cả file gom chung theo loại)</option>
-          </select>
+        <div class="ig-profile-struct-section">
+          <div class="ig-profile-struct-header">
+            <span>Cấu trúc xuất file:</span>
+            <span class="ig-profile-struct-badge">Tùy chọn sắp xếp</span>
+          </div>
+          <div class="ig-profile-struct-grid">
+            <div class="ig-struct-card active" data-struct="folders">
+              <div class="ig-struct-card-top">
+                <span class="ig-struct-icon">📁</span>
+                <span class="ig-struct-radio-dot"></span>
+              </div>
+              <div class="ig-struct-title">Theo thư mục</div>
+              <div class="ig-struct-desc">Mỗi bài 1 folder, Story xuất thẳng</div>
+              <div class="ig-struct-tooltip">
+                Mỗi bài viết là 1 thư mục riêng. Bài viết 1 video &amp; Story đang đăng xuất thẳng. Highlights phân theo từng thư mục.
+              </div>
+            </div>
+
+            <div class="ig-struct-card" data-struct="bulk">
+              <div class="ig-struct-card-top">
+                <span class="ig-struct-icon">📦</span>
+                <span class="ig-struct-radio-dot"></span>
+              </div>
+              <div class="ig-struct-title">Xuất hàng loạt</div>
+              <div class="ig-struct-desc">Gom tất cả file theo danh mục</div>
+              <div class="ig-struct-tooltip">
+                Tất cả file ảnh, video, story được gom chung vào các thư mục lớn (photos, videos,...), không chia nhỏ từng bài.
+              </div>
+            </div>
+          </div>
+          <div class="ig-struct-live-note">
+            💡 <strong>Theo thư mục:</strong> Mỗi bài viết 1 folder (chứa ảnh/video), bài viết 1 video &amp; Story xuất thẳng, Highlights phân theo thư mục đánh số.
+          </div>
         </div>
 
         <button class="ig-profile-start-btn" type="button">
@@ -2068,6 +2095,39 @@
       });
     });
 
+    let selectedExportStruct = 'folders';
+    const structNotes = {
+      folders: '💡 <strong>Theo thư mục:</strong> Mỗi bài viết 1 folder (chứa ảnh/video), bài viết 1 video &amp; Story xuất thẳng, Highlights phân theo thư mục đánh số.',
+      bulk: '💡 <strong>Xuất hàng loạt:</strong> Gom chung toàn bộ file vào các danh mục lớn (photos, videos,...), không tạo folder con theo bài viết.'
+    };
+
+    const structCards = overlay.querySelectorAll('.ig-struct-card');
+    const liveNoteEl = overlay.querySelector('.ig-struct-live-note');
+
+    structCards.forEach(card => {
+      card.addEventListener('click', () => {
+        structCards.forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        selectedExportStruct = card.getAttribute('data-struct') || 'folders';
+        if (liveNoteEl && structNotes[selectedExportStruct]) {
+          liveNoteEl.innerHTML = structNotes[selectedExportStruct];
+        }
+      });
+
+      card.addEventListener('mouseenter', () => {
+        const hoverStruct = card.getAttribute('data-struct');
+        if (liveNoteEl && structNotes[hoverStruct]) {
+          liveNoteEl.innerHTML = structNotes[hoverStruct];
+        }
+      });
+
+      card.addEventListener('mouseleave', () => {
+        if (liveNoteEl && structNotes[selectedExportStruct]) {
+          liveNoteEl.innerHTML = structNotes[selectedExportStruct];
+        }
+      });
+    });
+
     const closeBtn = overlay.querySelector('.ig-profile-modal-close');
     closeBtn.addEventListener('click', () => overlay.remove());
 
@@ -2078,10 +2138,8 @@
     const startBtn = overlay.querySelector('.ig-profile-start-btn');
     startBtn.addEventListener('click', () => {
       const limitSelect = overlay.querySelector('.ig-profile-limit-select');
-      const structSelect = overlay.querySelector('.ig-profile-struct-select');
       const postLimit = parseInt(limitSelect?.value || '0', 10);
-      const exportStruct = structSelect?.value || 'folders';
-      startProfileBatchDownload(username, selectedMode, postLimit, overlay, exportStruct);
+      startProfileBatchDownload(username, selectedMode, postLimit, overlay, selectedExportStruct);
     });
   }
 
