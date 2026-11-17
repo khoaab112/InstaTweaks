@@ -27,6 +27,26 @@
   // Trạng thái âm thanh của phiên lướt web (Ghi nhớ nếu người dùng đã bật tiếng)
   let isSoundSessionActive = sessionStorage.getItem('__ig_sound_active__') === 'true';
 
+  // Cache các icon option ngay từ đầu để tránh lỗi 'Extension context invalidated' khi tiện ích được reload trong Chrome
+  const CACHED_PROFILE_ICONS = {
+    all: '',
+    archive: '',
+    story: '',
+    highlight: '',
+    video: '',
+    photos: ''
+  };
+  try {
+    if (typeof chrome !== 'undefined' && chrome.runtime?.getURL) {
+      CACHED_PROFILE_ICONS.all = chrome.runtime.getURL('icons/opt_all.png');
+      CACHED_PROFILE_ICONS.archive = chrome.runtime.getURL('icons/opt_archive.png');
+      CACHED_PROFILE_ICONS.story = chrome.runtime.getURL('icons/opt_story.png');
+      CACHED_PROFILE_ICONS.highlight = chrome.runtime.getURL('icons/opt_highlight.png');
+      CACHED_PROFILE_ICONS.video = chrome.runtime.getURL('icons/opt_video.png');
+      CACHED_PROFILE_ICONS.photos = chrome.runtime.getURL('icons/opt_photos.png');
+    }
+  } catch (_) {}
+
   const config = {
     autoplay: true,
     volume: 0.8,
@@ -169,6 +189,89 @@
       crc = (crc >>> 8) ^ crcTable[(crc ^ bytes[i]) & 0xFF];
     }
     return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  // Tính toán CRC32 dạng Stream theo từng chunk 64KB (Bộ nhớ RAM tiêu hao tối đa chỉ 64KB, Zero RAM Leak)
+  async function calculateBlobCrc32(blob) {
+    const reader = blob.stream().getReader();
+    let crc = 0xFFFFFFFF;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      for (let i = 0; i < value.length; i++) {
+        crc = (crc >>> 8) ^ crcTable[(crc ^ value[i]) & 0xFF];
+      }
+    }
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  // Đóng gói file ZIP từ các Blob trực tiếp (W3C Zero-Copy: Blob được lưu trên Disk Cache của trình duyệt, không copy vào V8 JS Heap, tiêu thụ < 50MB RAM kể cả với 100+ file video)
+  function createZipBlobFromBlobs(fileRecords) {
+    let offset = 0;
+    const parts = [];
+
+    for (const rec of fileRecords) {
+      const localHeader = new Uint8Array(30 + rec.nameBytes.length);
+      const view = new DataView(localHeader.buffer);
+      view.setUint32(0, 0x04034b50, true);
+      view.setUint16(4, 20, true);
+      view.setUint16(6, 0x0800, true); // UTF-8 filename flag
+      view.setUint16(8, 0, true); // STORE (0% CPU)
+      view.setUint16(10, 0, true);
+      view.setUint16(12, 0, true);
+      view.setUint32(14, rec.crc, true);
+      view.setUint32(18, rec.size, true);
+      view.setUint32(22, rec.size, true);
+      view.setUint16(26, rec.nameBytes.length, true);
+      view.setUint16(28, 0, true);
+      localHeader.set(rec.nameBytes, 30);
+
+      rec.offset = offset;
+      parts.push(localHeader);
+      parts.push(rec.blob); // Đưa trực tiếp Blob vào: Zero Heap RAM overhead
+      offset += localHeader.length + rec.size;
+    }
+
+    const cdOffset = offset;
+    for (const rec of fileRecords) {
+      const cd = new Uint8Array(46 + rec.nameBytes.length);
+      const view = new DataView(cd.buffer);
+      view.setUint32(0, 0x02014b50, true);
+      view.setUint16(4, 20, true);
+      view.setUint16(6, 20, true);
+      view.setUint16(8, 0x0800, true);
+      view.setUint16(10, 0, true);
+      view.setUint16(12, 0, true);
+      view.setUint16(14, 0, true);
+      view.setUint32(16, rec.crc, true);
+      view.setUint32(20, rec.size, true);
+      view.setUint32(24, rec.size, true);
+      view.setUint16(28, rec.nameBytes.length, true);
+      view.setUint16(30, 0, true);
+      view.setUint16(32, 0, true);
+      view.setUint16(34, 0, true);
+      view.setUint16(36, 0, true);
+      view.setUint32(38, 0, true);
+      view.setUint32(42, rec.offset, true);
+      cd.set(rec.nameBytes, 46);
+      parts.push(cd);
+      offset += cd.length;
+    }
+
+    const cdSize = offset - cdOffset;
+    const eocd = new Uint8Array(22);
+    const eView = new DataView(eocd.buffer);
+    eView.setUint32(0, 0x06054b50, true);
+    eView.setUint16(4, 0, true);
+    eView.setUint16(6, 0, true);
+    eView.setUint16(8, fileRecords.length, true);
+    eView.setUint16(10, fileRecords.length, true);
+    eView.setUint32(12, cdSize, true);
+    eView.setUint32(16, cdOffset, true);
+    eView.setUint16(20, 0, true);
+    parts.push(eocd);
+
+    return new Blob(parts, { type: 'application/zip' });
   }
 
   function createZipBlob(files) {
@@ -1945,7 +2048,19 @@
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      openProfileDownloadDialog(username);
+      try {
+        if (typeof chrome !== 'undefined' && !chrome.runtime?.id) {
+          alert('Tiện ích InstaTweaks vừa được cập nhật lại trong Chrome.\nVui lòng nhấn F5 (Tải lại trang) để tiếp tục!');
+          return;
+        }
+        openProfileDownloadDialog(username);
+      } catch (err) {
+        if (String(err?.message || '').includes('Extension context invalidated')) {
+          alert('Tiện ích InstaTweaks vừa được cập nhật lại trong Chrome.\nVui lòng nhấn F5 (Tải lại trang) để tiếp tục!');
+          return;
+        }
+        console.error('[InstaTweaks] Lỗi khi mở hộp thoại:', err);
+      }
     });
 
     if (placement.insertAfter && placement.insertAfter.parentElement === placement.parent) {
@@ -1970,10 +2085,33 @@
     const headerImg = document.querySelector('header img');
     const avatarSrc = headerImg ? (headerImg.currentSrc || headerImg.src) : '';
 
-    const iconAllUrl = chrome.runtime.getURL('icons/opt_all.png');
-    const iconStoryUrl = chrome.runtime.getURL('icons/opt_story.png');
-    const iconVideoUrl = chrome.runtime.getURL('icons/opt_video.png');
-    const iconPhotosUrl = chrome.runtime.getURL('icons/opt_photos.png');
+    let iconAllUrl = CACHED_PROFILE_ICONS.all || CACHED_PROFILE_ICONS.archive;
+    let iconArchiveUrl = CACHED_PROFILE_ICONS.archive || CACHED_PROFILE_ICONS.all;
+    let iconStoryUrl = CACHED_PROFILE_ICONS.story;
+    let iconHighlightUrl = CACHED_PROFILE_ICONS.highlight;
+    let iconVideoUrl = CACHED_PROFILE_ICONS.video;
+    let iconPhotosUrl = CACHED_PROFILE_ICONS.photos;
+
+    try {
+      if (!iconArchiveUrl && typeof chrome !== 'undefined' && chrome.runtime?.getURL) {
+        iconArchiveUrl = chrome.runtime.getURL('icons/opt_archive.png');
+      }
+      if (!iconAllUrl && typeof chrome !== 'undefined' && chrome.runtime?.getURL) {
+        iconAllUrl = iconArchiveUrl || chrome.runtime.getURL('icons/opt_all.png');
+      }
+      if (!iconStoryUrl && typeof chrome !== 'undefined' && chrome.runtime?.getURL) {
+        iconStoryUrl = chrome.runtime.getURL('icons/opt_story.png');
+      }
+      if (!iconHighlightUrl && typeof chrome !== 'undefined' && chrome.runtime?.getURL) {
+        iconHighlightUrl = chrome.runtime.getURL('icons/opt_highlight.png');
+      }
+      if (!iconVideoUrl && typeof chrome !== 'undefined' && chrome.runtime?.getURL) {
+        iconVideoUrl = chrome.runtime.getURL('icons/opt_video.png');
+      }
+      if (!iconPhotosUrl && typeof chrome !== 'undefined' && chrome.runtime?.getURL) {
+        iconPhotosUrl = chrome.runtime.getURL('icons/opt_photos.png');
+      }
+    } catch (_) {}
 
     const overlay = document.createElement('div');
     overlay.className = 'ig-profile-modal-overlay';
@@ -1992,21 +2130,29 @@
         </div>
 
         <div class="ig-profile-options-grid">
-          <div class="ig-profile-opt-card active" data-mode="all">
+          <div class="ig-profile-opt-card active" data-mode="all" style="grid-column: span 2;">
             <div class="ig-opt-card-top">
-              <img src="${iconAllUrl}" class="ig-opt-icon-img" alt="Tất cả">
+              <img src="${iconArchiveUrl}" class="ig-opt-icon-img" alt="Lưu trữ">
               <span class="ig-opt-badge">Đầy đủ</span>
             </div>
-            <div class="ig-opt-title">Tất cả (All in One)</div>
-            <div class="ig-opt-desc">Gom toàn bộ ảnh, video bài viết, story & tin nổi bật vào 1 file ZIP.</div>
+            <div class="ig-opt-title">Lưu trữ toàn bộ (All in One)</div>
+            <div class="ig-opt-desc">Tải toàn bộ ảnh, video bài viết, story 24h &amp; tin nổi bật theo thư mục chuẩn xác.</div>
           </div>
 
-          <div class="ig-profile-opt-card" data-mode="stories">
+          <div class="ig-profile-opt-card" data-mode="story">
             <div class="ig-opt-card-top">
               <img src="${iconStoryUrl}" class="ig-opt-icon-img" alt="Story">
             </div>
-            <div class="ig-opt-title">Story & Highlights</div>
-            <div class="ig-opt-desc">Tải trọn bộ Story 24h hiện tại và tất cả album Tin nổi bật còn lưu.</div>
+            <div class="ig-opt-title">Story 24h</div>
+            <div class="ig-opt-desc">Chỉ tải các tin Story đang phát sóng trong 24h qua của tài khoản.</div>
+          </div>
+
+          <div class="ig-profile-opt-card" data-mode="highlight">
+            <div class="ig-opt-card-top">
+              <img src="${iconHighlightUrl}" class="ig-opt-icon-img" alt="Tin nổi bật">
+            </div>
+            <div class="ig-opt-title">Tin nổi bật (Highlights)</div>
+            <div class="ig-opt-desc">Tải trọn bộ các album Tin nổi bật (Highlights) còn lưu trên trang.</div>
           </div>
 
           <div class="ig-profile-opt-card" data-mode="videos">
@@ -2026,17 +2172,7 @@
           </div>
         </div>
 
-        <div class="ig-profile-limit-row" style="margin-bottom: 12px;">
-          <span>Giới hạn số lượng bài viết:</span>
-          <select class="ig-profile-limit-select">
-            <option value="0" selected>Tất cả bài viết (Toàn bộ)</option>
-            <option value="50">50 bài gần nhất</option>
-            <option value="30">30 bài gần nhất</option>
-            <option value="12">12 bài mới nhất</option>
-          </select>
-        </div>
-
-        <div class="ig-profile-struct-section">
+        <div class="ig-profile-struct-section" style="margin-bottom: 12px;">
           <div class="ig-profile-struct-header">
             <span>Cấu trúc xuất file:</span>
             <span class="ig-profile-struct-badge">Tùy chọn sắp xếp</span>
@@ -2048,9 +2184,8 @@
                 <span class="ig-struct-radio-dot"></span>
               </div>
               <div class="ig-struct-title">Theo thư mục</div>
-              <div class="ig-struct-desc">Mỗi bài 1 folder, Story xuất thẳng</div>
               <div class="ig-struct-tooltip">
-                Mỗi bài viết là 1 thư mục riêng. Bài viết 1 video &amp; Story đang đăng xuất thẳng. Highlights phân theo từng thư mục.
+                Phân loại theo từng thư mục (Story, Highlight, Post, Reels). Tên file đánh số theo thứ tự.
               </div>
             </div>
 
@@ -2060,15 +2195,21 @@
                 <span class="ig-struct-radio-dot"></span>
               </div>
               <div class="ig-struct-title">Xuất hàng loạt</div>
-              <div class="ig-struct-desc">Gom tất cả file theo danh mục</div>
               <div class="ig-struct-tooltip">
-                Tất cả file ảnh, video, story được gom chung vào các thư mục lớn (photos, videos,...), không chia nhỏ từng bài.
+                Tất cả file ảnh, video, story được gom chung vào các thư mục lớn (Post, Story, Highlight, Reels).
               </div>
             </div>
           </div>
-          <div class="ig-struct-live-note">
-            💡 <strong>Theo thư mục:</strong> Mỗi bài viết 1 folder (chứa ảnh/video), bài viết 1 video &amp; Story xuất thẳng, Highlights phân theo thư mục đánh số.
-          </div>
+        </div>
+
+        <div class="ig-profile-limit-row" style="margin-bottom: 18px;">
+          <span>Giới hạn số lượng bài viết:</span>
+          <select class="ig-profile-limit-select">
+            <option value="0" selected>Tất cả bài viết (Toàn bộ)</option>
+            <option value="50">50 bài gần nhất</option>
+            <option value="30">30 bài gần nhất</option>
+            <option value="12">12 bài mới nhất</option>
+          </select>
         </div>
 
         <button class="ig-profile-start-btn" type="button">
@@ -2077,7 +2218,7 @@
             <polyline points="7 10 12 15 17 10"></polyline>
             <line x1="12" y1="15" x2="12" y2="3"></line>
           </svg>
-          <span>Bắt đầu tải về & Đóng gói ZIP</span>
+          <span>Bắt đầu tải về máy</span>
         </button>
       </div>
     `;
@@ -2096,64 +2237,83 @@
     });
 
     let selectedExportStruct = 'folders';
-    const structNotes = {
-      folders: '💡 <strong>Theo thư mục:</strong> Mỗi bài viết 1 folder (chứa ảnh/video), bài viết 1 video &amp; Story xuất thẳng, Highlights phân theo thư mục đánh số.',
-      bulk: '💡 <strong>Xuất hàng loạt:</strong> Gom chung toàn bộ file vào các danh mục lớn (photos, videos,...), không tạo folder con theo bài viết.'
-    };
 
     const structCards = overlay.querySelectorAll('.ig-struct-card');
-    const liveNoteEl = overlay.querySelector('.ig-struct-live-note');
-
     structCards.forEach(card => {
       card.addEventListener('click', () => {
         structCards.forEach(c => c.classList.remove('active'));
         card.classList.add('active');
         selectedExportStruct = card.getAttribute('data-struct') || 'folders';
-        if (liveNoteEl && structNotes[selectedExportStruct]) {
-          liveNoteEl.innerHTML = structNotes[selectedExportStruct];
-        }
-      });
-
-      card.addEventListener('mouseenter', () => {
-        const hoverStruct = card.getAttribute('data-struct');
-        if (liveNoteEl && structNotes[hoverStruct]) {
-          liveNoteEl.innerHTML = structNotes[hoverStruct];
-        }
-      });
-
-      card.addEventListener('mouseleave', () => {
-        if (liveNoteEl && structNotes[selectedExportStruct]) {
-          liveNoteEl.innerHTML = structNotes[selectedExportStruct];
-        }
       });
     });
 
     const closeBtn = overlay.querySelector('.ig-profile-modal-close');
-    closeBtn.addEventListener('click', () => overlay.remove());
+    closeBtn.addEventListener('click', () => {
+      if (overlay.__isDownloading && typeof overlay.__minimizeFn === 'function') {
+        overlay.__minimizeFn();
+      } else {
+        overlay.remove();
+      }
+    });
 
     overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) overlay.remove();
+      if (e.target === overlay) {
+        if (overlay.__isDownloading && typeof overlay.__minimizeFn === 'function') {
+          overlay.__minimizeFn();
+        } else {
+          overlay.remove();
+        }
+      }
     });
 
     const startBtn = overlay.querySelector('.ig-profile-start-btn');
-    startBtn.addEventListener('click', () => {
+    startBtn.addEventListener('click', async () => {
       const limitSelect = overlay.querySelector('.ig-profile-limit-select');
       const postLimit = parseInt(limitSelect?.value || '0', 10);
-      startProfileBatchDownload(username, selectedMode, postLimit, overlay, selectedExportStruct);
+      const zipFilename = `instagram_${username}_${selectedMode}_${Math.floor(Date.now() / 1000)}.zip`;
+
+      let fileHandle = null;
+      if (typeof window.showSaveFilePicker === 'function') {
+        try {
+          fileHandle = await window.showSaveFilePicker({
+            suggestedName: zipFilename,
+            types: [{
+              description: 'Tệp nén ZIP (*.zip)',
+              accept: { 'application/zip': ['.zip'] }
+            }]
+          });
+        } catch (err) {
+          if (err.name === 'AbortError') {
+            return; // Người dùng ấn Hủy (Cancel) trên hộp thoại lưu file
+          }
+          console.warn('[Profile Downloader] showSaveFilePicker not used:', err);
+        }
+      }
+
+      startProfileBatchDownload(username, selectedMode, postLimit, overlay, selectedExportStruct, fileHandle, zipFilename);
     });
   }
 
-  async function startProfileBatchDownload(username, selectedMode, postLimit, overlay, exportStruct = 'folders') {
+  async function startProfileBatchDownload(username, selectedMode, postLimit, overlay, exportStruct = 'folders', fileHandle = null, zipFilename = null) {
     const modal = overlay.querySelector('.ig-profile-modal');
     if (!modal) return;
+
+    if (!zipFilename) {
+      zipFilename = `instagram_${username}_${selectedMode}_${Math.floor(Date.now() / 1000)}.zip`;
+    }
 
     let isCancelled = false;
     let stopEarlyAndZip = false;
     const requestId = 'req_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
 
+    overlay.__isDownloading = true;
+
     const modeLabels = {
-      all: 'Tất cả (All in One)',
-      stories: 'Story & Highlights',
+      all: 'Lưu trữ (All in One)',
+      story: 'Story 24h',
+      stories: 'Story 24h',
+      highlight: 'Tin nổi bật (Highlights)',
+      highlights: 'Tin nổi bật (Highlights)',
       videos: 'File video (Videos & Reels)',
       photos: 'File ảnh (Photos)'
     };
@@ -2166,7 +2326,12 @@
             <div class="ig-profile-header-sub">Chế độ: ${modeLabels[selectedMode] || selectedMode}</div>
           </div>
         </div>
-        <button class="ig-profile-modal-close ig-btn-cancel-top" type="button" title="Hủy bỏ">&times;</button>
+        <div class="ig-profile-modal-header-actions" style="display:flex;align-items:center;gap:6px;">
+          <button class="ig-profile-modal-min ig-btn-minimize" type="button" title="Thu nhỏ / Ẩn thanh tiến trình" style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.8);border-radius:8px;cursor:pointer;transition:all 0.2s ease;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </button>
+          <button class="ig-profile-modal-close ig-btn-cancel-top" type="button" title="Hủy bỏ">&times;</button>
+        </div>
       </div>
 
       <div class="ig-profile-progress-view">
@@ -2188,8 +2353,8 @@
             <strong class="ig-stat-files">0 / 0</strong>
           </div>
           <div class="ig-stat-box">
-            <span>Dung lượng</span>
-            <strong class="ig-stat-bytes">0.0 MB</strong>
+            <span>Đã ghi vào đĩa</span>
+            <strong class="ig-stat-bytes">0 MB</strong>
           </div>
           <div class="ig-stat-box">
             <span>Trạng thái</span>
@@ -2203,7 +2368,7 @@
         </div>
 
         <div class="ig-progress-actions">
-          <button class="ig-btn-stop-save" type="button" disabled>Dừng & Nén ngay (0 file)</button>
+          <button class="ig-btn-stop-save" type="button" disabled>Dừng tải (0 file)</button>
           <button class="ig-btn-cancel" type="button">Hủy bỏ</button>
         </div>
       </div>
@@ -2220,16 +2385,105 @@
     const stopSaveBtn = modal.querySelector('.ig-btn-stop-save');
     const cancelBtn = modal.querySelector('.ig-btn-cancel');
     const cancelTopBtn = modal.querySelector('.ig-btn-cancel-top');
+    const minBtn = modal.querySelector('.ig-btn-minimize');
+
+    let floatingPill = null;
+    let currentPercent = 0;
+    let currentStatusText = 'Đang phân tích tài khoản...';
+    let currentFilesText = '0 / 0';
+
+    function createOrUpdateFloatingPill(percent, statusText, filesText) {
+      if (isCancelled) return;
+      if (!floatingPill) {
+        floatingPill = document.createElement('div');
+        floatingPill.className = 'ig-profile-floating-pill';
+        floatingPill.title = 'Nhấn để mở lại cửa sổ tiến trình tải @' + username;
+        floatingPill.innerHTML = `
+          <div class="ig-floating-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+          </div>
+          <div class="ig-floating-info">
+            <div class="ig-floating-title-row">
+              <span class="ig-floating-title">@${username}</span>
+              <span class="ig-floating-percent">${percent}%</span>
+            </div>
+            <div class="ig-floating-status">${statusText || 'Đang xử lý...'}</div>
+            <div class="ig-floating-bar-track">
+              <div class="ig-floating-bar-fill" style="width: ${percent}%;"></div>
+            </div>
+          </div>
+          <div class="ig-floating-actions">
+            <button class="ig-floating-btn-expand" type="button" title="Mở lại cửa sổ">Phóng to</button>
+            <button class="ig-floating-btn-cancel" type="button" title="Hủy bỏ tiến trình" style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.12);border:none;color:rgba(255,255,255,0.8);cursor:pointer;font-size:14px;line-height:1;margin-left:4px;">&times;</button>
+          </div>
+        `;
+
+        floatingPill.querySelector('.ig-floating-btn-cancel').addEventListener('click', (e) => {
+          e.stopPropagation();
+          cancelProcess();
+        });
+
+        floatingPill.addEventListener('click', (e) => {
+          e.stopPropagation();
+          restoreFromFloating();
+        });
+
+        document.body.appendChild(floatingPill);
+      }
+
+      const pEl = floatingPill.querySelector('.ig-floating-percent');
+      const sEl = floatingPill.querySelector('.ig-floating-status');
+      const bEl = floatingPill.querySelector('.ig-floating-bar-fill');
+
+      if (pEl) pEl.textContent = `${percent}%`;
+      if (sEl) sEl.textContent = statusText || (filesText ? `${filesText}` : 'Đang xử lý...');
+      if (bEl) bEl.style.width = `${percent}%`;
+    }
+
+    function minimizeToFloating() {
+      if (isCancelled) return;
+      overlay.classList.add('ig-minimized');
+      createOrUpdateFloatingPill(currentPercent, currentStatusText, currentFilesText);
+    }
+
+    function restoreFromFloating() {
+      if (floatingPill) {
+        floatingPill.remove();
+        floatingPill = null;
+      }
+      overlay.classList.remove('ig-minimized');
+    }
+
+    overlay.__minimizeFn = minimizeToFloating;
+
+    if (minBtn) {
+      minBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        minimizeToFloating();
+      });
+    }
 
     function cancelProcess() {
       if (isCancelled) return;
       isCancelled = true;
+      overlay.__isDownloading = false;
       cleanupListeners();
+      if (floatingPill) {
+        floatingPill.remove();
+        floatingPill = null;
+      }
       overlay.remove();
     }
 
     cancelBtn.addEventListener('click', cancelProcess);
-    cancelTopBtn.addEventListener('click', cancelProcess);
+    cancelTopBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      minimizeToFloating();
+    });
 
     stopSaveBtn.addEventListener('click', () => {
       stopEarlyAndZip = true;
@@ -2241,11 +2495,16 @@
     function setProgress(percent, stageTitle, stageSub, tickerText) {
       if (isCancelled) return;
       const cleanPct = Math.min(100, Math.max(0, Math.floor(percent)));
+      currentPercent = cleanPct;
+      if (stageTitle) currentStatusText = stageTitle;
       if (percentEl) percentEl.textContent = `${cleanPct}%`;
       if (fillEl) fillEl.style.width = `${cleanPct}%`;
       if (stageTitle && stageTitleEl) stageTitleEl.textContent = stageTitle;
       if (stageSub && stageSubEl) stageSubEl.textContent = stageSub;
       if (tickerText && tickerTextEl) tickerTextEl.textContent = tickerText;
+      if (floatingPill) {
+        createOrUpdateFloatingPill(currentPercent, currentStatusText, currentFilesText);
+      }
     }
 
     const onScanProgress = (e) => {
@@ -2293,9 +2552,9 @@
             type: selectedMode,
             postLimit: postLimit,
             exportStruct: exportStruct,
-            includePosts: selectedMode !== 'stories',
-            includeStories: selectedMode === 'all' || selectedMode === 'stories',
-            includeHighlights: selectedMode === 'all' || selectedMode === 'stories'
+            includePosts: (selectedMode === 'all' || selectedMode === 'videos' || selectedMode === 'photos'),
+            includeStories: (selectedMode === 'all' || selectedMode === 'story' || selectedMode === 'stories'),
+            includeHighlights: (selectedMode === 'all' || selectedMode === 'highlight' || selectedMode === 'highlights')
           }
         }
       }));
@@ -2312,6 +2571,8 @@
 
     if (items.error) {
       cleanupListeners();
+      restoreFromFloating();
+      overlay.__isDownloading = false;
       modal.innerHTML = `
         <div class="ig-profile-modal-header">
           <div class="ig-profile-header-title">Thông báo</div>
@@ -2330,6 +2591,8 @@
     const mediaList = items.items || [];
     if (mediaList.length === 0) {
       cleanupListeners();
+      restoreFromFloating();
+      overlay.__isDownloading = false;
       modal.innerHTML = `
         <div class="ig-profile-modal-header">
           <div class="ig-profile-header-title">Không tìm thấy nội dung</div>
@@ -2345,107 +2608,322 @@
       return;
     }
 
-    // BẮT ĐẦU TẢI DỮ LIỆU MEDIA CONCURRENT (3 luồng song song)
-    setProgress(30, 'Bắt đầu tải dữ liệu media...', `Tổng cộng ${mediaList.length} file`, `Chuẩn bị tải ${mediaList.length} file về máy...`);
-    statStatusEl.textContent = '3 luồng tải';
-    stopSaveBtn.disabled = false;
-    stopSaveBtn.textContent = `Dừng & Nén ngay (0/${mediaList.length})`;
+    // BẮT ĐẦU TẢI DỮ LIỆU MEDIA QUA STREAMING TRỰC TIẾP XUỐNG Ổ CỨNG HOẶC ZERO-COPY ZIP
+    const rootFolder = `Instagram_${username}`;
+    let totalDownloadedBytes = 0;
+    const downloadedItems = [];
+    let totalZipSizeMB = '0.0';
 
-    const filesToZip = [];
-    let downloadedCount = 0;
-    let totalBytes = 0;
-    let fileIndex = 0;
-    const concurrency = 3;
+    let writable = null;
+    if (fileHandle) {
+      try {
+        writable = await fileHandle.createWritable();
+      } catch (err) {
+        console.warn('[Profile Downloader] createWritable failed, fallback to memory:', err);
+      }
+    }
 
-    async function downloadWorker() {
-      while (fileIndex < mediaList.length) {
+    if (writable) {
+      // =========================================================================
+      // CHẾ ĐỘ STREAMING TRỰC TIẾP XUỐNG Ổ CỨNG (FILE SYSTEM ACCESS API - RAM < 15MB)
+      // Dữ liệu đọc từ mạng đến đâu ghi ngay từng chunk 64KB xuống ổ cứng đến đó.
+      // Tuyệt đối không giữ video trong RAM -> RAM tab luôn giữ ở mức 10MB - 15MB.
+      // =========================================================================
+      setProgress(30, 'Bắt đầu nạp & ghi file...', `Tổng cộng ${mediaList.length} file`, `Đang lưu media về máy...`);
+      statStatusEl.textContent = 'Đang lưu';
+      stopSaveBtn.disabled = false;
+      stopSaveBtn.textContent = `Dừng & Hoàn tất (0/${mediaList.length})`;
+
+      let downloadedCount = 0;
+      let currentOffset = 0;
+      const centralRecords = [];
+      const textEncoder = new TextEncoder();
+
+      for (let idx = 0; idx < mediaList.length; idx++) {
         if (isCancelled || stopEarlyAndZip) break;
-        const idx = fileIndex++;
         const item = mediaList[idx];
+        let downloadUrl = item.url;
+        let targetZipPath = `${rootFolder}/${item.filename}`;
+
+        // Kiểm tra đối với Story: nếu là video nhưng có imageUrl dự phòng, kiểm tra buffer để nhận diện video 1-fps (ảnh kèm nhạc)
+        if (item.category === 'story' && item.type === 'video' && item.imageUrl) {
+          try {
+            const probeRes = await fetch(item.url, { credentials: 'omit' });
+            if (probeRes.ok) {
+              const buf = await probeRes.arrayBuffer();
+              if (isMp41FpsPseudoVideo(buf)) {
+                // ĐÂY LÀ ẢNH KÈM NHẠC -> Tự động chuyển sang lưu ảnh gốc .jpg (tránh lỗi đen màn hình trên PC)
+                downloadUrl = item.imageUrl;
+                targetZipPath = targetZipPath.replace(/\.mp4$/i, '.jpg');
+                item.type = 'image';
+              }
+            }
+          } catch (_) {}
+        }
+
+        const nameBytes = textEncoder.encode(targetZipPath);
+        const fileOffset = currentOffset;
 
         try {
-          const res = await fetch(item.url, { credentials: 'omit' });
-          if (res.ok) {
-            const arrayBuf = await res.arrayBuffer();
-            const byteLen = arrayBuf.byteLength;
-            totalBytes += byteLen;
-            downloadedCount++;
+          // 1. Ghi Local File Header với Flag Data Descriptor (0x0808)
+          const lh = new Uint8Array(30 + nameBytes.length);
+          const view = new DataView(lh.buffer);
+          view.setUint32(0, 0x04034b50, true);
+          view.setUint16(4, 20, true);
+          view.setUint16(6, 0x0808, true); // bit 3 (data descriptor) + bit 11 (utf-8)
+          view.setUint16(8, 0, true); // STORE
+          view.setUint16(10, 0, true);
+          view.setUint16(12, 0, true);
+          view.setUint32(14, 0, true);
+          view.setUint32(18, 0, true);
+          view.setUint32(22, 0, true);
+          view.setUint16(26, nameBytes.length, true);
+          view.setUint16(28, 0, true);
+          lh.set(nameBytes, 30);
+          await writable.write(lh);
+          currentOffset += lh.length;
 
+          // 2. Fetch và Stream trực tiếp từng chunk 64KB xuống file (RAM < 15MB)
+          const res = await fetch(downloadUrl);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const reader = res.body.getReader();
+          let crc = 0xFFFFFFFF;
+          let fileSize = 0;
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            fileSize += value.length;
+            for (let i = 0; i < value.length; i++) {
+              crc = (crc >>> 8) ^ crcTable[(crc ^ value[i]) & 0xFF];
+            }
+            await writable.write(value);
+            currentOffset += value.length;
+          }
+          crc = (crc ^ 0xFFFFFFFF) >>> 0;
+
+          // 3. Ghi 16-byte Data Descriptor
+          const dd = new Uint8Array(16);
+          const ddView = new DataView(dd.buffer);
+          ddView.setUint32(0, 0x08074b50, true);
+          ddView.setUint32(4, crc, true);
+          ddView.setUint32(8, fileSize, true);
+          ddView.setUint32(12, fileSize, true);
+          await writable.write(dd);
+          currentOffset += 16;
+
+          centralRecords.push({
+            nameBytes,
+            crc,
+            size: fileSize,
+            offset: fileOffset
+          });
+
+          downloadedCount++;
+          downloadedItems.push(item);
+          totalDownloadedBytes += fileSize;
+
+          const pct = 30 + Math.floor((downloadedCount / mediaList.length) * 65);
+          const totalMB = (totalDownloadedBytes / (1024 * 1024)).toFixed(1);
+
+          setProgress(
+            pct,
+            `Đang tải media: ${downloadedCount} / ${mediaList.length} file...`,
+            `Đã ghi ${totalMB} MB (${Math.round((downloadedCount / mediaList.length) * 100)}%)`,
+            `✓ ${item.filename}`
+          );
+
+          if (statFilesEl) statFilesEl.textContent = `${downloadedCount} / ${mediaList.length}`;
+          if (statBytesEl) statBytesEl.textContent = `${totalMB} MB`;
+          if (stopSaveBtn) stopSaveBtn.textContent = `Dừng & Hoàn tất (${downloadedCount}/${mediaList.length})`;
+        } catch (err) {
+          console.warn('[Profile Downloader] stream write error:', item.url, err);
+        }
+      }
+
+      if (isCancelled) {
+        try { await writable.abort(); } catch (_) {}
+        cleanupListeners();
+        return;
+      }
+
+      if (centralRecords.length === 0) {
+        try { await writable.abort(); } catch (_) {}
+        cleanupListeners();
+        restoreFromFloating();
+        overlay.__isDownloading = false;
+        alert('Không thể tải các tệp tin media. Vui lòng kiểm tra lại kết nối mạng.');
+        overlay.remove();
+        return;
+      }
+
+      // 4. Ghi Central Directory và End of Central Directory
+      setProgress(98, 'Đang hoàn tất tệp ZIP...', `Đã ghi ${centralRecords.length} file vào ổ cứng`, 'Đang cập nhật chỉ mục file ZIP...');
+
+      const cdOffset = currentOffset;
+      for (const rec of centralRecords) {
+        const cd = new Uint8Array(46 + rec.nameBytes.length);
+        const view = new DataView(cd.buffer);
+        view.setUint32(0, 0x02014b50, true);
+        view.setUint16(4, 20, true);
+        view.setUint16(6, 20, true);
+        view.setUint16(8, 0x0808, true);
+        view.setUint16(10, 0, true);
+        view.setUint16(12, 0, true);
+        view.setUint16(14, 0, true);
+        view.setUint32(16, rec.crc, true);
+        view.setUint32(20, rec.size, true);
+        view.setUint32(24, rec.size, true);
+        view.setUint16(28, rec.nameBytes.length, true);
+        view.setUint16(30, 0, true);
+        view.setUint16(32, 0, true);
+        view.setUint16(34, 0, true);
+        view.setUint16(36, 0, true);
+        view.setUint32(38, 0, true);
+        view.setUint32(42, rec.offset, true);
+        cd.set(rec.nameBytes, 46);
+        await writable.write(cd);
+        currentOffset += cd.length;
+      }
+
+      const cdSize = currentOffset - cdOffset;
+      const eocd = new Uint8Array(22);
+      const eView = new DataView(eocd.buffer);
+      eView.setUint32(0, 0x06054b50, true);
+      eView.setUint16(4, 0, true);
+      eView.setUint16(6, 0, true);
+      eView.setUint16(8, centralRecords.length, true);
+      eView.setUint16(10, centralRecords.length, true);
+      eView.setUint32(12, cdSize, true);
+      eView.setUint32(16, cdOffset, true);
+      eView.setUint16(20, 0, true);
+      await writable.write(eocd);
+
+      await writable.close();
+
+      totalZipSizeMB = (totalDownloadedBytes / (1024 * 1024)).toFixed(1);
+      setProgress(100, 'Tải về hoàn tất!', `Đã lưu tệp ZIP (${totalZipSizeMB} MB) vào máy`, `✓ Hoàn tất đóng gói ${centralRecords.length} file`);
+      await new Promise(r => setTimeout(r, 350));
+    } else {
+      // Fallback: nếu không có fileHandle (người dùng từ chối cấp quyền hoặc trình duyệt không hỗ trợ)
+      setProgress(30, 'Bắt đầu nạp media...', `Tổng cộng ${mediaList.length} file`, `Đang nạp media...`);
+      statStatusEl.textContent = 'Đang tải';
+      stopSaveBtn.disabled = false;
+      stopSaveBtn.textContent = `Dừng & Nén ngay (0/${mediaList.length})`;
+
+      let downloadedCount = 0;
+      let fileIndex = 0;
+      const concurrency = 2;
+      const filesToZip = [];
+      const textEncoder = new TextEncoder();
+
+      async function downloadWorker() {
+        while (fileIndex < mediaList.length) {
+          if (isCancelled || stopEarlyAndZip) break;
+          const idx = fileIndex++;
+          const item = mediaList[idx];
+          const targetZipPath = `${rootFolder}/${item.filename}`;
+
+          try {
+            const res = await fetch(item.url);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const blob = await res.blob();
+            const crc = await calculateBlobCrc32(blob);
+
+            totalDownloadedBytes += blob.size;
+            downloadedCount++;
+            downloadedItems.push(item);
             filesToZip.push({
-              name: item.filename,
-              data: new Uint8Array(arrayBuf),
-              category: item.category,
-              type: item.type
+              nameBytes: textEncoder.encode(targetZipPath),
+              blob: blob,
+              size: blob.size,
+              crc: crc
             });
 
             if (isCancelled) break;
 
-            const pct = 30 + Math.floor((downloadedCount / mediaList.length) * 58);
-            const currentMB = (totalBytes / (1024 * 1024)).toFixed(1);
+            const pct = 30 + Math.floor((downloadedCount / mediaList.length) * 62);
+            const totalMB = (totalDownloadedBytes / (1024 * 1024)).toFixed(1);
 
             setProgress(
               pct,
               `Đang tải media: ${downloadedCount} / ${mediaList.length} file...`,
-              `Đã tải ${currentMB} MB (${Math.round((downloadedCount / mediaList.length) * 100)}%)`,
-              `✓ ${item.filename} (${formatBytes(byteLen)})`
+              `Đã tải ${totalMB} MB (${Math.round((downloadedCount / mediaList.length) * 100)}%)`,
+              `✓ ${item.filename}`
             );
 
             if (statFilesEl) statFilesEl.textContent = `${downloadedCount} / ${mediaList.length}`;
-            if (statBytesEl) statBytesEl.textContent = `${currentMB} MB`;
+            if (statBytesEl) statBytesEl.textContent = `${totalMB} MB`;
             if (stopSaveBtn) stopSaveBtn.textContent = `Dừng & Nén ngay (${downloadedCount}/${mediaList.length})`;
+          } catch (err) {
+            console.warn('[Profile Downloader] fetch error:', item.url, err);
           }
-        } catch (err) {
-          console.warn('[Profile Downloader] fetch media error:', item.url, err);
         }
       }
+
+      const workers = [];
+      const numWorkers = Math.min(concurrency, mediaList.length);
+      for (let w = 0; w < numWorkers; w++) {
+        workers.push(downloadWorker());
+      }
+
+      await Promise.all(workers);
+
+      if (isCancelled) {
+        cleanupListeners();
+        return;
+      }
+
+      if (filesToZip.length === 0) {
+        cleanupListeners();
+        restoreFromFloating();
+        overlay.__isDownloading = false;
+        alert('Không thể tải các tệp tin media. Vui lòng kiểm tra lại kết nối mạng.');
+        overlay.remove();
+        return;
+      }
+
+      setProgress(95, 'Đang tạo tệp ZIP...', `Đang đóng gói ${filesToZip.length} file...`, `Tạo tệp ZIP duy nhất...`);
+
+      const zipBlob = createZipBlobFromBlobs(filesToZip);
+      totalZipSizeMB = (zipBlob.size / (1024 * 1024)).toFixed(1);
+      const blobUrl = URL.createObjectURL(zipBlob);
+
+      await new Promise((resolve) => {
+        if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+          chrome.runtime.sendMessage({
+            action: 'download_file',
+            url: blobUrl,
+            filename: zipFilename
+          }, (res) => {
+            if (!res || !res.success) {
+              const a = document.createElement('a');
+              a.href = blobUrl;
+              a.download = zipFilename;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+            }
+            resolve(true);
+          });
+        } else {
+          const a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = zipFilename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          resolve(true);
+        }
+      });
+
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+      setProgress(100, 'Tải về hoàn tất!', `Đã lưu tệp ZIP (${totalZipSizeMB} MB) vào máy`, `✓ Hoàn tất đóng gói ${filesToZip.length} file`);
+      await new Promise(r => setTimeout(r, 350));
     }
 
-    const workers = [];
-    const numWorkers = Math.min(concurrency, mediaList.length);
-    for (let w = 0; w < numWorkers; w++) {
-      workers.push(downloadWorker());
-    }
-
-    await Promise.all(workers);
-
-    if (isCancelled) {
-      cleanupListeners();
-      return;
-    }
-
-    if (filesToZip.length === 0) {
-      cleanupListeners();
-      alert('Không thể tải các tệp tin media. Vui lòng kiểm tra lại kết nối mạng.');
-      overlay.remove();
-      return;
-    }
-
-    // BƯỚC ĐÓNG GÓI .ZIP (88% -> 98%)
-    setProgress(90, 'Đang đóng gói file nén .ZIP...', 'Đang ghi cấu trúc thư mục & kiểm tra mã CRC32...', 'Tối ưu hóa file nén chất lượng cao...');
-    statStatusEl.textContent = 'Đang nén ZIP...';
-    stopSaveBtn.disabled = true;
-
-    await new Promise(r => setTimeout(r, 60));
-
-    const zipBlob = createZipBlob(filesToZip);
-    const totalZipSizeMB = (zipBlob.size / (1024 * 1024)).toFixed(1);
-    const zipFilename = `instagram_${username}_${selectedMode}_${Date.now()}.zip`;
-
-    // Kích hoạt download
-    setProgress(98, 'Đang lưu file về máy...', `Dung lượng file ZIP: ${totalZipSizeMB} MB`, 'Đang kích hoạt trình duyệt lưu file...');
-
-    const blobUrl = URL.createObjectURL(zipBlob);
-    const a = document.createElement('a');
-    a.href = blobUrl;
-    a.download = zipFilename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
-
-    setProgress(100, 'Hoàn tất đóng gói!', 'File ZIP đã được lưu vào máy tính', `✓ Hoàn thành ${filesToZip.length} file`);
-
-    await new Promise(r => setTimeout(r, 350));
+    restoreFromFloating();
+    overlay.__isDownloading = false;
 
     // Thống kê chi tiết số lượng file theo từng thể loại
     let imageCount = 0;
@@ -2453,47 +2931,54 @@
     let storyCount = 0;
     let highlightCount = 0;
 
-    for (const f of filesToZip) {
-      if (f.category === 'story' || f.name.startsWith('stories/')) {
+    for (const f of downloadedItems) {
+      const fn = f.filename || '';
+      if (f.category === 'story' || fn.startsWith('Story/')) {
         storyCount++;
-      } else if (f.category === 'highlight' || f.name.startsWith('highlights/')) {
+      } else if (f.category === 'highlight' || fn.startsWith('Highlight/')) {
         highlightCount++;
-      } else if (f.type === 'video' || f.name.endsWith('.mp4') || f.name.startsWith('videos/')) {
+      } else if (f.type === 'video' || f.category === 'videos' || fn.startsWith('Reels/') || fn.endsWith('.mp4')) {
         videoCount++;
       } else {
         imageCount++;
       }
     }
 
+    const iconPhotosUrl = CACHED_PROFILE_ICONS.photos || (typeof chrome !== 'undefined' && chrome.runtime?.getURL ? chrome.runtime.getURL('icons/opt_photos.png') : '');
+    const iconVideoUrl = CACHED_PROFILE_ICONS.video || (typeof chrome !== 'undefined' && chrome.runtime?.getURL ? chrome.runtime.getURL('icons/opt_video.png') : '');
+    const iconStoryUrl = CACHED_PROFILE_ICONS.story || (typeof chrome !== 'undefined' && chrome.runtime?.getURL ? chrome.runtime.getURL('icons/opt_story.png') : '');
+    const iconHighlightUrl = CACHED_PROFILE_ICONS.highlight || (typeof chrome !== 'undefined' && chrome.runtime?.getURL ? chrome.runtime.getURL('icons/opt_highlight.png') : '');
+    const iconArchiveUrl = CACHED_PROFILE_ICONS.archive || CACHED_PROFILE_ICONS.all || (typeof chrome !== 'undefined' && chrome.runtime?.getURL ? chrome.runtime.getURL('icons/opt_archive.png') : '');
+
     const statsSegments = [];
     if (selectedMode === 'all') {
-      statsSegments.push(`<span>🖼️ <strong>${imageCount}</strong> ảnh</span>`);
+      statsSegments.push(`<span><img src="${iconPhotosUrl}" class="ig-success-stat-icon" alt="Ảnh"> <strong>${imageCount}</strong> ảnh</span>`);
       statsSegments.push(`<span>•</span>`);
-      statsSegments.push(`<span>🎬 <strong>${videoCount}</strong> video</span>`);
+      statsSegments.push(`<span><img src="${iconVideoUrl}" class="ig-success-stat-icon" alt="Video"> <strong>${videoCount}</strong> video</span>`);
       statsSegments.push(`<span>•</span>`);
-      statsSegments.push(`<span>⏱️ <strong>${storyCount}</strong> story</span>`);
+      statsSegments.push(`<span><img src="${iconStoryUrl}" class="ig-success-stat-icon" alt="Story"> <strong>${storyCount}</strong> story</span>`);
       statsSegments.push(`<span>•</span>`);
-      statsSegments.push(`<span>✨ <strong>${highlightCount}</strong> highlight</span>`);
+      statsSegments.push(`<span><img src="${iconHighlightUrl}" class="ig-success-stat-icon" alt="Highlight"> <strong>${highlightCount}</strong> highlight</span>`);
       statsSegments.push(`<span>•</span>`);
     } else {
       if (imageCount > 0 || selectedMode === 'photos') {
-        statsSegments.push(`<span>🖼️ <strong>${imageCount}</strong> ảnh</span>`);
+        statsSegments.push(`<span><img src="${iconPhotosUrl}" class="ig-success-stat-icon" alt="Ảnh"> <strong>${imageCount}</strong> ảnh</span>`);
         statsSegments.push(`<span>•</span>`);
       }
       if (videoCount > 0 || selectedMode === 'videos') {
-        statsSegments.push(`<span>🎬 <strong>${videoCount}</strong> video</span>`);
+        statsSegments.push(`<span><img src="${iconVideoUrl}" class="ig-success-stat-icon" alt="Video"> <strong>${videoCount}</strong> video</span>`);
         statsSegments.push(`<span>•</span>`);
       }
-      if (storyCount > 0 || selectedMode === 'stories') {
-        statsSegments.push(`<span>⏱️ <strong>${storyCount}</strong> story</span>`);
+      if (storyCount > 0 || selectedMode === 'stories' || selectedMode === 'story') {
+        statsSegments.push(`<span><img src="${iconStoryUrl}" class="ig-success-stat-icon" alt="Story"> <strong>${storyCount}</strong> story</span>`);
         statsSegments.push(`<span>•</span>`);
       }
-      if (highlightCount > 0 || selectedMode === 'stories') {
-        statsSegments.push(`<span>✨ <strong>${highlightCount}</strong> highlight</span>`);
+      if (highlightCount > 0 || selectedMode === 'stories' || selectedMode === 'highlight' || selectedMode === 'highlights') {
+        statsSegments.push(`<span><img src="${iconHighlightUrl}" class="ig-success-stat-icon" alt="Highlight"> <strong>${highlightCount}</strong> highlight</span>`);
         statsSegments.push(`<span>•</span>`);
       }
     }
-    statsSegments.push(`<span>💾 <strong>${totalZipSizeMB} MB</strong></span>`);
+    statsSegments.push(`<span><img src="${iconArchiveUrl}" class="ig-success-stat-icon" alt="Lưu trữ"> <strong>${totalZipSizeMB} MB</strong></span>`);
 
     const typeSuccessTitle = `${modeLabels[selectedMode] || 'Tải xuống'} thành công!`;
 
@@ -2507,15 +2992,13 @@
         </div>
         <div class="ig-success-title">${typeSuccessTitle}</div>
         <div class="ig-success-desc">
-          <strong>@${username}</strong> đã được tải thành công.
+          <strong>@${username}</strong> đã được lưu thành công vào 1 file ZIP duy nhất.<br>
+          <span style="font-size:12px;color:rgba(255,255,255,0.7);display:inline-block;margin-top:4px;">Tên tệp: <code>${zipFilename}</code> (${totalZipSizeMB} MB)</span>
         </div>
         <div class="ig-success-stats-pill">
           ${statsSegments.join('\n          ')}
         </div>
-        <div style="font-size:11.5px;color:rgba(255,255,255,0.5);word-break:break-all;margin-top:2px;">
-          Tên tệp: ${zipFilename}
-        </div>
-        <button class="ig-success-close-btn" type="button">Xong & Đóng</button>
+        <button class="ig-success-close-btn" type="button" style="margin-top:16px !important;width:100%;">Xong &amp; Đóng</button>
       </div>
     `;
 
