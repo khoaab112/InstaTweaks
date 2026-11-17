@@ -1,17 +1,22 @@
 /**
- * IG Web Music Player - Content Script (v1.6.7)
+ * IG Web Music Player - Content Script (v2.5.0)
  * 
- * TÍNH NĂNG MỚI: TỰ ĐỘNG PHÁT KHI CUỘN FEED (Smart Continuous Autoplay):
- * 1. KHI 1 BÀI VIẾT ĐƯỢC BẬT TIẾNG (Active âm thanh):
- *    - Toàn bộ các bài viết có nhạc tiếp theo trên Bảng tin Home sẽ TỰ ĐỘNG PHÁT khi bạn cuộn tới!
- *    - Không cần phải click thủ công từng bài nữa (hoạt động thông minh y hệt video Reels của Instagram).
- * 2. KHI BẠN BẤM TẮT TIẾNG (Mute):
- *    - Nhạc dừng và chế độ tự phát sẽ tạm tắt, cuộn tiếp sẽ im lặng cho đến khi bạn bật lại.
- * 3. TỰ ĐỘNG DỪNG NHẠC KHI GẶP VIDEO GỐC:
- *    - Khi cuộn đến bài viết dạng Video duy nhất, nhạc tự dừng để không đè lên âm thanh gốc của video.
- * 4. ĐỒNG BỘ HIỂN THỊ 100% TRÊN MỌI TRANG (Home Feed, Modal Dialog, Trang đơn /p/):
- *    - Khung phát nhạc hiển thị ngay dưới ảnh với 3 trạng thái phản hồi tức thì (Loading, Ready, No-music).
- * 5. KÉO DÀI 100% BẰNG ĐÚNG BỀ NGANG ẢNH.
+ * TÍNH NĂNG MỚI NỔI BẬT v2.5.0: THANH TRƯỢT MEDIA TOÀN DIỆN (Media Scrubber Slider):
+ * 1. THANH TRƯỢT TUA CHO VIDEO BÀI VIẾT, REELS, MODAL POPUP:
+ *    - Bổ sung thanh tiến trình timeline scrubber cho mọi video Instagram PC (Feed, Reels, Post Modal /p/).
+ *    - Hỗ trợ click / drag để tua tới bất kỳ giây nào, xem thời gian thực (0:15 / 1:20), xem thanh buffer.
+ *    - Tích hợp cụm nút tiện ích: Play/Pause, Tua lùi 5s (-5s), Tua tới 5s (+5s), Tốc độ phát (1x, 1.25x, 1.5x, 2x, 0.75x),
+ *      thanh trượt Âm lượng (0 - 100%), Toàn màn hình (Fullscreen) và Tải video nhanh.
+ *    - Tự động ẩn thông minh khi không rê chuột sau 2.2s (giữ 1 vạch mỏng thanh lịch ở đáy).
+ *    - Hỗ trợ phím tắt khi hover: Space (Play/Pause), Mũi tên Trái/Phải (-5s/+5s), Lên/Xuống (Volume), M (Mute).
+ * 2. THANH TRƯỢT TUA CHO STORY DẠNG VIDEO & HIGHLIGHTS (TIN NỔI BẬT):
+ *    - Thanh điều khiển kính mờ Glassmorphism nổi tinh tế ở đáy màn hình Story / Highlights.
+ *    - Cho phép tua ngược xem lại hoặc tua tới bất kỳ đoạn nào trong Story video & Tin nổi bật Highlights.
+ *    - Hỗ trợ cả slide Story / Highlight dạng ảnh có chèn nhạc.
+ *    - Nút tua nhanh -5s / +5s, nút tốc độ phát (1x, 1.5x, 2x) và hiển thị thời gian chính xác.
+ * 3. THANH TRƯỢT NÂNG CẤP CHO BÀI VIẾT ẢNH CHÈN NHẠC (FEED BAR SCRUBBER):
+ *    - Biến thanh tiến trình tĩnh dưới ảnh thành thanh trượt tương tác cao cấp (drag & click to seek).
+ *    - Núm trượt tròn phát sáng khi hover, hiển thị tooltip thời gian khi rê chuột, đồng bộ thời gian chạy mượt mà.
  */
 
 (function () {
@@ -162,6 +167,41 @@
       <circle cx="12" cy="12" r="10"></circle>
     </svg>
     <style>@keyframes ig-feed-spin { 100% { transform: rotate(360deg); } }</style>`;
+
+  const SVG_PLAY = `
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+      <polygon points="6 3 20 12 6 21 6 3"></polygon>
+    </svg>`;
+
+  const SVG_PAUSE = `
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+      <rect x="6" y="4" width="4" height="16" rx="1"></rect>
+      <rect x="14" y="4" width="4" height="16" rx="1"></rect>
+    </svg>`;
+
+  const SVG_REWIND_5 = `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 4a8 8 0 1 0 7.8 6.2"></path>
+      <polyline points="12 1 12 5 8 5"></polyline>
+      <text x="12" y="15.5" font-size="8.5" font-weight="bold" fill="currentColor" stroke="none" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">5</text>
+    </svg>`;
+
+  const SVG_FORWARD_5 = `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 4a8 8 0 1 1-7.8 6.2"></path>
+      <polyline points="12 1 12 5 16 5"></polyline>
+      <text x="12" y="15.5" font-size="8.5" font-weight="bold" fill="currentColor" stroke="none" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">5</text>
+    </svg>`;
+
+  const SVG_FULLSCREEN = `
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+    </svg>`;
+
+  const SVG_FULLSCREEN_EXIT = `
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>
+    </svg>`;
 
   function formatTime(seconds) {
     const s = Math.floor(seconds || 0);
@@ -999,8 +1039,10 @@
       <button class="ig-feed-speaker-btn" type="button" title="Phát nhạc" disabled>
         ${SVG_SPEAKER_MUTED}
       </button>
-      <div class="ig-progress-track" style="display: none;">
+      <div class="ig-progress-track" style="display: none;" title="Kéo hoặc bấm để tua nhạc">
         <div class="ig-progress-fill"></div>
+        <div class="ig-progress-thumb"></div>
+        <div class="ig-progress-tooltip">0:00</div>
       </div>
     `;
 
@@ -1036,7 +1078,11 @@
           <div class="ig-track-info" title="${track.title} - ${track.artist}">
             <span class="ig-track-title">${track.title}</span>
             ${track.artist ? `<span class="ig-track-divider">•</span><span class="ig-track-artist">${track.artist}</span>` : ''}
-            <span class="ig-clip-duration">${formatTime(clipDurationSec)}</span>
+            <div class="ig-feed-time-wrap">
+              <span class="ig-feed-cur-time">0:00</span>
+              <span class="ig-feed-time-sep">/</span>
+              <span class="ig-clip-duration">${formatTime(clipDurationSec)}</span>
+            </div>
           </div>
         `;
         speakerBtn.removeAttribute('disabled');
@@ -1084,7 +1130,13 @@
 
     const speakerBtn = bar.querySelector('.ig-feed-speaker-btn');
     const barLeft = bar.querySelector('.ig-feed-bar-left');
+    const progressTrack = bar.querySelector('.ig-progress-track');
     const progressFill = bar.querySelector('.ig-progress-fill');
+    const progressThumb = bar.querySelector('.ig-progress-thumb');
+    const progressTooltip = bar.querySelector('.ig-progress-tooltip');
+    const curTimeEl = bar.querySelector('.ig-feed-cur-time');
+
+    let isDraggingAudio = false;
 
     const startSec = (track.startTimeMs || 0) / 1000;
     const clipDurationSec = (track.clipDurationMs || 30000) / 1000;
@@ -1176,6 +1228,85 @@
     speakerBtn.addEventListener('click', togglePlay);
     barLeft.addEventListener('click', togglePlay);
 
+    // --- THANH TRƯỢT TƯƠNG TÁC CHO BÀI VIẾT ẢNH CHÈN NHẠC (FEED SCRUBBER) ---
+    const getAudioScrubPct = (e) => {
+      if (!progressTrack) return 0;
+      const rect = progressTrack.getBoundingClientRect();
+      if (rect.width <= 0) return 0;
+      const clientX = e.clientX ?? (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+      return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    };
+
+    const applyScrubAudio = (pct) => {
+      const relativeSec = pct * clipDurationSec;
+      const actualSec = startSec + relativeSec;
+      audio.currentTime = actualSec;
+      if (progressFill) progressFill.style.width = `${pct * 100}%`;
+      if (progressThumb) progressThumb.style.left = `${pct * 100}%`;
+      if (curTimeEl) curTimeEl.textContent = formatTime(relativeSec);
+    };
+
+    if (progressTrack) {
+      progressTrack.addEventListener('pointerenter', () => {
+        if (progressTooltip) progressTooltip.style.opacity = '1';
+      });
+
+      progressTrack.addEventListener('pointerleave', () => {
+        if (!isDraggingAudio && progressTooltip) {
+          progressTooltip.style.opacity = '0';
+        }
+      });
+
+      progressTrack.addEventListener('pointermove', (e) => {
+        const pct = getAudioScrubPct(e);
+        const relativeSec = pct * clipDurationSec;
+        if (progressTooltip) {
+          progressTooltip.textContent = formatTime(relativeSec);
+          progressTooltip.style.left = `${(pct * 100).toFixed(1)}%`;
+        }
+        if (isDraggingAudio) {
+          applyScrubAudio(pct);
+        }
+      });
+
+      progressTrack.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        isDraggingAudio = true;
+        progressTrack.classList.add('is-dragging');
+        try {
+          progressTrack.setPointerCapture(e.pointerId);
+        } catch (_) {}
+
+        const pct = getAudioScrubPct(e);
+        applyScrubAudio(pct);
+
+        if (progressTooltip) {
+          progressTooltip.style.opacity = '1';
+          progressTooltip.textContent = formatTime(pct * clipDurationSec);
+          progressTooltip.style.left = `${(pct * 100).toFixed(1)}%`;
+        }
+
+        // Tự động phát nếu đang pause
+        if (audio.paused && !currentActive) {
+          startPlay();
+        }
+      });
+
+      const onAudioScrubEnd = (e) => {
+        if (!isDraggingAudio) return;
+        isDraggingAudio = false;
+        progressTrack.classList.remove('is-dragging');
+        try {
+          progressTrack.releasePointerCapture(e.pointerId);
+        } catch (_) {}
+        if (progressTooltip) progressTooltip.style.opacity = '0';
+      };
+
+      progressTrack.addEventListener('pointerup', onAudioScrubEnd);
+      progressTrack.addEventListener('pointercancel', onAudioScrubEnd);
+    }
+
     // KHI THAO TÁC BÀI VIẾT (NEXT ẢNH, LIKE, CLICK ẢNH): TỰ ĐỘNG PHÁT NHẠC & KÍCH HOẠT PHIÊN ÂM THANH
     const postContainer = bar.closest('article') || bar.closest('div[role="dialog"]');
     if (postContainer && !postContainer._hasPostInteractionListener) {
@@ -1215,10 +1346,12 @@
         }
       }
 
-      if (progressFill) {
+      if (!isDraggingAudio) {
         const elapsed = Math.max(0, audio.currentTime - startSec);
         const percent = Math.min(100, (elapsed / clipDurationSec) * 100);
-        progressFill.style.width = `${percent.toFixed(1)}%`;
+        if (progressFill) progressFill.style.width = `${percent.toFixed(1)}%`;
+        if (progressThumb) progressThumb.style.left = `${percent.toFixed(1)}%`;
+        if (curTimeEl) curTimeEl.textContent = formatTime(elapsed);
       }
     });
   }
@@ -1315,43 +1448,460 @@
 
   // --- 7.1. NÚT DOWNLOAD NỔI CHO VIDEO ĐƠN LẺ (Single Video Posts) ---
   function attachFloatingDownloadButton(post) {
-    if (!post || post.querySelector('.ig-floating-download-btn')) return;
-    const video = post.querySelector('video');
-    if (!video) return;
+    // Trong v2.5.0: Video đơn lẻ đã có nút Download tích hợp ngay trong thanh điều khiển trượt lên,
+    // không tạo thêm nút tròn nổi lẻ loi ở góc trái nữa để tránh trùng lặp và vướng giao diện.
+    if (!post) return;
+    const existing = post.querySelector('.ig-floating-download-btn');
+    if (existing) existing.remove();
+  }
 
-    let container = video.parentElement;
-    while (container && container !== post) {
-      if (container.querySelector('button[aria-label*="Audio"], button[aria-label*="âm thanh"], div[role="button"]')) {
-        break;
+  // --- 8. THANH ĐIỀU KHIỂN & THANH TRƯỢT MEDIA CHO VIDEO (v2.5.0 - Tối ưu RAM & Hiệu năng) ---
+  const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+
+  function findVideoContainer(video) {
+    if (!video) return null;
+    // Đi tìm khung chứa bao quát cả video và các lớp overlay/nút bấm của Instagram
+    let cur = video.parentElement;
+    let best = video.parentElement;
+    while (cur && cur.tagName !== 'ARTICLE' && !cur.getAttribute('role')?.includes('dialog') && cur.tagName !== 'BODY') {
+      const cW = cur.offsetWidth || 0;
+      const cH = cur.offsetHeight || 0;
+      const vW = video.offsetWidth || 0;
+      const vH = video.offsetHeight || 0;
+
+      // Nếu chứa các nút điều khiển âm thanh mặc định của IG hoặc là khung tương tác chính
+      const hasNativeControls = cur.querySelector(`
+        button[aria-label*="Audio" i],
+        button[aria-label*="âm thanh" i],
+        button[aria-label*="tiếng" i],
+        button[aria-label*="sound" i],
+        button[aria-label*="Volume" i],
+        button[aria-label*="mute" i],
+        button[aria-label*="unmute" i],
+        button:has(svg[aria-label*="Audio" i]),
+        button:has(svg[aria-label*="âm thanh" i]),
+        button:has(svg[aria-label*="mute" i])
+      `);
+      if (hasNativeControls && cur.contains(video)) {
+        return cur;
       }
-      container = container.parentElement;
-    }
-    if (!container) container = video.parentElement;
 
-    const style = window.getComputedStyle(container);
-    if (style.position === 'static') {
+      if (vW > 0 && vH > 0 && Math.abs(cW - vW) < 20 && Math.abs(cH - vH) < 20) {
+        best = cur;
+      }
+      cur = cur.parentElement;
+    }
+    return best || video.parentElement;
+  }
+
+  function detachVideoController(video) {
+    if (!video) return;
+    if (video._controllerCleanup) {
+      try {
+        video._controllerCleanup();
+      } catch (_) {}
+      video._controllerCleanup = null;
+    }
+    if (video._controllerEl) {
+      video._controllerEl.remove();
+      video._controllerEl = null;
+    }
+    if (video._miniProgressEl) {
+      video._miniProgressEl.remove();
+      video._miniProgressEl = null;
+    }
+    if (video._vctlContainer) {
+      try {
+        video._vctlContainer.removeAttribute('data-ig-vctl-container');
+        video._vctlContainer.classList.remove('vctl-active');
+      } catch (_) {}
+      video._vctlContainer = null;
+    }
+    video._hasCustomController = false;
+  }
+
+  function attachVideoController(video) {
+    if (!video || video._hasCustomController || !video.isConnected) return;
+    if (window.location.pathname.includes('/stories/')) return;
+
+    const w = video.offsetWidth || video.videoWidth || 0;
+    const h = video.offsetHeight || video.videoHeight || 0;
+    if (w < 100 || h < 100) return;
+    if (video.closest('header') || video.closest('nav') || video.closest('aside')) return;
+
+    const container = findVideoContainer(video);
+    if (!container) return;
+
+    video._hasCustomController = true;
+    video._vctlContainer = container;
+
+    // Đánh dấu container để CSS kích hoạt slide-up/slide-down mượt mà
+    container.setAttribute('data-ig-vctl-container', 'true');
+    if (container.style.position === 'static' || !container.style.position) {
       container.style.position = 'relative';
     }
 
-    const btn = document.createElement('button');
-    btn.className = 'ig-floating-download-btn';
-    btn.type = 'button';
-    btn.title = 'Tải video này';
-    btn.innerHTML = SVG_DOWNLOAD;
+    container.querySelectorAll('.ig-video-controller, .ig-vctl-mini-progress').forEach(el => el.remove());
 
-    btn.addEventListener('click', async (e) => {
+    // Ẩn triệt để nút loa mặc định của Instagram khi đã có controller
+    const hideNativeAudioButtons = () => {
+      const scopes = [container, container.parentElement, container.closest('article'), container.closest('div[role="dialog"]')];
+      scopes.forEach(sc => {
+        if (!sc) return;
+        const btns = sc.querySelectorAll('button:not(.ig-vctl-btn)');
+        btns.forEach(btn => {
+          if (btn.closest('.ig-video-controller')) return;
+          const label = (btn.getAttribute('aria-label') || '') + ' ' + (btn.querySelector('svg')?.getAttribute('aria-label') || '');
+          if (/audio|sound|volume|mute|unmute|âm thanh|tiếng/i.test(label)) {
+            btn.style.setProperty('display', 'none', 'important');
+            btn.style.setProperty('opacity', '0', 'important');
+            btn.style.setProperty('visibility', 'hidden', 'important');
+            btn.style.setProperty('pointer-events', 'none', 'important');
+          }
+        });
+      });
+    };
+    hideNativeAudioButtons();
+    setTimeout(hideNativeAudioButtons, 250);
+    setTimeout(hideNativeAudioButtons, 700);
+    setTimeout(hideNativeAudioButtons, 1500);
+
+    // 1. Tạo vạch tiến trình mini (hiển thị mỏng ở đáy khi ẩn thanh điều khiển)
+    const miniProgress = document.createElement('div');
+    miniProgress.className = 'ig-vctl-mini-progress';
+    miniProgress.innerHTML = `<div class="ig-vctl-mini-fill"></div>`;
+    const miniFill = miniProgress.querySelector('.ig-vctl-mini-fill');
+    container.appendChild(miniProgress);
+    video._miniProgressEl = miniProgress;
+
+    // 2. Tạo Controller chính
+    const controller = document.createElement('div');
+    controller.className = 'ig-video-controller';
+    video._controllerEl = controller;
+
+    controller.innerHTML = `
+      <div class="ig-vctl-progress-container" title="Kéo hoặc bấm để tua video">
+        <div class="ig-vctl-progress-track">
+          <div class="ig-vctl-progress-buffer"></div>
+          <div class="ig-vctl-progress-fill"></div>
+          <div class="ig-vctl-progress-thumb"></div>
+        </div>
+        <div class="ig-vctl-time-bubble">0:00</div>
+      </div>
+      <div class="ig-vctl-row">
+        <div class="ig-vctl-left">
+          <button class="ig-vctl-btn ig-vctl-play-btn" type="button" title="Phát / Tạm dừng (Space)">
+            ${video.paused ? SVG_PLAY : SVG_PAUSE}
+          </button>
+          <button class="ig-vctl-btn ig-vctl-rewind-btn" type="button" title="Tua lùi 5 giây (←)">
+            ${SVG_REWIND_5}
+          </button>
+          <button class="ig-vctl-btn ig-vctl-forward-btn" type="button" title="Tua tới 5 giây (→)">
+            ${SVG_FORWARD_5}
+          </button>
+          <div class="ig-vctl-time-display">
+            <span class="ig-vctl-cur-time">${formatTime(video.currentTime || 0)}</span>
+            <span class="ig-vctl-time-sep">/</span>
+            <span class="ig-vctl-dur-time">${formatTime(video.duration || 0)}</span>
+          </div>
+        </div>
+        <div class="ig-vctl-right">
+          <select class="ig-vctl-speed-select" title="Tốc độ phát video">
+            ${SPEED_OPTIONS.map(spd => `<option value="${spd}" ${(video.playbackRate || 1) === spd ? 'selected' : ''}>${spd}x</option>`).join('')}
+          </select>
+          <div class="ig-vctl-vol-group">
+            <button class="ig-vctl-btn ig-vctl-vol-btn" type="button" title="Bật / Tắt tiếng (M)">
+              ${(video.muted || video.volume === 0) ? SVG_SPEAKER_MUTED : SVG_SPEAKER_ON}
+            </button>
+            <div class="ig-vctl-vol-slider-wrap">
+              <input type="range" class="ig-vctl-vol-slider" min="0" max="1" step="0.05" value="${video.muted ? 0 : video.volume}">
+            </div>
+          </div>
+          <button class="ig-vctl-btn ig-vctl-fullscreen-btn" type="button" title="Toàn màn hình">
+            ${SVG_FULLSCREEN}
+          </button>
+          <button class="ig-vctl-btn ig-vctl-dl-btn" type="button" title="Tải video này về máy">
+            ${SVG_DOWNLOAD}
+          </button>
+        </div>
+      </div>
+    `;
+
+    container.appendChild(controller);
+
+    const progressContainer = controller.querySelector('.ig-vctl-progress-container');
+    const progressTrack = controller.querySelector('.ig-vctl-progress-track');
+    const bufferBar = controller.querySelector('.ig-vctl-progress-buffer');
+    const fillBar = controller.querySelector('.ig-vctl-progress-fill');
+    const thumbEl = controller.querySelector('.ig-vctl-progress-thumb');
+    const timeBubble = controller.querySelector('.ig-vctl-time-bubble');
+
+    const playBtn = controller.querySelector('.ig-vctl-play-btn');
+    const rewindBtn = controller.querySelector('.ig-vctl-rewind-btn');
+    const forwardBtn = controller.querySelector('.ig-vctl-forward-btn');
+    const curTimeEl = controller.querySelector('.ig-vctl-cur-time');
+    const durTimeEl = controller.querySelector('.ig-vctl-dur-time');
+
+    const speedSelect = controller.querySelector('.ig-vctl-speed-select');
+    const volBtn = controller.querySelector('.ig-vctl-vol-btn');
+    const volSlider = controller.querySelector('.ig-vctl-vol-slider');
+    const fullscreenBtn = controller.querySelector('.ig-vctl-fullscreen-btn');
+    const dlBtn = controller.querySelector('.ig-vctl-dl-btn');
+
+    let isDragging = false;
+    let hideTimer = null;
+    let savedVolume = video.volume > 0 ? video.volume : 0.8;
+
+    const showControls = () => {
+      container.classList.add('vctl-active');
+      controller.classList.add('is-active');
+      clearTimeout(hideTimer);
+      if (!video.paused && !isDragging) {
+        hideTimer = setTimeout(() => {
+          if (!video.paused && !isDragging && !controller.matches(':hover') && !container.matches(':hover')) {
+            container.classList.remove('vctl-active');
+            controller.classList.remove('is-active');
+          }
+        }, 2200);
+      }
+    };
+
+    const hideControlsImmediate = (e) => {
+      clearTimeout(hideTimer);
+      if (e?.relatedTarget && (container.contains(e.relatedTarget) || controller.contains(e.relatedTarget))) {
+        return;
+      }
+      if (!video.paused && !isDragging) {
+        container.classList.remove('vctl-active');
+        controller.classList.remove('is-active');
+      }
+    };
+
+    container.addEventListener('pointerenter', showControls);
+    container.addEventListener('pointermove', showControls);
+    container.addEventListener('pointerleave', hideControlsImmediate);
+    video.addEventListener('pointerenter', showControls);
+    video.addEventListener('pointermove', showControls);
+    video.addEventListener('pointerleave', hideControlsImmediate);
+    controller.addEventListener('pointerenter', showControls);
+    controller.addEventListener('pointermove', showControls);
+    controller.addEventListener('pointerleave', hideControlsImmediate);
+
+    // Ngăn triệt để mọi sự kiện bấm trên toolbar nổi bọt lên các lớp overlay hay link của Instagram
+    const stopBubble = (e) => {
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+    };
+    controller.addEventListener('click', stopBubble);
+    controller.addEventListener('pointerdown', stopBubble);
+    controller.addEventListener('pointerup', stopBubble);
+    controller.addEventListener('mousedown', stopBubble);
+    controller.addEventListener('mouseup', stopBubble);
+    controller.addEventListener('touchstart', stopBubble, { passive: true });
+
+    let rafTicker = null;
+    const startTicker = () => {
+      stopTicker();
+      const tick = () => {
+        if (!video.paused && !video.ended) {
+          updateProgressUI();
+          rafTicker = requestAnimationFrame(tick);
+        }
+      };
+      rafTicker = requestAnimationFrame(tick);
+    };
+    const stopTicker = () => {
+      if (rafTicker) {
+        cancelAnimationFrame(rafTicker);
+        rafTicker = null;
+      }
+    };
+
+    const updateProgressUI = () => {
+      if (isDragging) return;
+      const cur = video.currentTime || 0;
+      const dur = video.duration || 0;
+      const pct = dur > 0 ? Math.min(100, Math.max(0, (cur / dur) * 100)) : 0;
+
+      fillBar.style.setProperty('width', `${pct}%`, 'important');
+      thumbEl.style.setProperty('left', `${pct}%`, 'important');
+      if (miniFill) miniFill.style.setProperty('width', `${pct}%`, 'important');
+
+      curTimeEl.textContent = formatTime(cur);
+      if (dur > 0) durTimeEl.textContent = formatTime(dur);
+
+      if (video.buffered && video.buffered.length > 0 && dur > 0) {
+        try {
+          const bufEnd = video.buffered.end(video.buffered.length - 1);
+          const bufPct = Math.min(100, Math.max(0, (bufEnd / dur) * 100));
+          bufferBar.style.setProperty('width', `${bufPct}%`, 'important');
+        } catch (_) {}
+      }
+    };
+
+    const getScrubPercent = (e) => {
+      const rect = progressTrack.getBoundingClientRect();
+      if (rect.width <= 0) return 0;
+      const clientX = e.clientX ?? (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+      return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    };
+
+    const onPointerMove = (e) => {
+      const pct = getScrubPercent(e);
+      const dur = video.duration || 0;
+      timeBubble.textContent = formatTime(pct * dur);
+      timeBubble.style.setProperty('left', `${(pct * 100).toFixed(1)}%`, 'important');
+
+      if (isDragging && dur > 0) {
+        video.currentTime = pct * dur;
+        fillBar.style.setProperty('width', `${pct * 100}%`, 'important');
+        thumbEl.style.setProperty('left', `${pct * 100}%`, 'important');
+        if (miniFill) miniFill.style.setProperty('width', `${pct * 100}%`, 'important');
+        curTimeEl.textContent = formatTime(pct * dur);
+      }
+    };
+
+    const stopScrubbing = (e) => {
+      if (!isDragging) return;
+      isDragging = false;
+      controller.classList.remove('is-dragging');
+      try { progressContainer.releasePointerCapture(e.pointerId); } catch (_) {}
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', stopScrubbing);
+      window.removeEventListener('pointercancel', stopScrubbing);
+      timeBubble.style.opacity = '0';
+      showControls();
+    };
+
+    progressContainer.addEventListener('pointerenter', () => { timeBubble.style.opacity = '1'; });
+    progressContainer.addEventListener('pointerleave', () => { if (!isDragging) timeBubble.style.opacity = '0'; });
+
+    progressContainer.addEventListener('pointermove', (e) => {
+      if (!isDragging) {
+        const pct = getScrubPercent(e);
+        const dur = video.duration || 0;
+        timeBubble.textContent = formatTime(pct * dur);
+        timeBubble.style.setProperty('left', `${(pct * 100).toFixed(1)}%`, 'important');
+      }
+    });
+
+    progressContainer.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      if (btn._isDownloading) return;
-      btn._isDownloading = true;
+      isDragging = true;
+      controller.classList.add('is-dragging');
+      try { progressContainer.setPointerCapture(e.pointerId); } catch (_) {}
 
-      const originalHtml = btn.innerHTML;
-      btn.innerHTML = SVG_SPINNER;
-      btn.classList.add('downloading');
+      const pct = getScrubPercent(e);
+      const dur = video.duration || 0;
+      if (dur > 0) {
+        video.currentTime = pct * dur;
+        fillBar.style.setProperty('width', `${pct * 100}%`, 'important');
+        thumbEl.style.setProperty('left', `${pct * 100}%`, 'important');
+        if (miniFill) miniFill.style.setProperty('width', `${pct * 100}%`, 'important');
+        curTimeEl.textContent = formatTime(pct * dur);
+      }
+      timeBubble.style.opacity = '1';
+      timeBubble.textContent = formatTime(pct * dur);
+      timeBubble.style.setProperty('left', `${(pct * 100).toFixed(1)}%`, 'important');
+
+      window.addEventListener('pointermove', onPointerMove);
+      window.addEventListener('pointerup', stopScrubbing);
+      window.addEventListener('pointercancel', stopScrubbing);
+    });
+
+    playBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (video.paused) video.play().catch(() => {});
+      else video.pause();
+    });
+
+    rewindBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      video.currentTime = Math.max(0, (video.currentTime || 0) - 5);
+      showControls();
+    });
+
+    forwardBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const dur = video.duration || Infinity;
+      video.currentTime = Math.min(dur, (video.currentTime || 0) + 5);
+      showControls();
+    });
+
+    speedSelect.addEventListener('change', (e) => {
+      e.stopPropagation();
+      const newSpeed = parseFloat(speedSelect.value);
+      video.playbackRate = newSpeed;
+      showControls();
+    });
+
+    const updateVolumeUI = () => {
+      const isMuted = video.muted || video.volume === 0;
+      volBtn.innerHTML = isMuted ? SVG_SPEAKER_MUTED : SVG_SPEAKER_ON;
+      volSlider.value = isMuted ? 0 : video.volume;
+    };
+
+    volBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (video.muted || video.volume === 0) {
+        video.muted = false;
+        video.volume = savedVolume > 0 ? savedVolume : 0.8;
+      } else {
+        savedVolume = video.volume;
+        video.muted = true;
+      }
+      updateVolumeUI();
+      showControls();
+    });
+
+    volSlider.addEventListener('input', (e) => {
+      e.stopPropagation();
+      const val = parseFloat(volSlider.value);
+      video.volume = val;
+      if (val === 0) {
+        video.muted = true;
+      } else {
+        video.muted = false;
+        savedVolume = val;
+      }
+      updateVolumeUI();
+      showControls();
+    });
+
+    fullscreenBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const fsEl = document.fullscreenElement;
+      if (!fsEl) {
+        if (container.requestFullscreen) {
+          container.requestFullscreen().catch(() => video.requestFullscreen?.());
+        } else if (video.requestFullscreen) {
+          video.requestFullscreen();
+        }
+      } else {
+        document.exitFullscreen?.();
+      }
+    });
+
+    dlBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (dlBtn._isDownloading) return;
+      dlBtn._isDownloading = true;
+
+      const origHtml = dlBtn.innerHTML;
+      dlBtn.innerHTML = SVG_SPINNER;
+      dlBtn.classList.add('downloading');
 
       try {
-        const shortcode = getShortcodeFromPost(post) || getPageShortcode();
         let videoUrl = video.currentSrc || video.src;
+        const post = container.closest('article') || container.closest('div[role="dialog"]');
+        const shortcode = (post ? getShortcodeFromPost(post) : null) || getPageShortcode();
         if (shortcode) {
           const items = await requestPostMedia(shortcode);
           const vidItem = items.find(i => i.type === 'video');
@@ -1360,28 +1910,399 @@
 
         if (videoUrl) {
           await downloadUrlAsBlob(videoUrl, `instagram_${shortcode || 'video'}.mp4`);
-          btn.innerHTML = SVG_CHECKMARK;
-          btn.classList.remove('downloading');
-          btn.classList.add('success');
+          dlBtn.innerHTML = SVG_CHECKMARK;
           setTimeout(() => {
-            btn.innerHTML = originalHtml;
-            btn.classList.remove('success');
-            btn._isDownloading = false;
-          }, 2200);
+            dlBtn.innerHTML = origHtml;
+            dlBtn.classList.remove('downloading');
+            dlBtn._isDownloading = false;
+          }, 2000);
         } else {
-          btn.innerHTML = originalHtml;
-          btn.classList.remove('downloading');
-          btn._isDownloading = false;
+          dlBtn.innerHTML = origHtml;
+          dlBtn.classList.remove('downloading');
+          dlBtn._isDownloading = false;
         }
-      } catch (err) {
-        console.error('[IG Video Download] Error:', err);
-        btn.innerHTML = originalHtml;
-        btn.classList.remove('downloading');
-        btn._isDownloading = false;
+      } catch (_) {
+        dlBtn.innerHTML = origHtml;
+        dlBtn.classList.remove('downloading');
+        dlBtn._isDownloading = false;
       }
     });
 
-    container.appendChild(btn);
+    const onPlay = () => {
+      playBtn.innerHTML = SVG_PAUSE;
+      controller.classList.remove('is-paused');
+      showControls();
+      startTicker();
+    };
+
+    const onPause = () => {
+      playBtn.innerHTML = SVG_PLAY;
+      controller.classList.add('is-paused');
+      controller.classList.add('is-active');
+      stopTicker();
+      updateProgressUI();
+    };
+
+    const onEnded = () => {
+      playBtn.innerHTML = SVG_PLAY;
+      controller.classList.add('is-paused');
+      controller.classList.add('is-active');
+      stopTicker();
+      updateProgressUI();
+    };
+
+    video.addEventListener('timeupdate', updateProgressUI);
+    video.addEventListener('progress', updateProgressUI);
+    video.addEventListener('loadedmetadata', updateProgressUI);
+    video.addEventListener('durationchange', updateProgressUI);
+    video.addEventListener('play', onPlay);
+    video.addEventListener('pause', onPause);
+    video.addEventListener('ended', onEnded);
+    video.addEventListener('volumechange', updateVolumeUI);
+
+    // DỌN DẸP SẠCH SẼ TẤT CẢ EVENT LISTENER KHI VIDEO RA KHỎI VIEWPORT HOẶC BỊ HỦY (CHỐNG LEAK RAM)
+    video._controllerCleanup = () => {
+      stopTicker();
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', stopScrubbing);
+      window.removeEventListener('pointercancel', stopScrubbing);
+      video.removeEventListener('timeupdate', updateProgressUI);
+      video.removeEventListener('progress', updateProgressUI);
+      video.removeEventListener('loadedmetadata', updateProgressUI);
+      video.removeEventListener('durationchange', updateProgressUI);
+      video.removeEventListener('play', onPlay);
+      video.removeEventListener('pause', onPause);
+      video.removeEventListener('ended', onEnded);
+      video.removeEventListener('volumechange', updateVolumeUI);
+      video.removeEventListener('pointerenter', showControls);
+      video.removeEventListener('pointermove', showControls);
+      video.removeEventListener('pointerleave', hideControlsImmediate);
+      container.removeEventListener('pointerenter', showControls);
+      container.removeEventListener('pointermove', showControls);
+      container.removeEventListener('pointerleave', hideControlsImmediate);
+      controller.removeEventListener('pointerenter', showControls);
+      controller.removeEventListener('pointermove', showControls);
+      controller.removeEventListener('pointerleave', hideControlsImmediate);
+      clearTimeout(hideTimer);
+    };
+
+    if (!video.paused) {
+      startTicker();
+    } else {
+      controller.classList.add('is-paused');
+      controller.classList.add('is-active');
+    }
+    updateProgressUI();
+    updateVolumeUI();
+  }
+
+  // GLOBAL FULLSCREEN LISTENER (Chỉ đăng ký 1 lần duy nhất, không nhân bản theo từng video)
+  document.addEventListener('fullscreenchange', () => {
+    const fsEl = document.fullscreenElement;
+    document.querySelectorAll('.ig-vctl-fullscreen-btn').forEach(btn => {
+      const isFs = Boolean(fsEl && (fsEl.contains(btn) || btn.closest(fsEl.tagName)));
+      btn.innerHTML = isFs ? SVG_FULLSCREEN_EXIT : SVG_FULLSCREEN;
+    });
+  });
+
+  // VIRTUAL SCROLLING OBSERVER CHO VIDEO (CHỈ GẮN CONTROLLER CHO VIDEO ĐANG Ở TRONG VIEWPORT)
+  const videoIntersectionObserver = (typeof IntersectionObserver !== 'undefined')
+    ? new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          const video = entry.target;
+          if (entry.isIntersecting) {
+            if (!video._hasCustomController && video.isConnected) {
+              attachVideoController(video);
+            }
+          } else {
+            // Khi video cuộn ra xa khỏi màn hình -> tháo gỡ controller giải phóng RAM tức thì!
+            if (video._hasCustomController) {
+              detachVideoController(video);
+            }
+          }
+        });
+      }, {
+        rootMargin: '250px 0px 250px 0px',
+        threshold: 0.05
+      })
+    : null;
+
+  function scanAndAttachVideoControllers() {
+    if (window.location.pathname.includes('/stories/')) {
+      return;
+    }
+
+    const videos = document.querySelectorAll('video');
+    for (let i = 0; i < videos.length; i++) {
+      const video = videos[i];
+      if (video._isObservedByController) {
+        if (video._hasCustomController && !video.isConnected) {
+          detachVideoController(video);
+        }
+        continue;
+      }
+
+      if (video.closest('header') || video.closest('nav') || video.closest('aside')) continue;
+
+      video._isObservedByController = true;
+      if (videoIntersectionObserver) {
+        videoIntersectionObserver.observe(video);
+      } else {
+        attachVideoController(video);
+      }
+    }
+  }
+
+  // --- 8.1. THANH TRƯỢT STORY & HIGHLIGHTS (v2.5.0 - Tối ưu bộ nhớ) ---
+  let activeStoryScrubber = null;
+  let isStoryGlobalMoveAttached = false;
+
+  function scanAndAttachStoryScrubber() {
+    if (!window.location.pathname.includes('/stories/')) {
+      if (activeStoryScrubber) {
+        if (activeStoryScrubber.cleanup) activeStoryScrubber.cleanup();
+        if (activeStoryScrubber.bar) activeStoryScrubber.bar.style.display = 'none';
+        activeStoryScrubber = null;
+      }
+      return;
+    }
+
+    const storyVideo = getActiveStoryVideo();
+    if (!storyVideo) {
+      if (activeStoryScrubber?.bar) {
+        activeStoryScrubber.bar.style.display = 'none';
+      }
+      return;
+    }
+
+    // Nếu đã gắn đúng video này và bar đang tồn tại thì chỉ đảm bảo hiển thị
+    if (activeStoryScrubber && activeStoryScrubber.video === storyVideo && activeStoryScrubber.bar.isConnected) {
+      activeStoryScrubber.bar.style.display = 'flex';
+      return;
+    }
+
+    // Nếu video thay đổi -> gỡ bỏ triệt để listener cũ
+    if (activeStoryScrubber?.cleanup) {
+      activeStoryScrubber.cleanup();
+    }
+
+    let bar = document.querySelector('.ig-story-scrubber-bar');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.className = 'ig-story-scrubber-bar';
+      bar.innerHTML = `
+        <button class="ig-story-sc-btn ig-story-sc-play" type="button" title="Phát / Tạm dừng">
+          ${SVG_PAUSE}
+        </button>
+        <button class="ig-story-sc-btn ig-story-sc-rewind" type="button" title="Tua lùi 5s">
+          ${SVG_REWIND_5}
+        </button>
+        <div class="ig-story-sc-track-wrap" title="Kéo hoặc bấm để tua Story">
+          <div class="ig-story-sc-track">
+            <div class="ig-story-sc-fill"></div>
+            <div class="ig-story-sc-thumb"></div>
+            <div class="ig-story-sc-tooltip">0:00</div>
+          </div>
+        </div>
+        <button class="ig-story-sc-btn ig-story-sc-forward" type="button" title="Tua tới 5s">
+          ${SVG_FORWARD_5}
+        </button>
+        <div class="ig-story-sc-time">
+          <span class="ig-story-sc-cur">0:00</span>
+          <span class="ig-story-sc-sep">/</span>
+          <span class="ig-story-sc-dur">0:00</span>
+        </div>
+        <button class="ig-story-sc-btn ig-story-sc-speed" type="button" title="Tốc độ phát">
+          1x
+        </button>
+      `;
+
+      const stopAll = (e) => { e.stopPropagation(); };
+      bar.addEventListener('click', stopAll);
+      bar.addEventListener('pointerdown', stopAll);
+      bar.addEventListener('pointerup', stopAll);
+      bar.addEventListener('mousedown', stopAll);
+      bar.addEventListener('mouseup', stopAll);
+
+      document.body.appendChild(bar);
+    }
+
+    bar.style.display = 'flex';
+
+    const playBtn = bar.querySelector('.ig-story-sc-play');
+    const rewindBtn = bar.querySelector('.ig-story-sc-rewind');
+    const forwardBtn = bar.querySelector('.ig-story-sc-forward');
+    const trackWrap = bar.querySelector('.ig-story-sc-track-wrap');
+    const track = bar.querySelector('.ig-story-sc-track');
+    const fill = bar.querySelector('.ig-story-sc-fill');
+    const thumb = bar.querySelector('.ig-story-sc-thumb');
+    const tooltip = bar.querySelector('.ig-story-sc-tooltip');
+    const curTimeEl = bar.querySelector('.ig-story-sc-cur');
+    const durTimeEl = bar.querySelector('.ig-story-sc-dur');
+    const speedBtn = bar.querySelector('.ig-story-sc-speed');
+
+    let isDraggingStory = false;
+    let storySpeedIdx = 0;
+    const STORY_SPEEDS = [1, 1.5, 2, 0.75];
+
+    const updateStoryUI = () => {
+      if (isDraggingStory) return;
+      const cur = storyVideo.currentTime || 0;
+      const dur = storyVideo.duration || 0;
+      const pct = dur > 0 ? Math.min(100, (cur / dur) * 100) : 0;
+
+      fill.style.width = `${pct}%`;
+      thumb.style.left = `${pct}%`;
+
+      curTimeEl.textContent = formatTime(cur);
+      if (dur > 0) durTimeEl.textContent = formatTime(dur);
+    };
+
+    const onPlay = () => { playBtn.innerHTML = SVG_PAUSE; bar.classList.remove('is-paused'); };
+    const onPause = () => { playBtn.innerHTML = SVG_PLAY; bar.classList.add('is-paused'); };
+
+    storyVideo.addEventListener('timeupdate', updateStoryUI);
+    storyVideo.addEventListener('loadedmetadata', updateStoryUI);
+    storyVideo.addEventListener('durationchange', updateStoryUI);
+    storyVideo.addEventListener('play', onPlay);
+    storyVideo.addEventListener('pause', onPause);
+
+    playBtn.onclick = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      if (storyVideo.paused) storyVideo.play().catch(() => {});
+      else storyVideo.pause();
+    };
+
+    rewindBtn.onclick = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      storyVideo.currentTime = Math.max(0, (storyVideo.currentTime || 0) - 5);
+      updateStoryUI();
+    };
+
+    forwardBtn.onclick = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const dur = storyVideo.duration || Infinity;
+      storyVideo.currentTime = Math.min(dur, (storyVideo.currentTime || 0) + 5);
+      updateStoryUI();
+    };
+
+    speedBtn.onclick = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      storySpeedIdx = (storySpeedIdx + 1) % STORY_SPEEDS.length;
+      const spd = STORY_SPEEDS[storySpeedIdx];
+      storyVideo.playbackRate = spd;
+      speedBtn.textContent = `${spd}x`;
+    };
+
+    const getStoryScrubPct = (e) => {
+      const rect = track.getBoundingClientRect();
+      if (rect.width <= 0) return 0;
+      const clientX = e.clientX ?? (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+      return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    };
+
+    trackWrap.onpointerenter = () => { tooltip.style.opacity = '1'; };
+    trackWrap.onpointerleave = () => { if (!isDraggingStory) tooltip.style.opacity = '0'; };
+
+    trackWrap.onpointermove = (e) => {
+      const pct = getStoryScrubPct(e);
+      const dur = storyVideo.duration || 0;
+      tooltip.textContent = formatTime(pct * dur);
+      tooltip.style.left = `${(pct * 100).toFixed(1)}%`;
+
+      if (isDraggingStory && dur > 0) {
+        storyVideo.currentTime = pct * dur;
+        fill.style.width = `${pct * 100}%`;
+        thumb.style.left = `${pct * 100}%`;
+        curTimeEl.textContent = formatTime(pct * dur);
+      }
+    };
+
+    trackWrap.onpointerdown = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      isDraggingStory = true;
+      bar.classList.add('is-dragging');
+      try { trackWrap.setPointerCapture(e.pointerId); } catch (_) {}
+
+      const pct = getStoryScrubPct(e);
+      const dur = storyVideo.duration || 0;
+      if (dur > 0) {
+        storyVideo.currentTime = pct * dur;
+        fill.style.width = `${pct * 100}%`;
+        thumb.style.left = `${pct * 100}%`;
+        curTimeEl.textContent = formatTime(pct * dur);
+      }
+      tooltip.style.opacity = '1';
+      tooltip.textContent = formatTime(pct * dur);
+      tooltip.style.left = `${(pct * 100).toFixed(1)}%`;
+    };
+
+    const onStoryScrubEnd = (e) => {
+      if (!isDraggingStory) return;
+      isDraggingStory = false;
+      bar.classList.remove('is-dragging');
+      try { trackWrap.releasePointerCapture(e.pointerId); } catch (_) {}
+      tooltip.style.opacity = '0';
+    };
+
+    trackWrap.onpointerup = onStoryScrubEnd;
+    trackWrap.onpointercancel = onStoryScrubEnd;
+
+    const hasReplyInput = Boolean(document.querySelector('textarea, input[placeholder*="tin nhắn" i], input[placeholder*="message" i]'));
+    bar.style.bottom = hasReplyInput ? '84px' : '36px';
+
+    let storyHideTimer = null;
+    const resetStoryIdleTimer = () => {
+      if (!bar.isConnected) return;
+      bar.classList.add('is-active');
+      clearTimeout(storyHideTimer);
+      if (!storyVideo.paused && !isDraggingStory) {
+        storyHideTimer = setTimeout(() => {
+          if (!storyVideo.paused && !isDraggingStory && !bar.matches(':hover')) {
+            bar.classList.remove('is-active');
+          }
+        }, 2800);
+      }
+    };
+
+    // Chỉ đăng ký pointermove trên window một lần duy nhất
+    if (!isStoryGlobalMoveAttached) {
+      isStoryGlobalMoveAttached = true;
+      window.addEventListener('pointermove', () => {
+        if (activeStoryScrubber?._resetTimerFn) {
+          activeStoryScrubber._resetTimerFn();
+        }
+      }, { passive: true });
+    }
+
+    activeStoryScrubber = {
+      video: storyVideo,
+      bar,
+      _resetTimerFn: resetStoryIdleTimer,
+      cleanup: () => {
+        storyVideo.removeEventListener('timeupdate', updateStoryUI);
+        storyVideo.removeEventListener('loadedmetadata', updateStoryUI);
+        storyVideo.removeEventListener('durationchange', updateStoryUI);
+        storyVideo.removeEventListener('play', onPlay);
+        storyVideo.removeEventListener('pause', onPause);
+        clearTimeout(storyHideTimer);
+      }
+    };
+
+    if (storyVideo.paused) {
+      playBtn.innerHTML = SVG_PLAY;
+      bar.classList.add('is-paused');
+    } else {
+      playBtn.innerHTML = SVG_PAUSE;
+      bar.classList.remove('is-paused');
+    }
+    updateStoryUI();
+    resetStoryIdleTimer();
   }
 
   // --- 7.2. DOWNLOAD CHO INSTAGRAM STORIES ---
@@ -3048,6 +3969,11 @@
   function scanAndAttachPlayers() {
     readInitialCache();
     scanAndAttachStoryDownload();
+    if (window.location.pathname.includes('/stories/')) {
+      scanAndAttachStoryScrubber();
+    } else {
+      scanAndAttachVideoControllers();
+    }
 
     if (!isPostViewingContext()) {
       cleanupIfPostClosed();
@@ -3156,13 +4082,13 @@
   window.addEventListener('__IG_NAVIGATED__', () => {
     cleanupIfPostClosed();
     scanAndAttachProfileDownload();
-    setTimeout(scanAndAttachPlayers, 80);
-    setTimeout(scanAndAttachPlayers, 350);
+    setTimeout(scanAndAttachPlayers, 100);
+    setTimeout(scanAndAttachPlayers, 400);
   });
 
   window.addEventListener('popstate', () => {
     setTimeout(cleanupIfPostClosed, 40);
-    setTimeout(scanAndAttachProfileDownload, 50);
+    setTimeout(scanAndAttachProfileDownload, 60);
     setTimeout(scanAndAttachPlayers, 150);
   });
 
@@ -3170,6 +4096,46 @@
     if (e.key === 'Escape') {
       setTimeout(cleanupIfPostClosed, 40);
       setTimeout(cleanupIfPostClosed, 150);
+      return;
+    }
+
+    // Phím tắt điều khiển Video khi hover chuột qua video (Space, Mũi tên Trái/Phải, Lên/Xuống, M)
+    const activeEl = document.activeElement;
+    if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable)) {
+      return;
+    }
+
+    const hoveredCtrl = document.querySelector('.ig-video-controller.is-active, .ig-video-controller:hover');
+    const hoveredVideo = hoveredCtrl?.parentElement?.querySelector('video');
+    if (hoveredVideo) {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (hoveredVideo.paused) hoveredVideo.play().catch(() => {});
+        else hoveredVideo.pause();
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        e.stopPropagation();
+        hoveredVideo.currentTime = Math.max(0, (hoveredVideo.currentTime || 0) - 5);
+      } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        e.stopPropagation();
+        const dur = hoveredVideo.duration || Infinity;
+        hoveredVideo.currentTime = Math.min(dur, (hoveredVideo.currentTime || 0) + 5);
+      } else if (e.code === 'ArrowUp') {
+        e.preventDefault();
+        e.stopPropagation();
+        hoveredVideo.volume = Math.min(1, (hoveredVideo.volume || 0) + 0.1);
+        hoveredVideo.muted = false;
+      } else if (e.code === 'ArrowDown') {
+        e.preventDefault();
+        e.stopPropagation();
+        hoveredVideo.volume = Math.max(0, (hoveredVideo.volume || 0) - 0.1);
+      } else if (e.code === 'KeyM') {
+        e.preventDefault();
+        e.stopPropagation();
+        hoveredVideo.muted = !hoveredVideo.muted;
+      }
     }
   });
 
@@ -3195,15 +4161,19 @@
   }, { passive: true });
 
   setInterval(() => {
+    if (document.hidden) return;
     cleanupIfPostClosed();
     scanAndAttachStoryDownload();
     scanAndAttachProfileDownload();
-  }, 250);
+    if (window.location.pathname.includes('/stories/')) {
+      scanAndAttachStoryScrubber();
+    } else {
+      scanAndAttachVideoControllers();
+    }
+  }, 1200);
 
   let debounceTimer = null;
   const observer = new MutationObserver((mutations) => {
-    scanAndAttachStoryDownload();
-    scanAndAttachProfileDownload();
     // Chỉ kích hoạt khi có phần tử mới được thêm/bớt vào DOM (ví dụ cuộn thêm bài mới vào feed)
     // Bỏ qua các thay đổi style/attribute trong khi Instagram animate chuyển ảnh carousel
     let hasStructuralChanges = false;
@@ -3218,6 +4188,14 @@
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       cleanupIfPostClosed();
+      scanAndAttachStoryDownload();
+      scanAndAttachProfileDownload();
+      if (window.location.pathname.includes('/stories/')) {
+        scanAndAttachStoryScrubber();
+      } else {
+        scanAndAttachVideoControllers();
+      }
+
       if ('requestIdleCallback' in window) {
         window.requestIdleCallback(scanAndAttachPlayers);
       } else {
