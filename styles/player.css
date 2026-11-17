@@ -1811,6 +1811,8 @@ div:has(> [data-ig-vctl-container="true"]) > div > [role="button"]:not(.ig-vctl-
   border-radius: inherit !important;
   pointer-events: none !important;
   z-index: 3 !important;
+  transition: width 0.08s linear !important;
+  will-change: width !important;
 }
 
 .ig-vctl-progress-thumb {
@@ -1823,9 +1825,10 @@ div:has(> [data-ig-vctl-container="true"]) > div > [role="button"]:not(.ig-vctl-
   background: #ffffff !important;
   box-shadow: 0 0 6px rgba(0, 0, 0, 0.8) !important;
   transform: translate(-50%, -50%) scale(1) !important;
-  transition: width 0.12s ease, height 0.12s ease !important;
+  transition: left 0.08s linear, width 0.12s ease, height 0.12s ease, transform 0.12s ease !important;
   pointer-events: none !important;
   z-index: 4 !important;
+  will-change: left !important;
 }
 
 .ig-vctl-progress-container:hover .ig-vctl-progress-thumb,
@@ -2115,6 +2118,8 @@ section header button:not(.ig-vctl-btn):not(.ig-story-download-btn)[aria-label*=
   box-shadow: 0 0 8px rgba(229, 46, 113, 0.7) !important;
   border-radius: inherit !important;
   pointer-events: none !important;
+  transition: width 0.08s linear !important;
+  will-change: width !important;
 }
 
 .ig-story-top-thumb {
@@ -2129,8 +2134,14 @@ section header button:not(.ig-vctl-btn):not(.ig-story-download-btn)[aria-label*=
   transform: translate(-50%, -50%) !important;
   pointer-events: none !important;
   opacity: 0;
-  transition: opacity 0.15s ease !important;
+  transition: left 0.08s linear, opacity 0.15s ease !important;
   z-index: 2 !important;
+  will-change: left !important;
+}
+
+.ig-story-top-progress-bar.is-dragging .ig-story-top-fill,
+.ig-story-top-progress-bar.is-dragging .ig-story-top-thumb {
+  transition: none !important;
 }
 
 .ig-story-top-progress-bar:hover .ig-story-top-thumb,

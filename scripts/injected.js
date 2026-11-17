@@ -584,6 +584,7 @@
       for (let i = 0; i < keys.length; i++) {
         const k = keys[i];
         if (k === 'user' || k === 'owner' || k === 'profile_pic_url' || k === 'header' || k === 'avatar') continue;
+        if (/audio|music|sound|track/i.test(k)) continue;
         if (typeof obj[k] === 'object' && obj[k] !== null) {
           const found = findVideoUrlInObject(obj[k], depth + 1, visited);
           if (found) return found;
@@ -1203,42 +1204,70 @@
           fDepth++;
           const props = fiber.memoizedProps;
           if (props && typeof props === 'object') {
-            const candidates = [
+            const rawCandidates = [
               props.item,
+              props.clip,
+              props.clip?.media,
               props.media,
               props.post,
-              props.clip,
               props.videoData,
               props.playbackSource,
               props.feedItem,
+              props.feedItem?.media,
               props.reelItem,
               props.video
             ];
-            for (const c of candidates) {
+
+            for (const raw of rawCandidates) {
+              const c = raw?.media || raw?.node || raw;
               if (c && typeof c === 'object') {
+                // 1. ƯU TIÊN 1: Lấy URL Video trực tiếp từ video_versions (CHUẨN 100% VIDEO MP4, TUYỆT ĐỐI KHÔNG LẤY AUDIO)
+                if (Array.isArray(c.video_versions) && c.video_versions.length > 0) {
+                  const valid = c.video_versions.filter(v => v && typeof (v.url || v.src) === 'string' && !isDashAudioUrl(v.url || v.src));
+                  if (valid.length > 0) {
+                    const prog = valid.find(v => (v.url || v.src || '').includes('progressive'));
+                    const sorted = [...valid].sort((a, b) => ((b.width || b.config_width || 0) * (b.height || b.config_height || 0)) - ((a.width || a.config_width || 0) * (a.height || a.config_height || 0)));
+                    const best = (prog?.url || prog?.src) || (sorted[0]?.url || sorted[0]?.src);
+                    if (best && !isDashAudioUrl(best)) {
+                      const sc = (c.code && !['audio', 'reels', 'videos', 'comments'].includes(c.code.toLowerCase())) ? c.code : null;
+                      return {
+                        url: best.replace(/[?&]bytestart=\d+&byteend=\d+/g, ''),
+                        shortcode: sc
+                      };
+                    }
+                  }
+                }
+
+                // 2. ƯU TIÊN 2: Dùng extractMediaFromPostNode
                 const items = extractMediaFromPostNode(c);
                 if (items && items.length > 0) {
-                  const vidItem = items.find(it => it.type === 'video');
+                  const vidItem = items.find(it => it.type === 'video' && !isDashAudioUrl(it.url));
                   if (vidItem?.url) {
-                    if (c.code) postMediaMap.set(c.code, items);
+                    const sc = (c.code && !['audio', 'reels', 'videos', 'comments'].includes(c.code.toLowerCase())) ? c.code : null;
+                    if (sc) postMediaMap.set(sc, items);
                     return {
                       url: vidItem.url,
-                      shortcode: c.code || c.shortcode || null,
+                      shortcode: sc,
                       items
                     };
                   }
                 }
+
+                // 3. ƯU TIÊN 3: Quét sâu trong object (đã lọc bỏ audio keys)
                 const url = findVideoUrlInObject(c);
-                if (url) {
+                if (url && !isDashAudioUrl(url)) {
+                  const sc = (c.code && !['audio', 'reels', 'videos', 'comments'].includes(c.code.toLowerCase())) ? c.code : null;
                   return {
                     url,
-                    shortcode: c.code || c.shortcode || null
+                    shortcode: sc
                   };
                 }
               }
             }
+
+            // Fallback: Quét props tổng thể
             const fallbackUrl = findVideoUrlInObject(props);
-            if (fallbackUrl) {
+            if (fallbackUrl && !isDashAudioUrl(fallbackUrl)) {
               return { url: fallbackUrl, shortcode: null };
             }
           }

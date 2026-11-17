@@ -1429,19 +1429,27 @@
     if (!container && !video) return null;
     const post = (container || video)?.closest('article, div[role="dialog"]');
     let sc = post ? getShortcodeFromPost(post) : null;
-    if (sc) return sc;
+    if (sc && !['audio', 'reels', 'videos', 'comments', 'explore'].includes(sc.toLowerCase())) return sc;
 
     let cur = (container || video);
-    for (let depth = 0; cur && depth < 16; depth++, cur = cur.parentElement) {
-      const links = Array.from(cur.querySelectorAll('a[href*="/reel/"], a[href*="/reels/"], a[href*="/p/"]'));
-      for (const a of links) {
+    for (let depth = 0; cur && depth < 18; depth++, cur = cur.parentElement) {
+      const reelLinks = Array.from(cur.querySelectorAll('a[href*="/reel/"], a[href*="/p/"]'));
+      for (const a of reelLinks) {
         const href = a.getAttribute('href') || '';
-        const m = href.match(/\/(?:reel|reels|p)\/([A-Za-z0-9_-]+)/);
-        if (m && !m[1].includes('comments')) return m[1];
+        if (href.includes('/audio/') || href.includes('/comments/') || href.includes('/liked_by/')) continue;
+        const m = href.match(/\/(?:reel|p)\/([A-Za-z0-9_-]+)/);
+        if (m && m[1] && !['audio', 'reels', 'videos', 'comments', 'explore'].includes(m[1].toLowerCase())) {
+          return m[1];
+        }
       }
     }
 
-    return getPageShortcode();
+    const pageSc = getPageShortcode();
+    if (pageSc && !['audio', 'reels', 'videos', 'comments', 'explore'].includes(pageSc.toLowerCase())) {
+      return pageSc;
+    }
+
+    return null;
   }
 
   function findStableMediaFrame(postElement) {
@@ -2146,24 +2154,34 @@
         if (!videoUrl) {
           try {
             const perfEntries = performance.getEntriesByType('resource');
-            const mp4Entries = perfEntries.filter(entry =>
-              entry.name && (entry.name.includes('.mp4') || entry.name.includes('/v/t50.')) && !entry.name.includes('bytestart')
-            );
+            const mp4Entries = perfEntries.filter(entry => {
+              const name = (entry.name || '').toLowerCase();
+              if (!name.includes('.mp4') && !name.includes('/v/t50.')) return false;
+              if (name.includes('bytestart')) return false;
+              if (name.includes('audio') || name.includes('sound') || name.includes('music') || name.includes('dashinit') || name.includes('heaac') || name.includes('1172-')) return false;
+              return true;
+            });
             if (mp4Entries.length > 0) {
               videoUrl = mp4Entries[mp4Entries.length - 1].name;
             }
           } catch (_) { }
         }
 
-        if (!videoUrl && video.currentSrc && !video.currentSrc.startsWith('blob:')) {
+        if (!videoUrl && video.currentSrc && !video.currentSrc.startsWith('blob:') && !video.currentSrc.includes('audio')) {
           videoUrl = video.currentSrc;
         }
-        if (!videoUrl && video.src && !video.src.startsWith('blob:')) {
+        if (!videoUrl && video.src && !video.src.startsWith('blob:') && !video.src.includes('audio')) {
           videoUrl = video.src;
         }
 
+        // Đảm bảo không tải nhầm file audio dashinit
+        if (videoUrl && (videoUrl.includes('audio_dashinit') || videoUrl.includes('_audio') || videoUrl.includes('/audio/'))) {
+          videoUrl = null;
+        }
+
         if (videoUrl) {
-          const filename = `instagram_${shortcode || (window.location.pathname.includes('/reels') ? 'reel' : 'video')}_${Date.now()}.mp4`;
+          const cleanShortcode = (shortcode && !['audio', 'reels', 'videos', 'comments'].includes(shortcode.toLowerCase())) ? shortcode : (window.location.pathname.includes('/reels') ? 'reel' : 'video');
+          const filename = `instagram_${cleanShortcode}_${Date.now()}.mp4`;
           await downloadUrlAsBlob(videoUrl, filename);
           dlBtn.innerHTML = SVG_CHECKMARK;
           setTimeout(() => {
@@ -2209,7 +2227,12 @@
       updateProgressUI();
     };
 
-    video.addEventListener('timeupdate', updateProgressUI);
+    const onTimeUpdate = () => {
+      if (video.paused || !rafTicker) {
+        updateProgressUI();
+      }
+    };
+    video.addEventListener('timeupdate', onTimeUpdate);
     video.addEventListener('progress', updateProgressUI);
     video.addEventListener('loadedmetadata', updateProgressUI);
     video.addEventListener('durationchange', updateProgressUI);
@@ -2234,7 +2257,7 @@
       window.removeEventListener('pointercancel', onScrubEnd, true);
       window.removeEventListener('mouseup', onScrubEnd, true);
       window.removeEventListener('blur', onScrubEnd, true);
-      video.removeEventListener('timeupdate', updateProgressUI);
+      video.removeEventListener('timeupdate', onTimeUpdate);
       video.removeEventListener('progress', updateProgressUI);
       video.removeEventListener('loadedmetadata', updateProgressUI);
       video.removeEventListener('durationchange', updateProgressUI);
@@ -2616,9 +2639,42 @@
       if (currentDurEl && dur > 0) currentDurEl.textContent = formatTime(dur);
     };
 
-    storyVideo.addEventListener('timeupdate', updateStoryUI);
+    let storyRafTicker = null;
+    const startStoryTicker = () => {
+      stopStoryTicker();
+      const tick = () => {
+        if (!storyVideo.paused && !storyVideo.ended) {
+          updateStoryUI();
+          storyRafTicker = requestAnimationFrame(tick);
+        }
+      };
+      storyRafTicker = requestAnimationFrame(tick);
+    };
+    const stopStoryTicker = () => {
+      if (storyRafTicker) {
+        cancelAnimationFrame(storyRafTicker);
+        storyRafTicker = null;
+      }
+    };
+
+    const onStoryPlay = () => startStoryTicker();
+    const onStoryPause = () => {
+      stopStoryTicker();
+      updateStoryUI();
+    };
+
+    storyVideo.addEventListener('play', onStoryPlay);
+    storyVideo.addEventListener('pause', onStoryPause);
+    storyVideo.addEventListener('ended', onStoryPause);
+    storyVideo.addEventListener('timeupdate', () => {
+      if (storyVideo.paused || !storyRafTicker) updateStoryUI();
+    });
     storyVideo.addEventListener('loadedmetadata', updateStoryUI);
     storyVideo.addEventListener('durationchange', updateStoryUI);
+
+    if (!storyVideo.paused) {
+      startStoryTicker();
+    }
 
     activeStoryScrubber = {
       video: storyVideo,
@@ -2626,6 +2682,10 @@
       slideIndex: currentSlideIndex,
       updateUI: updateStoryUI,
       cleanup: () => {
+        stopStoryTicker();
+        storyVideo.removeEventListener('play', onStoryPlay);
+        storyVideo.removeEventListener('pause', onStoryPause);
+        storyVideo.removeEventListener('ended', onStoryPause);
         storyVideo.removeEventListener('timeupdate', updateStoryUI);
         storyVideo.removeEventListener('loadedmetadata', updateStoryUI);
         storyVideo.removeEventListener('durationchange', updateStoryUI);
