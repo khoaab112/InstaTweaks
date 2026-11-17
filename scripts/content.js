@@ -3358,8 +3358,10 @@
       .filter(btn => {
         if (btn.classList.contains('ig-story-download-btn')) return false;
         const rect = btn.getBoundingClientRect();
+        // Chỉ lấy các nút thuộc Story đang hiển thị trực tiếp trên màn hình (loại bỏ story tải ngầm ngoài mép trái/phải)
         const inTopHeader = rect.top >= 0 && rect.top < 220;
-        return inTopHeader && rect.width >= 10 && rect.height >= 10;
+        const onScreen = rect.left >= 0 && rect.right <= window.innerWidth;
+        return inTopHeader && onScreen && rect.width >= 10 && rect.height >= 10;
       });
 
     let pauseBtn = null;
@@ -3383,17 +3385,18 @@
         speakerBtn = btn;
       }
       // Nút Ba chấm (...) hoặc Menu
-      else if (label.includes('more') || label.includes('khác') || label.includes('options') || label.includes('menu') || btn.querySelector('svg circle')) {
+      else if (label.includes('more') || label.includes('khác') || label.includes('options') || label.includes('tùy chọn') || label.includes('menu') || btn.getAttribute('aria-haspopup') === 'menu' || btn.querySelector('svg circle')) {
         optionsBtn = btn;
       }
     }
 
-    const parent = pauseBtn?.parentElement || speakerBtn?.parentElement || optionsBtn?.parentElement || null;
+    const parent = pauseBtn?.parentElement || optionsBtn?.parentElement || speakerBtn?.parentElement || null;
     if (!parent) return null;
 
     let insertAfter = null;
     let insertBefore = null;
 
+    // Thứ tự hiển thị chuẩn: [Time] -> [Pause] -> [DOWNLOAD] -> [Options ...]
     if (pauseBtn && pauseBtn.parentElement === parent) {
       insertAfter = pauseBtn;
     } else if (optionsBtn && optionsBtn.parentElement === parent) {
@@ -4801,7 +4804,23 @@
     }
   }, 3500);
 
+  // Lắng nghe thao tác chuyển slide (click hoặc phím mũi tên) trong Stories/Highlights để kiểm tra nút tải
+  document.addEventListener('click', () => {
+    if (window.location.pathname.includes('/stories/')) {
+      setTimeout(scanAndAttachStoryDownload, 50);
+      setTimeout(scanAndAttachStoryDownload, 200);
+    }
+  }, true);
+
+  document.addEventListener('keydown', (e) => {
+    if (window.location.pathname.includes('/stories/') && ['ArrowRight', 'ArrowLeft', ' '].includes(e.key)) {
+      setTimeout(scanAndAttachStoryDownload, 50);
+      setTimeout(scanAndAttachStoryDownload, 200);
+    }
+  }, true);
+
   let debounceTimer = null;
+  let storyFastTimer = null;
   const observer = new MutationObserver((mutations) => {
     if (document.hidden) return;
     // Chỉ kích hoạt khi có phần tử thực sự thêm/bớt trong DOM
@@ -4813,6 +4832,15 @@
       }
     }
     if (!hasStructuralChanges) return;
+
+    if (window.location.pathname.includes('/stories/')) {
+      if (!storyFastTimer) {
+        storyFastTimer = setTimeout(() => {
+          storyFastTimer = null;
+          scanAndAttachStoryDownload();
+        }, 50);
+      }
+    }
 
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
