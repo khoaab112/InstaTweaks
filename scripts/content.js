@@ -2423,19 +2423,18 @@
       if (r.width <= 0 || r.height <= 0) return;
 
       const replyInput = document.querySelector('form textarea, form input, [role="region"] textarea, input[placeholder*="tin nhắn" i], input[placeholder*="message" i]');
-      let bottomOffset = 14;
+      let bottomPx = Math.max(0, window.innerHeight - r.bottom);
       if (replyInput) {
         const inputRect = replyInput.getBoundingClientRect();
-        if (inputRect.top > 0 && inputRect.top < window.innerHeight && inputRect.height > 0) {
-          bottomOffset = Math.max(14, (window.innerHeight - inputRect.top) + 10);
+        if (inputRect.top > 0 && inputRect.top < r.bottom) {
+          bottomPx = Math.max(bottomPx, window.innerHeight - inputRect.top);
         }
-      } else {
-        bottomOffset = Math.max(14, (window.innerHeight - r.bottom) + 14);
       }
 
-      bar.style.bottom = `${bottomOffset}px`;
-      bar.style.left = `${r.left + r.width / 2}px`;
-      bar.style.width = `${Math.min(r.width - 24, 480)}px`;
+      bar.style.bottom = `${bottomPx}px`;
+      bar.style.left = `${r.left}px`;
+      bar.style.width = `${r.width}px`;
+      bar.style.transform = 'none';
     };
 
     updateStoryBarPosition();
