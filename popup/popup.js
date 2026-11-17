@@ -4,19 +4,22 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   const autoplayToggle = document.getElementById('autoplay-toggle');
+  const autounmuteToggle = document.getElementById('autounmute-toggle');
   const loopToggle = document.getElementById('loop-toggle');
   const badgeToggle = document.getElementById('badge-toggle');
   const volumeSlider = document.getElementById('volume-slider');
   const volumeVal = document.getElementById('volume-val');
 
-  // Đọc cài đặt đã lưu (Mặc định autoplay là TRUE)
+  // Đọc cài đặt đã lưu (Mặc định autoplay và autoUnmute là TRUE)
   chrome.storage.sync.get({
     autoplay: true,
+    autoUnmute: true,
     loop: true,
     showBadge: true,
     volume: 0.8
   }, (items) => {
     autoplayToggle.checked = items.autoplay;
+    autounmuteToggle.checked = items.autoUnmute;
     loopToggle.checked = items.loop;
     badgeToggle.checked = items.showBadge;
     
@@ -28,6 +31,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Lưu cài đặt khi thay đổi
   autoplayToggle.addEventListener('change', () => {
     chrome.storage.sync.set({ autoplay: autoplayToggle.checked });
+  });
+
+  autounmuteToggle.addEventListener('change', () => {
+    chrome.storage.sync.set({ autoUnmute: autounmuteToggle.checked });
   });
 
   loopToggle.addEventListener('change', () => {

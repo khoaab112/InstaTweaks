@@ -1,17 +1,22 @@
 /**
- * IG Web Music Player - Content Script (v1.6.7)
+ * IG Web Music Player - Content Script (v2.5.0)
  * 
- * TÍNH NĂNG MỚI: TỰ ĐỘNG PHÁT KHI CUỘN FEED (Smart Continuous Autoplay):
- * 1. KHI 1 BÀI VIẾT ĐƯỢC BẬT TIẾNG (Active âm thanh):
- *    - Toàn bộ các bài viết có nhạc tiếp theo trên Bảng tin Home sẽ TỰ ĐỘNG PHÁT khi bạn cuộn tới!
- *    - Không cần phải click thủ công từng bài nữa (hoạt động thông minh y hệt video Reels của Instagram).
- * 2. KHI BẠN BẤM TẮT TIẾNG (Mute):
- *    - Nhạc dừng và chế độ tự phát sẽ tạm tắt, cuộn tiếp sẽ im lặng cho đến khi bạn bật lại.
- * 3. TỰ ĐỘNG DỪNG NHẠC KHI GẶP VIDEO GỐC:
- *    - Khi cuộn đến bài viết dạng Video duy nhất, nhạc tự dừng để không đè lên âm thanh gốc của video.
- * 4. ĐỒNG BỘ HIỂN THỊ 100% TRÊN MỌI TRANG (Home Feed, Modal Dialog, Trang đơn /p/):
- *    - Khung phát nhạc hiển thị ngay dưới ảnh với 3 trạng thái phản hồi tức thì (Loading, Ready, No-music).
- * 5. KÉO DÀI 100% BẰNG ĐÚNG BỀ NGANG ẢNH.
+ * TÍNH NĂNG MỚI NỔI BẬT v2.5.0: THANH TRƯỢT MEDIA TOÀN DIỆN (Media Scrubber Slider):
+ * 1. THANH TRƯỢT TUA CHO VIDEO BÀI VIẾT, REELS, MODAL POPUP:
+ *    - Bổ sung thanh tiến trình timeline scrubber cho mọi video Instagram PC (Feed, Reels, Post Modal /p/).
+ *    - Hỗ trợ click / drag để tua tới bất kỳ giây nào, xem thời gian thực (0:15 / 1:20), xem thanh buffer.
+ *    - Tích hợp cụm nút tiện ích: Play/Pause, Tua lùi 5s (-5s), Tua tới 5s (+5s), Tốc độ phát (1x, 1.25x, 1.5x, 2x, 0.75x),
+ *      thanh trượt Âm lượng (0 - 100%), Toàn màn hình (Fullscreen) và Tải video nhanh.
+ *    - Tự động ẩn thông minh khi không rê chuột sau 2.2s (giữ 1 vạch mỏng thanh lịch ở đáy).
+ *    - Hỗ trợ phím tắt khi hover: Space (Play/Pause), Mũi tên Trái/Phải (-5s/+5s), Lên/Xuống (Volume), M (Mute).
+ * 2. THANH TRƯỢT TUA CHO STORY DẠNG VIDEO & HIGHLIGHTS (TIN NỔI BẬT):
+ *    - Thanh điều khiển kính mờ Glassmorphism nổi tinh tế ở đáy màn hình Story / Highlights.
+ *    - Cho phép tua ngược xem lại hoặc tua tới bất kỳ đoạn nào trong Story video & Tin nổi bật Highlights.
+ *    - Hỗ trợ cả slide Story / Highlight dạng ảnh có chèn nhạc.
+ *    - Nút tua nhanh -5s / +5s, nút tốc độ phát (1x, 1.5x, 2x) và hiển thị thời gian chính xác.
+ * 3. THANH TRƯỢT NÂNG CẤP CHO BÀI VIẾT ẢNH CHÈN NHẠC (FEED BAR SCRUBBER):
+ *    - Biến thanh tiến trình tĩnh dưới ảnh thành thanh trượt tương tác cao cấp (drag & click to seek).
+ *    - Núm trượt tròn phát sáng khi hover, hiển thị tooltip thời gian khi rê chuột, đồng bộ thời gian chạy mượt mà.
  */
 
 (function () {
@@ -45,18 +50,20 @@
       CACHED_PROFILE_ICONS.video = chrome.runtime.getURL('icons/opt_video.png');
       CACHED_PROFILE_ICONS.photos = chrome.runtime.getURL('icons/opt_photos.png');
     }
-  } catch (_) {}
+  } catch (_) { }
 
   const config = {
     autoplay: true,
+    autoUnmute: true,
     volume: 0.8,
     loop: true,
     showBadge: true
   };
 
   if (chrome?.storage?.sync) {
-    chrome.storage.sync.get(['autoplay', 'volume', 'loop', 'showBadge'], (items) => {
+    chrome.storage.sync.get(['autoplay', 'autoUnmute', 'volume', 'loop', 'showBadge'], (items) => {
       if (items.autoplay !== undefined) config.autoplay = items.autoplay;
+      if (items.autoUnmute !== undefined) config.autoUnmute = items.autoUnmute;
       if (items.volume !== undefined) config.volume = items.volume;
       if (items.loop !== undefined) config.loop = items.loop;
       if (items.showBadge !== undefined) config.showBadge = items.showBadge;
@@ -64,6 +71,7 @@
 
     chrome.storage.onChanged.addListener((changes) => {
       if (changes.autoplay) config.autoplay = changes.autoplay.newValue;
+      if (changes.autoUnmute) config.autoUnmute = changes.autoUnmute.newValue;
       if (changes.volume) {
         config.volume = changes.volume.newValue;
         if (currentActive?.audio) currentActive.audio.volume = config.volume;
@@ -84,7 +92,7 @@
         if (Array.isArray(list)) {
           list.forEach(saveTrackLocally);
         }
-      } catch (_) {}
+      } catch (_) { }
     }
   }
 
@@ -162,6 +170,41 @@
       <circle cx="12" cy="12" r="10"></circle>
     </svg>
     <style>@keyframes ig-feed-spin { 100% { transform: rotate(360deg); } }</style>`;
+
+  const SVG_PLAY = `
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+      <polygon points="6 3 20 12 6 21 6 3"></polygon>
+    </svg>`;
+
+  const SVG_PAUSE = `
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+      <rect x="6" y="4" width="4" height="16" rx="1"></rect>
+      <rect x="14" y="4" width="4" height="16" rx="1"></rect>
+    </svg>`;
+
+  const SVG_REWIND_5 = `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+      <polyline points="3 3 3 8 8 8"></polyline>
+      <text x="12" y="15.5" font-size="8.5" font-weight="bold" fill="currentColor" stroke="none" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">5</text>
+    </svg>`;
+
+  const SVG_FORWARD_5 = `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
+      <polyline points="21 3 21 8 16 8"></polyline>
+      <text x="12" y="15.5" font-size="8.5" font-weight="bold" fill="currentColor" stroke="none" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">5</text>
+    </svg>`;
+
+  const SVG_FULLSCREEN = `
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+    </svg>`;
+
+  const SVG_FULLSCREEN_EXIT = `
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>
+    </svg>`;
 
   function formatTime(seconds) {
     const s = Math.floor(seconds || 0);
@@ -433,7 +476,7 @@
         // Instagram tạo video wrapper 1 FPS cho ảnh kèm nhạc (1 sample/giây). Video thật luôn >= 24 FPS.
         return (fps > 0 && fps < 3) || (sampleCount > 0 && sampleCount <= 25 && durationSec >= 5);
       }
-    } catch (_) {}
+    } catch (_) { }
     return false;
   }
 
@@ -490,10 +533,41 @@
   }
 
   async function downloadUrlAsBlob(url, filename) {
+    if (!url) return false;
+
+    // 1. ƯU TIÊN 1: Tải qua Background Service Worker (chrome.downloads API)
+    // Tải gốc thông qua browser download manager, bỏ qua CORS, tránh cấp phát dung lượng Blob vào RAM
+    try {
+      const bgSuccess = await new Promise((resolve) => {
+        if (!chrome?.runtime?.sendMessage) return resolve(false);
+        chrome.runtime.sendMessage({
+          action: 'download_file',
+          url: url,
+          filename: filename
+        }, (res) => {
+          if (chrome.runtime.lastError || !res?.success) {
+            resolve(false);
+          } else {
+            resolve(true);
+          }
+        });
+      });
+      if (bgSuccess) return true;
+    } catch (_) {}
+
+    // 2. DỰ PHÒNG: Tải qua Blob trực tiếp (có kiểm tra content-type và kích thước)
     try {
       const res = await fetch(url, { credentials: 'omit' });
       if (!res.ok) throw new Error('Fetch status ' + res.status);
+      const ct = (res.headers.get('content-type') || '').toLowerCase();
+      // TUYỆT ĐỐI KHÔNG TẢI TRANG LỖI HTML (tránh lưu file 403 HTML gây hỏng video)
+      if (ct.includes('text/html') || ct.includes('application/json')) {
+        throw new Error('Invalid content-type (error page): ' + ct);
+      }
       const blob = await res.blob();
+      if (blob.size < 50000) {
+        throw new Error('Blob file quá nhỏ, không phải video hợp lệ: ' + blob.size);
+      }
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = blobUrl;
@@ -504,15 +578,8 @@
       setTimeout(() => URL.revokeObjectURL(blobUrl), 20000);
       return true;
     } catch (err) {
-      console.warn('[IG Downloader] Direct blob fetch failed, falling back to link click:', err);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.target = '_blank';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      return true;
+      console.warn('[IG Downloader] Direct download failed:', err);
+      return false;
     }
   }
 
@@ -551,6 +618,85 @@
         detail: { shortcode }
       }));
     });
+  }
+
+  function requestActiveVideoMedia(shortcode, slideIndex = -1) {
+    return new Promise((resolve) => {
+      let done = false;
+      const onResult = (e) => {
+        cleanup();
+        resolve(e.detail || null);
+      };
+      const timer = setTimeout(() => {
+        cleanup();
+        resolve(null);
+      }, 2500);
+
+      function cleanup() {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        window.removeEventListener('__IG_ACTIVE_VIDEO_URL_RESULT__', onResult);
+      }
+
+      window.addEventListener('__IG_ACTIVE_VIDEO_URL_RESULT__', onResult);
+      window.dispatchEvent(new CustomEvent('__IG_REQUEST_ACTIVE_VIDEO_URL__', {
+        detail: { 
+          shortcode: shortcode || null,
+          slideIndex: (typeof slideIndex === 'number' && !isNaN(slideIndex)) ? slideIndex : -1
+        }
+      }));
+    });
+  }
+
+  function getCurrentSlideIndex(video, postContainer) {
+    // 1. Ưu tiên 1: Lấy trực tiếp từ query param trên URL (?img_index=10)
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const imgIndexVal = searchParams.get('img_index');
+      if (imgIndexVal) {
+        const idx = parseInt(imgIndexVal, 10);
+        if (!isNaN(idx) && idx >= 1) {
+          return idx - 1; // đổi 1-based thành 0-based index
+        }
+      }
+    } catch (_) {}
+
+    // 2. Ưu tiên 2: Tìm vị trí của slide li chứa video trong carousel ul > li
+    if (video) {
+      try {
+        const slideLi = video.closest('ul li, li');
+        if (slideLi && slideLi.parentElement) {
+          const allSlides = Array.from(slideLi.parentElement.children);
+          const liIdx = allSlides.indexOf(slideLi);
+          if (liIdx !== -1 && allSlides.length > 1) {
+            return liIdx;
+          }
+        }
+      } catch (_) {}
+    }
+
+    // 3. Ưu tiên 3: Quét các chấm chỉ thị trang (Carousel Dots: div[role="tablist"])
+    const post = postContainer || video?.closest('article, div[role="dialog"]');
+    if (post) {
+      try {
+        const tablist = post.querySelector('div[role="tablist"]');
+        if (tablist) {
+          const tabs = Array.from(tablist.querySelectorAll('[role="tab"], div > div, div'));
+          for (let i = 0; i < tabs.length; i++) {
+            const tab = tabs[i];
+            if (tab.getAttribute('aria-selected') === 'true' || 
+                tab.getAttribute('tabindex') === '0' ||
+                tab.classList.contains('active') ||
+                window.getComputedStyle(tab).opacity === '1') {
+              return i;
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    return -1;
   }
 
   function getPostMediaFromDOM(postContainer) {
@@ -636,7 +782,7 @@
             const arrayBuf = await res.arrayBuffer();
             filesToZip.push({ name: filename, data: new Uint8Array(arrayBuf) });
           }
-        } catch (_) {}
+        } catch (_) { }
       }
 
       if (filesToZip.length > 0) {
@@ -822,7 +968,7 @@
       try {
         currentActive.audio.pause();
         currentActive.audio.currentTime = 0;
-      } catch (_) {}
+      } catch (_) { }
       if (currentActive.updatePausedUI) {
         currentActive.updatePausedUI();
       }
@@ -848,9 +994,14 @@
 
   function isPostViewingContext() {
     const path = window.location.pathname;
+    // Bỏ hoàn toàn tính năng phát nhạc ở tab Reels (/reels/ và /reel/) để tối ưu băng thông
+    if (path.includes('/reels') || path.includes('/reel')) return false;
     if (path === '/') return true;
-    if (path.includes('/p/') || path.includes('/reel/')) return true;
-    if (getActivePostDialog()) return true;
+    if (path.includes('/p/')) return true;
+    if (getActivePostDialog()) {
+      if (path.includes('/reels') || path.includes('/reel')) return false;
+      return true;
+    }
     return false;
   }
 
@@ -859,31 +1010,80 @@
     const video = postElement.querySelector('video');
     if (!video) return false;
 
-    // BẮT BUỘC: video phải có kích thước khung hình thật (không phải audio player của ảnh có nhạc)
-    if (video.videoWidth === 0 && video.videoHeight === 0) return false;
-
-    // Nếu bài viết có ảnh lớn (naturalWidth > 150), đây là BÀI VIẾT ẢNH CÓ NHẠC, không phải single video!
-    const largeImg = postElement.querySelector('article img, div[role="button"] img, img[src*="cdninstagram"], img[src*="fbcdn"]');
-    if (largeImg && largeImg.naturalWidth > 150 && largeImg.offsetWidth > 160) {
+    // 1. Nếu có tham số carousel ?img_index trên URL -> đây là Carousel
+    if (window.location.search.includes('img_index=')) {
       return false;
     }
 
+    // 2. Nếu có vùng chỉ thị trang dots (div[role="tablist"] chỉ có duy nhất ở Carousel)
+    if (postElement.querySelector('div[role="tablist"], .coreSpriteMediaNavigationDot, ._acnb')) {
+      return false;
+    }
+
+    // 3. Nếu có nút Next / Back / Previous điều hướng carousel
     const hasCarouselNav = Boolean(
       postElement.querySelector(
-        'button[aria-label*="Next"], button[aria-label*="Go back"], button[aria-label*="Tiếp"], button[aria-label*="Quay lại"]'
+        'button[aria-label*="Next"], button[aria-label*="Previous"], button[aria-label*="Go back"], button[aria-label*="Tiếp"], button[aria-label*="Quay lại"], button[aria-label*="Sau"], button[aria-label*="Trước"], button._afxw'
       )
     );
-    const carouselDots = postElement.querySelectorAll('div[role="tablist"] [role="tab"], .coreSpriteMediaNavigationDot');
-    const carouselSlides = postElement.querySelectorAll('ul li img, ul li video');
+    if (hasCarouselNav) return false;
 
-    if (hasCarouselNav || carouselDots.length > 1 || carouselSlides.length > 1) {
-      return false;
-    }
+    // 4. Nếu có container slide carousel
+    const carouselSlides = postElement.querySelectorAll('div[role="region"] ul > li, ul[style*="transform"] > li');
+    if (carouselSlides.length > 1) return false;
+
     return true;
   }
 
+  // Kiểm tra bài nhạc đang phát có khớp với bài viết đang hiển thị trên màn hình hay không
+  function verifyActiveAudioMatchesCurrentView() {
+    if (!currentActive?.audio || currentActive.audio.paused) return;
+
+    const path = window.location.pathname;
+    const isDirectPost = path.includes('/p/');
+    const isHome = path === '/';
+    const activeDialog = getActivePostDialog();
+
+    // 1. Nếu không ở Home Feed, không ở trang /p/, và không có Dialog nào mở (ví dụ: đang ở grid profile /reposts/):
+    // -> Tắt ngay lập tức, không để nhạc chạy ngầm trên trang profile/reposts
+    if (!isHome && !isDirectPost && !activeDialog) {
+      pauseCurrentAudio();
+      return;
+    }
+
+    // 2. Nếu đang xem trong Dialog:
+    if (activeDialog) {
+      // Chỉ tắt nhạc ngoài khi bài viết này thuần túy là 1 video đơn lẻ (Single Video Post)
+      if (isSingleVideoPost(activeDialog)) {
+        pauseCurrentAudio();
+        return;
+      }
+
+      // Nếu shortcode bài viết trong dialog khác với mã bài đang phát -> tắt nhạc bài cũ ngay
+      const dialogSc = getShortcodeFromPost(activeDialog) || getPageShortcode();
+      if (dialogSc && currentActive.track?.code && dialogSc !== currentActive.track.code) {
+        pauseCurrentAudio();
+        return;
+      }
+    } else if (isDirectPost) {
+      // 3. Nếu đang xem trang /p/ trực tiếp:
+      const pageSc = getPageShortcode();
+      if (pageSc && currentActive.track?.code && pageSc !== currentActive.track.code) {
+        pauseCurrentAudio();
+        return;
+      }
+      const mainPost = document.querySelector('main article, article');
+      if (mainPost && isSingleVideoPost(mainPost)) {
+        pauseCurrentAudio();
+        return;
+      }
+    }
+  }
+
   function cleanupIfPostClosed() {
-    if (!isPostViewingContext()) {
+    verifyActiveAudioMatchesCurrentView();
+
+    if (!isPostViewingContext() || window.location.pathname.includes('/reels') || window.location.pathname.includes('/reel')) {
       pauseCurrentAudio();
       document.querySelectorAll('.ig-music-controls-container, .ig-music-feed-bar').forEach(el => el.remove());
       return;
@@ -898,6 +1098,12 @@
       const parentDialog = currentActive.wrapper.closest('div[role="dialog"]');
       if (parentDialog && (parentDialog.getAttribute('aria-hidden') === 'true' || parentDialog.offsetWidth <= 0)) {
         pauseCurrentAudio();
+        return;
+      }
+
+      if (parentDialog && isSingleVideoPost(parentDialog)) {
+        pauseCurrentAudio();
+        return;
       }
     }
   }
@@ -905,6 +1111,7 @@
   // --- 4. HÀNG ĐỢI TRUY VẤN THEO MÀN HÌNH (Viewport Priority) ---
   function queuePostInspection(shortcode) {
     if (!shortcode || tracksByCode.has(shortcode) || noAudioSet.has(shortcode)) return;
+    if (window.location.pathname.includes('/reels') || window.location.pathname.includes('/reel')) return;
     if (activeInspections.has(shortcode) || inspectQueue.has(shortcode)) return;
 
     inspectQueue.add(shortcode);
@@ -999,8 +1206,10 @@
       <button class="ig-feed-speaker-btn" type="button" title="Phát nhạc" disabled>
         ${SVG_SPEAKER_MUTED}
       </button>
-      <div class="ig-progress-track" style="display: none;">
+      <div class="ig-progress-track" style="display: none;" title="Kéo hoặc bấm để tua nhạc">
         <div class="ig-progress-fill"></div>
+        <div class="ig-progress-thumb"></div>
+        <div class="ig-progress-tooltip">0:00</div>
       </div>
     `;
 
@@ -1036,7 +1245,11 @@
           <div class="ig-track-info" title="${track.title} - ${track.artist}">
             <span class="ig-track-title">${track.title}</span>
             ${track.artist ? `<span class="ig-track-divider">•</span><span class="ig-track-artist">${track.artist}</span>` : ''}
-            <span class="ig-clip-duration">${formatTime(clipDurationSec)}</span>
+            <div class="ig-feed-time-wrap">
+              <span class="ig-feed-cur-time">0:00</span>
+              <span class="ig-feed-time-sep">/</span>
+              <span class="ig-clip-duration">${formatTime(clipDurationSec)}</span>
+            </div>
           </div>
         `;
         speakerBtn.removeAttribute('disabled');
@@ -1084,7 +1297,13 @@
 
     const speakerBtn = bar.querySelector('.ig-feed-speaker-btn');
     const barLeft = bar.querySelector('.ig-feed-bar-left');
+    const progressTrack = bar.querySelector('.ig-progress-track');
     const progressFill = bar.querySelector('.ig-progress-fill');
+    const progressThumb = bar.querySelector('.ig-progress-thumb');
+    const progressTooltip = bar.querySelector('.ig-progress-tooltip');
+    const curTimeEl = bar.querySelector('.ig-feed-cur-time');
+
+    let isDraggingAudio = false;
 
     const startSec = (track.startTimeMs || 0) / 1000;
     const clipDurationSec = (track.clipDurationMs || 30000) / 1000;
@@ -1098,7 +1317,7 @@
       if (startSec > 0 && Math.abs(audio.currentTime - startSec) > 0.4) {
         try {
           audio.currentTime = startSec;
-        } catch (_) {}
+        } catch (_) { }
       }
     };
     audio.addEventListener('loadedmetadata', applyStartTime);
@@ -1146,7 +1365,7 @@
           const unlockAudio = () => {
             document.removeEventListener('click', unlockAudio);
             if (audio.paused && bar.isConnected && isPostViewingContext()) {
-              audio.play().then(updatePlayingUI).catch(() => {});
+              audio.play().then(updatePlayingUI).catch(() => { });
             }
           };
           document.addEventListener('click', unlockAudio, { once: true });
@@ -1175,6 +1394,101 @@
 
     speakerBtn.addEventListener('click', togglePlay);
     barLeft.addEventListener('click', togglePlay);
+
+    // --- THANH TRƯỢT TƯƠNG TÁC CHO BÀI VIẾT ẢNH CHÈN NHẠC (FEED SCRUBBER) ---
+    const getAudioScrubPct = (e) => {
+      if (!progressTrack) return 0;
+      const rect = progressTrack.getBoundingClientRect();
+      if (rect.width <= 0) return 0;
+      const clientX = e.clientX ?? (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+      return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    };
+
+    const applyScrubAudio = (pct) => {
+      const relativeSec = pct * clipDurationSec;
+      const actualSec = startSec + relativeSec;
+      audio.currentTime = actualSec;
+      if (progressFill) progressFill.style.width = `${pct * 100}%`;
+      if (progressThumb) progressThumb.style.left = `${pct * 100}%`;
+      if (curTimeEl) curTimeEl.textContent = formatTime(relativeSec);
+    };
+
+    if (progressTrack) {
+      progressTrack.addEventListener('pointerenter', () => {
+        if (progressTooltip) progressTooltip.style.opacity = '1';
+      });
+
+      progressTrack.addEventListener('pointerleave', () => {
+        if (!isDraggingAudio && progressTooltip) {
+          progressTooltip.style.opacity = '0';
+        }
+      });
+
+      const onAudioScrubEnd = (e) => {
+        if (!isDraggingAudio) return;
+        isDraggingAudio = false;
+        progressTrack.classList.remove('is-dragging');
+        if (e && e.pointerId !== undefined) {
+          try {
+            progressTrack.releasePointerCapture(e.pointerId);
+          } catch (_) { }
+        }
+        window.removeEventListener('pointerup', onAudioScrubEnd, true);
+        window.removeEventListener('pointercancel', onAudioScrubEnd, true);
+        window.removeEventListener('mouseup', onAudioScrubEnd, true);
+        window.removeEventListener('blur', onAudioScrubEnd, true);
+        if (progressTooltip) progressTooltip.style.opacity = '0';
+      };
+
+      progressTrack.addEventListener('pointermove', (e) => {
+        if (isDraggingAudio && (e.buttons === 0 || (e.buttons !== undefined && (e.buttons & 1) === 0))) {
+          onAudioScrubEnd(e);
+          return;
+        }
+        const pct = getAudioScrubPct(e);
+        const relativeSec = pct * clipDurationSec;
+        if (progressTooltip) {
+          progressTooltip.textContent = formatTime(relativeSec);
+          progressTooltip.style.left = `${(pct * 100).toFixed(1)}%`;
+        }
+        if (isDraggingAudio) {
+          applyScrubAudio(pct);
+        }
+      });
+
+      progressTrack.addEventListener('pointerdown', (e) => {
+        if (e.button !== undefined && e.button !== 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+        isDraggingAudio = true;
+        progressTrack.classList.add('is-dragging');
+        try {
+          progressTrack.setPointerCapture(e.pointerId);
+        } catch (_) { }
+
+        const pct = getAudioScrubPct(e);
+        applyScrubAudio(pct);
+
+        if (progressTooltip) {
+          progressTooltip.style.opacity = '1';
+          progressTooltip.textContent = formatTime(pct * clipDurationSec);
+          progressTooltip.style.left = `${(pct * 100).toFixed(1)}%`;
+        }
+
+        // Tự động phát nếu đang pause
+        if (audio.paused && !currentActive) {
+          startPlay();
+        }
+
+        window.addEventListener('pointerup', onAudioScrubEnd, true);
+        window.addEventListener('pointercancel', onAudioScrubEnd, true);
+        window.addEventListener('mouseup', onAudioScrubEnd, true);
+        window.addEventListener('blur', onAudioScrubEnd, true);
+      });
+
+      progressTrack.addEventListener('pointerup', onAudioScrubEnd);
+      progressTrack.addEventListener('pointercancel', onAudioScrubEnd);
+    }
 
     // KHI THAO TÁC BÀI VIẾT (NEXT ẢNH, LIKE, CLICK ẢNH): TỰ ĐỘNG PHÁT NHẠC & KÍCH HOẠT PHIÊN ÂM THANH
     const postContainer = bar.closest('article') || bar.closest('div[role="dialog"]');
@@ -1206,7 +1520,7 @@
       if (audio.currentTime >= endSec) {
         if (config.loop) {
           audio.currentTime = startSec;
-          audio.play().catch(() => {});
+          audio.play().catch(() => { });
         } else {
           audio.pause();
           audio.currentTime = startSec;
@@ -1215,35 +1529,68 @@
         }
       }
 
-      if (progressFill) {
+      if (!isDraggingAudio) {
         const elapsed = Math.max(0, audio.currentTime - startSec);
         const percent = Math.min(100, (elapsed / clipDurationSec) * 100);
-        progressFill.style.width = `${percent.toFixed(1)}%`;
+        if (progressFill) progressFill.style.width = `${percent.toFixed(1)}%`;
+        if (progressThumb) progressThumb.style.left = `${percent.toFixed(1)}%`;
+        if (curTimeEl) curTimeEl.textContent = formatTime(elapsed);
       }
     });
   }
 
   // --- 7. TRÍCH XUẤT SHORTCODE & KHUNG MEDIA ---
   function getPageShortcode() {
-    const match = window.location.pathname.match(/\/(?:p|reel)\/([A-Za-z0-9_-]+)/);
-    return match ? match[1] : null;
+    const match = window.location.pathname.match(/\/(?:p|reel|reels)\/([A-Za-z0-9_-]+)/);
+    if (!match) return null;
+    const sc = match[1];
+    if (['audio', 'videos', 'reels', 'comments', 'explore', 'stories'].includes(sc.toLowerCase())) return null;
+    return sc;
   }
 
   function getShortcodeFromPost(post) {
     if (!post) return null;
-    const timeAnchor = post.querySelector('a:has(time), a[href*="/p/"] time, a[href*="/reel/"] time');
+    const timeAnchor = post.querySelector('a:has(time), a[href*="/p/"] time, a[href*="/reel/"] time, a[href*="/reels/"] time');
     if (timeAnchor) {
       const a = timeAnchor.closest('a');
-      const m = a?.getAttribute('href')?.match(/\/(?:p|reel)\/([A-Za-z0-9_-]+)/);
-      if (m) return m[1];
+      const m = a?.getAttribute('href')?.match(/\/(?:p|reel|reels)\/([A-Za-z0-9_-]+)/);
+      if (m && m[1] && !['audio', 'videos', 'reels', 'comments', 'explore'].includes(m[1].toLowerCase())) return m[1];
     }
 
-    const directLinks = Array.from(post.querySelectorAll('a[href*="/p/"], a[href*="/reel/"]'));
+    const directLinks = Array.from(post.querySelectorAll('a[href*="/p/"], a[href*="/reel/"], a[href*="/reels/"]'));
     for (const link of directLinks) {
       const href = link.getAttribute('href') || '';
-      const m = href.match(/\/(?:p|reel)\/([A-Za-z0-9_-]+)/);
-      if (m && !href.includes('/comments/')) return m[1];
+      if (href.includes('/audio/') || href.includes('/comments/') || href.includes('/liked_by/')) continue;
+      const m = href.match(/\/(?:p|reel|reels)\/([A-Za-z0-9_-]+)/);
+      if (m && m[1] && !['audio', 'videos', 'reels', 'comments', 'explore'].includes(m[1].toLowerCase())) return m[1];
     }
+    return null;
+  }
+
+  function getReelOrPostShortcode(container, video) {
+    if (!container && !video) return null;
+    const post = (container || video)?.closest('article, div[role="dialog"]');
+    let sc = post ? getShortcodeFromPost(post) : null;
+    if (sc && !['audio', 'reels', 'videos', 'comments', 'explore'].includes(sc.toLowerCase())) return sc;
+
+    let cur = (container || video);
+    for (let depth = 0; cur && depth < 18; depth++, cur = cur.parentElement) {
+      const reelLinks = Array.from(cur.querySelectorAll('a[href*="/reel/"], a[href*="/reels/"], a[href*="/p/"]'));
+      for (const a of reelLinks) {
+        const href = a.getAttribute('href') || '';
+        if (href.includes('/audio/') || href.includes('/comments/') || href.includes('/liked_by/')) continue;
+        const m = href.match(/\/(?:reels|reel|p)\/([A-Za-z0-9_-]+)/);
+        if (m && m[1] && !['audio', 'reels', 'videos', 'comments', 'explore'].includes(m[1].toLowerCase())) {
+          return m[1];
+        }
+      }
+    }
+
+    const pageSc = getPageShortcode();
+    if (pageSc && !['audio', 'reels', 'videos', 'comments', 'explore'].includes(pageSc.toLowerCase())) {
+      return pageSc;
+    }
+
     return null;
   }
 
@@ -1289,14 +1636,16 @@
   function getValidPostArticles() {
     if (!isPostViewingContext()) return [];
 
+    const path = window.location.pathname;
+    if (path.includes('/reels') || path.includes('/reel')) return [];
+
     const activeDialog = getActivePostDialog();
     if (activeDialog) {
       const art = activeDialog.querySelector('article');
       return art ? [art] : [activeDialog];
     }
 
-    const path = window.location.pathname;
-    if (path.includes('/p/') || path.includes('/reel/')) {
+    if (path.includes('/p/')) {
       const art = document.querySelector('main article, article');
       if (art) return [art];
       const main = document.querySelector('main');
@@ -1315,74 +1664,1236 @@
 
   // --- 7.1. NÚT DOWNLOAD NỔI CHO VIDEO ĐƠN LẺ (Single Video Posts) ---
   function attachFloatingDownloadButton(post) {
-    if (!post || post.querySelector('.ig-floating-download-btn')) return;
-    const video = post.querySelector('video');
-    if (!video) return;
+    // Trong v2.5.0: Video đơn lẻ đã có nút Download tích hợp ngay trong thanh điều khiển trượt lên,
+    // không tạo thêm nút tròn nổi lẻ loi ở góc trái nữa để tránh trùng lặp và vướng giao diện.
+    if (!post) return;
+    const existing = post.querySelector('.ig-floating-download-btn');
+    if (existing) existing.remove();
+  }
 
-    let container = video.parentElement;
-    while (container && container !== post) {
-      if (container.querySelector('button[aria-label*="Audio"], button[aria-label*="âm thanh"], div[role="button"]')) {
-        break;
+  // --- 8. TỰ ĐỘNG BẬT TIẾNG & THANH ĐIỀU KHIỂN VIDEO (v2.5.0 - Tối ưu RAM & Hiệu năng) ---
+  const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+
+  function ensureVideoUnmuted(video) {
+    if (config.autoUnmute === false) return;
+    if (!video || video._userMuted) return;
+
+    const targetVolume = (typeof config.volume === 'number' && config.volume > 0) ? config.volume : 0.8;
+
+    const applyUnmute = () => {
+      if (!video || video._userMuted) return;
+      try {
+        if (video.muted) {
+          video.muted = false;
+        }
+        if (video.volume === 0 || Math.abs(video.volume - targetVolume) > 0.3) {
+          video.volume = targetVolume;
+        }
+      } catch (_) { }
+    };
+
+    applyUnmute();
+    requestAnimationFrame(applyUnmute);
+    setTimeout(applyUnmute, 120);
+    setTimeout(applyUnmute, 350);
+  }
+
+  function findVideoContainer(video) {
+    if (!video) return null;
+    // Đi tìm khung chứa bao quát cả video và các lớp overlay/nút bấm của Instagram
+    let cur = video.parentElement;
+    let best = video.parentElement;
+    while (cur && cur.tagName !== 'ARTICLE' && !cur.getAttribute('role')?.includes('dialog') && cur.tagName !== 'BODY') {
+      const cW = cur.offsetWidth || 0;
+      const cH = cur.offsetHeight || 0;
+      const vW = video.offsetWidth || 0;
+      const vH = video.offsetHeight || 0;
+
+      // Nếu chứa các nút điều khiển âm thanh mặc định của IG hoặc là khung tương tác chính
+      const hasNativeControls = cur.querySelector(`
+        button:not(.ig-vctl-btn):is([aria-label*="audio" i], [aria-label*="sound" i], [aria-label*="volume" i], [aria-label*="mute" i], [aria-label*="unmute" i], [aria-label*="tiếng" i], [aria-label*="âm thanh" i]),
+        [role="button"]:not(.ig-vctl-btn):is([aria-label*="audio" i], [aria-label*="sound" i], [aria-label*="volume" i], [aria-label*="mute" i], [aria-label*="unmute" i], [aria-label*="tiếng" i], [aria-label*="âm thanh" i]),
+        button:not(.ig-vctl-btn):has(svg:is([aria-label*="audio" i], [aria-label*="sound" i], [aria-label*="volume" i], [aria-label*="mute" i], [aria-label*="unmute" i], [aria-label*="tiếng" i], [aria-label*="âm thanh" i])),
+        [role="button"]:not(.ig-vctl-btn):has(svg:is([aria-label*="audio" i], [aria-label*="sound" i], [aria-label*="volume" i], [aria-label*="mute" i], [aria-label*="unmute" i], [aria-label*="tiếng" i], [aria-label*="âm thanh" i]))
+      `);
+      if (hasNativeControls && cur.contains(video)) {
+        return cur;
       }
-      container = container.parentElement;
-    }
-    if (!container) container = video.parentElement;
 
-    const style = window.getComputedStyle(container);
-    if (style.position === 'static') {
+      if (vW > 0 && vH > 0 && Math.abs(cW - vW) < 30 && Math.abs(cH - vH) < 30) {
+        best = cur;
+      }
+      cur = cur.parentElement;
+    }
+    return best || video.parentElement;
+  }
+
+  function detachVideoController(video) {
+    if (!video) return;
+    if (video._controllerCleanup) {
+      try {
+        video._controllerCleanup();
+      } catch (_) { }
+      video._controllerCleanup = null;
+    }
+    if (video._controllerEl) {
+      video._controllerEl.remove();
+      video._controllerEl = null;
+    }
+    if (video._miniProgressEl) {
+      video._miniProgressEl.remove();
+      video._miniProgressEl = null;
+    }
+    if (video._vctlContainer) {
+      try {
+        video._vctlContainer.removeAttribute('data-ig-vctl-container');
+        video._vctlContainer.classList.remove('vctl-active');
+      } catch (_) { }
+      video._vctlContainer = null;
+    }
+    video._hasCustomController = false;
+  }
+
+  function hideNodeTotally(node) {
+    if (!node) return;
+    if (window.location.pathname.includes('/stories/')) return;
+    try {
+      node.style.setProperty('display', 'none', 'important');
+      node.style.setProperty('opacity', '0', 'important');
+      node.style.setProperty('visibility', 'hidden', 'important');
+      node.style.setProperty('pointer-events', 'none', 'important');
+      node.style.setProperty('background', 'transparent', 'important');
+      node.style.setProperty('width', '0', 'important');
+      node.style.setProperty('height', '0', 'important');
+      node.style.setProperty('min-width', '0', 'important');
+      node.style.setProperty('min-height', '0', 'important');
+      node.style.setProperty('max-width', '0', 'important');
+      node.style.setProperty('max-height', '0', 'important');
+      node.style.setProperty('margin', '0', 'important');
+      node.style.setProperty('padding', '0', 'important');
+      node.style.setProperty('border', 'none', 'important');
+      node.style.setProperty('box-shadow', 'none', 'important');
+      node.style.setProperty('position', 'absolute', 'important');
+      node.style.setProperty('left', '-99999px', 'important');
+      node.setAttribute('data-ig-native-audio-hidden', 'true');
+    } catch (_) { }
+  }
+
+  // Ẩn triệt để toàn bộ cụm điều khiển âm thanh mặc định của Instagram trên feed video (không áp dụng trên Stories)
+  function hideNativeAudioWidgets(scope = document) {
+    if (window.location.pathname.includes('/stories/')) return;
+    try {
+      if (!scope) scope = document;
+
+      // 1. Quét theo class và thuộc tính đặc thù của widget âm thanh gốc Instagram (.xbjudin, role="slider", etc.)
+      const nativeContainers = scope.querySelectorAll('.xbjudin, [aria-label="Adjust volume"], div[role="slider"][aria-label*="volume" i], div[role="slider"][aria-label*="tiếng" i], div[role="slider"][aria-label*="âm thanh" i]');
+      nativeContainers.forEach(container => {
+        if (container.closest('.ig-video-controller')) return;
+        hideNodeTotally(container);
+      });
+
+      // 2. Quét các nút bấm âm thanh độc lập và toàn bộ cụm cha bao ngoài
+      const candidates = scope.querySelectorAll('button:not(.ig-vctl-btn):not(.ig-feed-speaker-btn), [role="button"]:not(.ig-vctl-btn):not(.ig-feed-speaker-btn)');
+      candidates.forEach(el => {
+        if (el.closest('.ig-video-controller') || el.closest('.ig-music-feed-bar')) return;
+        const label = (
+          (el.getAttribute('aria-label') || '') + ' ' +
+          (el.querySelector('svg')?.getAttribute('aria-label') || '') + ' ' +
+          (el.querySelector('title')?.textContent || '')
+        ).toLowerCase();
+
+        if (/audio|sound|volume|mute|unmute|âm thanh|tiếng|tắt tiếng|bật tiếng/i.test(label)) {
+          const sliderWrapper = el.closest('[role="slider"], [aria-label*="volume" i], [aria-label*="tiếng" i], [aria-label*="âm thanh" i], .xbjudin');
+          const nodesToHide = [el, el.parentElement, sliderWrapper].filter(Boolean);
+          nodesToHide.forEach(node => {
+            if (node.closest('.ig-video-controller') || node.closest('.ig-music-feed-bar')) return;
+            if (node.tagName === 'ARTICLE' || node.tagName === 'MAIN' || node.tagName === 'BODY' || node.tagName === 'VIDEO') return;
+            hideNodeTotally(node);
+          });
+        }
+      });
+    } catch (_) { }
+  }
+
+  function attachVideoController(video) {
+    if (!video || video._hasCustomController || !video.isConnected) return;
+    if (window.location.pathname.includes('/stories/')) return;
+
+    const w = video.offsetWidth || video.videoWidth || 0;
+    const h = video.offsetHeight || video.videoHeight || 0;
+    if (w < 100 || h < 100) return;
+    if (video.closest('header') || video.closest('nav') || video.closest('aside')) return;
+
+    const container = findVideoContainer(video);
+    if (!container) return;
+
+    video._hasCustomController = true;
+    video._vctlContainer = container;
+
+    // Đánh dấu container để CSS kích hoạt slide-up/slide-down mượt mà
+    container.setAttribute('data-ig-vctl-container', 'true');
+    if (container.style.position === 'static' || !container.style.position) {
       container.style.position = 'relative';
     }
 
-    const btn = document.createElement('button');
-    btn.className = 'ig-floating-download-btn';
-    btn.type = 'button';
-    btn.title = 'Tải video này';
-    btn.innerHTML = SVG_DOWNLOAD;
+    container.querySelectorAll('.ig-video-controller, .ig-vctl-mini-progress').forEach(el => el.remove());
 
-    btn.addEventListener('click', async (e) => {
+    // Ẩn triệt để nút loa và toàn bộ widget âm thanh gốc của Instagram
+    hideNativeAudioWidgets(container);
+    if (container.parentElement) hideNativeAudioWidgets(container.parentElement);
+    setTimeout(() => {
+      hideNativeAudioWidgets(container);
+      if (container.parentElement) hideNativeAudioWidgets(container.parentElement);
+    }, 250);
+
+    // 1. Tạo vạch tiến trình mini (hiển thị mỏng ở đáy khi ẩn thanh điều khiển)
+    const miniProgress = document.createElement('div');
+    miniProgress.className = 'ig-vctl-mini-progress';
+    miniProgress.innerHTML = `<div class="ig-vctl-mini-fill"></div>`;
+    const miniFill = miniProgress.querySelector('.ig-vctl-mini-fill');
+    container.appendChild(miniProgress);
+    video._miniProgressEl = miniProgress;
+
+    // 2. Tạo Controller chính
+    const controller = document.createElement('div');
+    controller.className = 'ig-video-controller';
+    video._controllerEl = controller;
+
+    controller.innerHTML = `
+      <div class="ig-vctl-progress-container" title="Kéo hoặc bấm để tua video">
+        <div class="ig-vctl-progress-track">
+          <div class="ig-vctl-progress-buffer"></div>
+          <div class="ig-vctl-progress-hover"></div>
+          <div class="ig-vctl-progress-fill"></div>
+          <div class="ig-vctl-progress-thumb"></div>
+        </div>
+        <div class="ig-vctl-time-bubble">0:00</div>
+      </div>
+      <div class="ig-vctl-row">
+        <div class="ig-vctl-left">
+          <button class="ig-vctl-btn ig-vctl-play-btn" type="button" title="Phát / Tạm dừng (Space)">
+            ${video.paused ? SVG_PLAY : SVG_PAUSE}
+          </button>
+          <button class="ig-vctl-btn ig-vctl-rewind-btn" type="button" title="Tua lùi 5 giây (←)">
+            ${SVG_REWIND_5}
+          </button>
+          <button class="ig-vctl-btn ig-vctl-forward-btn" type="button" title="Tua tới 5 giây (→)">
+            ${SVG_FORWARD_5}
+          </button>
+          <div class="ig-vctl-vol-group">
+            <button class="ig-vctl-btn ig-vctl-vol-btn" type="button" title="Bật / Tắt tiếng (M)">
+              ${(video.muted || video.volume === 0) ? SVG_SPEAKER_MUTED : SVG_SPEAKER_ON}
+            </button>
+            <div class="ig-vctl-vol-slider-wrap">
+              <input type="range" class="ig-vctl-vol-slider" min="0" max="1" step="0.05" value="${video.muted ? 0 : video.volume}">
+            </div>
+          </div>
+          <div class="ig-vctl-time-display">
+            <span class="ig-vctl-cur-time">${formatTime(video.currentTime || 0)}</span>
+            <span class="ig-vctl-time-sep">/</span>
+            <span class="ig-vctl-dur-time">${formatTime(video.duration || 0)}</span>
+          </div>
+        </div>
+        <div class="ig-vctl-right">
+          <select class="ig-vctl-speed-select" title="Tốc độ phát video">
+            ${SPEED_OPTIONS.map(spd => `<option value="${spd}" ${(video.playbackRate || 1) === spd ? 'selected' : ''}>${spd}x</option>`).join('')}
+          </select>
+          <button class="ig-vctl-btn ig-vctl-fullscreen-btn" type="button" title="Toàn màn hình">
+            ${SVG_FULLSCREEN}
+          </button>
+          <button class="ig-vctl-btn ig-vctl-dl-btn" type="button" title="Tải video này về máy">
+            ${SVG_DOWNLOAD}
+          </button>
+        </div>
+      </div>
+    `;
+
+    container.appendChild(controller);
+
+    const progressContainer = controller.querySelector('.ig-vctl-progress-container');
+    const progressTrack = controller.querySelector('.ig-vctl-progress-track');
+    const bufferBar = controller.querySelector('.ig-vctl-progress-buffer');
+    const hoverBar = controller.querySelector('.ig-vctl-progress-hover');
+    const fillBar = controller.querySelector('.ig-vctl-progress-fill');
+    const thumbEl = controller.querySelector('.ig-vctl-progress-thumb');
+    const timeBubble = controller.querySelector('.ig-vctl-time-bubble');
+
+    const playBtn = controller.querySelector('.ig-vctl-play-btn');
+    const rewindBtn = controller.querySelector('.ig-vctl-rewind-btn');
+    const forwardBtn = controller.querySelector('.ig-vctl-forward-btn');
+    const curTimeEl = controller.querySelector('.ig-vctl-cur-time');
+    const durTimeEl = controller.querySelector('.ig-vctl-dur-time');
+
+    const speedSelect = controller.querySelector('.ig-vctl-speed-select');
+    const volBtn = controller.querySelector('.ig-vctl-vol-btn');
+    const volSlider = controller.querySelector('.ig-vctl-vol-slider');
+    const fullscreenBtn = controller.querySelector('.ig-vctl-fullscreen-btn');
+    const dlBtn = controller.querySelector('.ig-vctl-dl-btn');
+
+    let isDragging = false;
+    let wasPlayingBeforeDrag = false;
+    let cachedTrackRect = null;
+    let hideTimer = null;
+    let savedVolume = video.volume > 0 ? video.volume : 0.8;
+
+    const showControls = () => {
+      container.classList.add('vctl-active');
+      controller.classList.add('is-active');
+      clearTimeout(hideTimer);
+      if (!video.paused && !isDragging) {
+        hideTimer = setTimeout(() => {
+          if (!video.paused && !isDragging && !controller.matches(':hover') && !container.matches(':hover')) {
+            container.classList.remove('vctl-active');
+            controller.classList.remove('is-active');
+          }
+        }, 2200);
+      }
+    };
+
+    const hideControlsImmediate = (e) => {
+      clearTimeout(hideTimer);
+      if (e?.relatedTarget && (container.contains(e.relatedTarget) || controller.contains(e.relatedTarget))) {
+        return;
+      }
+      if (!video.paused && !isDragging) {
+        container.classList.remove('vctl-active');
+        controller.classList.remove('is-active');
+      }
+    };
+
+    container.addEventListener('pointerenter', showControls);
+    container.addEventListener('pointermove', showControls);
+    container.addEventListener('pointerleave', hideControlsImmediate);
+    video.addEventListener('pointerenter', showControls);
+    video.addEventListener('pointermove', showControls);
+    video.addEventListener('pointerleave', hideControlsImmediate);
+    controller.addEventListener('pointerenter', showControls);
+    controller.addEventListener('pointermove', showControls);
+    controller.addEventListener('pointerleave', hideControlsImmediate);
+
+    // Ngăn chặn sự kiện tương tác trên toolbar nổi bọt lên các lớp cha/overlay của Instagram
+    const stopBubble = (e) => {
+      // TUYỆT ĐỐI KHÔNG chặn pointerup, pointercancel, mouseup - để window luôn bắt được sự kiện nhả chuột!
+      if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'mouseup') return;
+      if (e.type === 'click') {
+        e.stopPropagation();
+        return;
+      }
+      e.stopPropagation();
+    };
+    controller.addEventListener('click', stopBubble);
+    controller.addEventListener('pointerdown', stopBubble);
+    controller.addEventListener('mousedown', stopBubble);
+    controller.addEventListener('touchstart', stopBubble, { passive: true });
+
+    // Nếu controller nằm trong thẻ <a> (thường gặp ở Home feed video post)
+    // Đảm bảo click vào group controller KHÔNG BAO GIỜ bị nhảy link sang Reels,
+    // trong khi click vào vùng trên của video (ngoài controller) vẫn nhảy link bình thường
+    const enclosingLink = container.closest('a') || controller.closest('a');
+    if (enclosingLink) {
+      enclosingLink.addEventListener('click', (e) => {
+        if (controller.contains(e.target)) {
+          e.preventDefault();
+        }
+      }, true);
+    }
+
+    let rafTicker = null;
+    let lastProgressTick = 0;
+    const startTicker = () => {
+      stopTicker();
+      const tick = (now) => {
+        if (!video.paused && !video.ended) {
+          const interval = controller.classList.contains('is-active') ? 70 : 200;
+          if (!lastProgressTick || (now - lastProgressTick >= interval)) {
+            lastProgressTick = now;
+            updateProgressUI();
+          }
+          rafTicker = requestAnimationFrame(tick);
+        }
+      };
+      rafTicker = requestAnimationFrame(tick);
+    };
+    const stopTicker = () => {
+      if (rafTicker) {
+        cancelAnimationFrame(rafTicker);
+        rafTicker = null;
+      }
+    };
+
+    const updateProgressUI = () => {
+      if (isDragging) return;
+      const cur = video.currentTime || 0;
+      const dur = video.duration || 0;
+      const pct = dur > 0 ? Math.min(100, Math.max(0, (cur / dur) * 100)) : 0;
+
+      fillBar.style.setProperty('width', `${pct}%`, 'important');
+      thumbEl.style.setProperty('left', `${pct}%`, 'important');
+      if (miniFill) miniFill.style.setProperty('width', `${pct}%`, 'important');
+
+      // CHỈ CẬP NHẬT TEXT & BUFFER KHI CONTROLLER ĐANG MỞ (Tiết kiệm CPU & RAM tối đa)
+      if (controller.classList.contains('is-active')) {
+        curTimeEl.textContent = formatTime(cur);
+        if (dur > 0) durTimeEl.textContent = formatTime(dur);
+
+        if (video.buffered && video.buffered.length > 0 && dur > 0) {
+          try {
+            const bufEnd = video.buffered.end(video.buffered.length - 1);
+            const bufPct = Math.min(100, Math.max(0, (bufEnd / dur) * 100));
+            bufferBar.style.setProperty('width', `${bufPct}%`, 'important');
+          } catch (_) { }
+        }
+      }
+    };
+
+    const getScrubPct = (clientX) => {
+      const rect = cachedTrackRect || progressTrack.getBoundingClientRect();
+      if (!rect || rect.width <= 0) return 0;
+      return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    };
+
+    const updateScrubDisplay = (pct) => {
+      const dur = video.duration || 0;
+      if (dur > 0) {
+        try {
+          video.currentTime = pct * dur;
+        } catch (_) { }
+      }
+      const pctStr = `${(pct * 100).toFixed(2)}%`;
+      fillBar.style.setProperty('width', pctStr, 'important');
+      thumbEl.style.setProperty('left', pctStr, 'important');
+      if (miniFill) miniFill.style.setProperty('width', pctStr, 'important');
+      curTimeEl.textContent = formatTime(pct * dur);
+
+      timeBubble.textContent = formatTime(pct * dur);
+      timeBubble.style.setProperty('left', pctStr, 'important');
+      timeBubble.style.opacity = '1';
+    };
+
+    const onScrubMove = (e) => {
+      if (!isDragging) return;
+      // QUAN TRỌNG NHẤT: Nếu chuột di chuyển mà không hề nhấn giữ phím chuột trái (e.buttons === 0),
+      // ngay lập tức ngắt trạng thái kéo, tuyệt đối không để thanh trượt bám theo chuột!
+      if (e.buttons === 0 || (e.buttons !== undefined && (e.buttons & 1) === 0)) {
+        onScrubEnd(e);
+        return;
+      }
+      const clientX = e.clientX ?? (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+      const pct = getScrubPct(clientX);
+      updateScrubDisplay(pct);
+    };
+
+    const onScrubEnd = (e) => {
+      if (!isDragging) return;
+      isDragging = false;
+      controller.classList.remove('is-dragging');
+      progressContainer.classList.remove('is-dragging');
+      cachedTrackRect = null;
+
+      if (e && e.pointerId !== undefined) {
+        try { progressContainer.releasePointerCapture(e.pointerId); } catch (_) { }
+      }
+
+      window.removeEventListener('pointermove', onScrubMove, true);
+      window.removeEventListener('pointerup', onScrubEnd, true);
+      window.removeEventListener('pointercancel', onScrubEnd, true);
+      window.removeEventListener('mouseup', onScrubEnd, true);
+      window.removeEventListener('blur', onScrubEnd, true);
+      progressContainer.removeEventListener('pointerup', onScrubEnd);
+      progressContainer.removeEventListener('pointercancel', onScrubEnd);
+
+      if (!progressContainer.matches(':hover')) {
+        timeBubble.style.opacity = '0';
+        if (hoverBar) hoverBar.style.setProperty('width', '0%', 'important');
+      }
+
+      if (wasPlayingBeforeDrag) {
+        wasPlayingBeforeDrag = false;
+        video.play().catch(() => { });
+      }
+
+      showControls();
+    };
+
+    const onScrubStart = (e) => {
+      // Chỉ nhận chuột trái (button === 0) hoặc touch
+      if (e.button !== undefined && e.button !== 0) return;
       e.preventDefault();
       e.stopPropagation();
-      if (btn._isDownloading) return;
-      btn._isDownloading = true;
 
-      const originalHtml = btn.innerHTML;
-      btn.innerHTML = SVG_SPINNER;
-      btn.classList.add('downloading');
+      isDragging = true;
+      wasPlayingBeforeDrag = !video.paused;
+      if (wasPlayingBeforeDrag) {
+        video.pause();
+      }
+
+      controller.classList.add('is-dragging');
+      progressContainer.classList.add('is-dragging');
+      cachedTrackRect = progressTrack.getBoundingClientRect();
 
       try {
-        const shortcode = getShortcodeFromPost(post) || getPageShortcode();
-        let videoUrl = video.currentSrc || video.src;
-        if (shortcode) {
-          const items = await requestPostMedia(shortcode);
-          const vidItem = items.find(i => i.type === 'video');
-          if (vidItem?.url) videoUrl = vidItem.url;
-        }
+        progressContainer.setPointerCapture(e.pointerId);
+      } catch (_) { }
 
-        if (videoUrl) {
-          await downloadUrlAsBlob(videoUrl, `instagram_${shortcode || 'video'}.mp4`);
-          btn.innerHTML = SVG_CHECKMARK;
-          btn.classList.remove('downloading');
-          btn.classList.add('success');
-          setTimeout(() => {
-            btn.innerHTML = originalHtml;
-            btn.classList.remove('success');
-            btn._isDownloading = false;
-          }, 2200);
-        } else {
-          btn.innerHTML = originalHtml;
-          btn.classList.remove('downloading');
-          btn._isDownloading = false;
-        }
-      } catch (err) {
-        console.error('[IG Video Download] Error:', err);
-        btn.innerHTML = originalHtml;
-        btn.classList.remove('downloading');
-        btn._isDownloading = false;
+      const clientX = e.clientX ?? (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+      const pct = getScrubPct(clientX);
+      updateScrubDisplay(pct);
+
+      // Đăng ký toàn cục ở capture phase để đón sự kiện nhả chuột dù chuột ở bất cứ đâu trên màn hình
+      window.addEventListener('pointermove', onScrubMove, true);
+      window.addEventListener('pointerup', onScrubEnd, true);
+      window.addEventListener('pointercancel', onScrubEnd, true);
+      window.addEventListener('mouseup', onScrubEnd, true);
+      window.addEventListener('blur', onScrubEnd, true);
+      progressContainer.addEventListener('pointerup', onScrubEnd);
+      progressContainer.addEventListener('pointercancel', onScrubEnd);
+    };
+
+    progressContainer.addEventListener('pointerdown', onScrubStart);
+    progressContainer.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    progressContainer.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+
+    // Hover preview (vạch ghost mờ và bong bóng thời gian giống YouTube)
+    progressContainer.addEventListener('pointerenter', () => {
+      timeBubble.style.opacity = '1';
+    });
+
+    progressContainer.addEventListener('pointerleave', () => {
+      if (!isDragging) {
+        timeBubble.style.opacity = '0';
+        if (hoverBar) hoverBar.style.setProperty('width', '0%', 'important');
       }
     });
 
-    container.appendChild(btn);
+    progressContainer.addEventListener('pointermove', (e) => {
+      if (isDragging) return;
+      const rect = progressTrack.getBoundingClientRect();
+      if (rect.width <= 0) return;
+      const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      const dur = video.duration || 0;
+      const pctStr = `${(pct * 100).toFixed(1)}%`;
+
+      if (hoverBar) {
+        hoverBar.style.setProperty('width', pctStr, 'important');
+      }
+      timeBubble.textContent = formatTime(pct * dur);
+      timeBubble.style.setProperty('left', pctStr, 'important');
+      timeBubble.style.opacity = '1';
+    });
+
+    playBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (video.paused) video.play().catch(() => { });
+      else video.pause();
+    });
+
+    rewindBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      video.currentTime = Math.max(0, (video.currentTime || 0) - 5);
+      showControls();
+    });
+
+    forwardBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const dur = video.duration || Infinity;
+      video.currentTime = Math.min(dur, (video.currentTime || 0) + 5);
+      showControls();
+    });
+
+    speedSelect.addEventListener('change', (e) => {
+      e.stopPropagation();
+      const newSpeed = parseFloat(speedSelect.value);
+      video.playbackRate = newSpeed;
+      showControls();
+    });
+
+    const updateVolumeUI = () => {
+      const isMuted = video.muted || video.volume === 0;
+      volBtn.innerHTML = isMuted ? SVG_SPEAKER_MUTED : SVG_SPEAKER_ON;
+      volSlider.value = isMuted ? 0 : video.volume;
+    };
+
+    volBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (video.muted || video.volume === 0) {
+        video._userMuted = false;
+        video.muted = false;
+        video.volume = savedVolume > 0 ? savedVolume : (config.volume || 0.8);
+      } else {
+        video._userMuted = true;
+        savedVolume = video.volume;
+        video.muted = true;
+      }
+      updateVolumeUI();
+      showControls();
+    });
+
+    volSlider.addEventListener('input', (e) => {
+      e.stopPropagation();
+      const val = parseFloat(volSlider.value);
+      video.volume = val;
+      if (val === 0) {
+        video.muted = true;
+        video._userMuted = true;
+      } else {
+        video.muted = false;
+        video._userMuted = false;
+        savedVolume = val;
+      }
+      updateVolumeUI();
+      showControls();
+    });
+
+    fullscreenBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const fsEl = document.fullscreenElement;
+      if (!fsEl) {
+        if (container.requestFullscreen) {
+          container.requestFullscreen().catch(() => video.requestFullscreen?.());
+        } else if (video.requestFullscreen) {
+          video.requestFullscreen();
+        }
+      } else {
+        document.exitFullscreen?.();
+      }
+    });
+
+    dlBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (dlBtn._isDownloading) return;
+      dlBtn._isDownloading = true;
+
+      const origHtml = dlBtn.innerHTML;
+      dlBtn.innerHTML = SVG_SPINNER;
+      dlBtn.classList.add('downloading');
+
+      try {
+        let shortcode = getReelOrPostShortcode(container, video);
+        if (!shortcode) {
+          shortcode = getPageShortcode();
+        }
+        const slideIndex = getCurrentSlideIndex(video, container);
+
+        video.setAttribute('data-ig-target-video', 'true');
+        const mediaRes = await requestActiveVideoMedia(shortcode, slideIndex);
+        video.removeAttribute('data-ig-target-video');
+
+        let videoUrl = mediaRes?.url;
+        if (!shortcode && mediaRes?.shortcode) {
+          shortcode = mediaRes.shortcode;
+        }
+
+        if (!videoUrl && shortcode) {
+          const items = await requestPostMedia(shortcode);
+          if (Array.isArray(items) && items.length > 0) {
+            if (slideIndex >= 0 && slideIndex < items.length && items[slideIndex]?.type === 'video') {
+              videoUrl = items[slideIndex].url;
+            } else {
+              const vidItem = items.find(i => i.type === 'video');
+              if (vidItem?.url) videoUrl = vidItem.url;
+            }
+          }
+        }
+
+        if (!videoUrl) {
+          try {
+            const perfEntries = performance.getEntriesByType('resource');
+            const mp4Entries = perfEntries.filter(entry => {
+              const name = (entry.name || '').toLowerCase();
+              if (!name.includes('.mp4') && !name.includes('/v/t50.')) return false;
+              if (name.includes('bytestart')) return false;
+              if (name.includes('audio') || name.includes('sound') || name.includes('music') || name.includes('dashinit') || name.includes('heaac') || name.includes('1172-')) return false;
+              return true;
+            });
+            if (mp4Entries.length > 0) {
+              videoUrl = mp4Entries[mp4Entries.length - 1].name;
+            }
+          } catch (_) { }
+        }
+
+        if (!videoUrl && video.currentSrc && !video.currentSrc.startsWith('blob:') && !video.currentSrc.includes('audio')) {
+          videoUrl = video.currentSrc;
+        }
+        if (!videoUrl && video.src && !video.src.startsWith('blob:') && !video.src.includes('audio')) {
+          videoUrl = video.src;
+        }
+
+        // Đảm bảo không tải nhầm file audio dashinit hoặc ảnh
+        if (videoUrl && (
+          videoUrl.includes('audio_dashinit') ||
+          videoUrl.includes('_audio') ||
+          videoUrl.includes('/audio/') ||
+          videoUrl.includes('audio/mp4') ||
+          videoUrl.includes('heaac') ||
+          videoUrl.includes('t39.1172') ||
+          /\.(jpg|jpeg|png|webp|mp3|m4a|aac)(\?|$)/i.test(videoUrl)
+        )) {
+          videoUrl = null;
+        }
+
+        if (videoUrl) {
+          const cleanShortcode = (shortcode && !['audio', 'reels', 'videos', 'comments'].includes(shortcode.toLowerCase())) ? shortcode : (window.location.pathname.includes('/reels') ? 'reel' : 'video');
+          const slideSuffix = slideIndex >= 0 ? `_slide_${slideIndex + 1}` : '';
+          const filename = `instagram_${cleanShortcode}${slideSuffix}_${Date.now()}.mp4`;
+          await downloadUrlAsBlob(videoUrl, filename);
+          dlBtn.innerHTML = SVG_CHECKMARK;
+          setTimeout(() => {
+            dlBtn.innerHTML = origHtml;
+            dlBtn.classList.remove('downloading');
+            dlBtn._isDownloading = false;
+          }, 2000);
+        } else {
+          dlBtn.innerHTML = origHtml;
+          dlBtn.classList.remove('downloading');
+          dlBtn._isDownloading = false;
+        }
+      } catch (err) {
+        console.error('[IG Video Controller Download] Error:', err);
+        video.removeAttribute('data-ig-target-video');
+        dlBtn.innerHTML = origHtml;
+        dlBtn.classList.remove('downloading');
+        dlBtn._isDownloading = false;
+      }
+    });
+
+    const onPlay = () => {
+      playBtn.innerHTML = SVG_PAUSE;
+      controller.classList.remove('is-paused');
+      ensureVideoUnmuted(video);
+      showControls();
+      startTicker();
+    };
+
+    const onPause = () => {
+      playBtn.innerHTML = SVG_PLAY;
+      controller.classList.add('is-paused');
+      controller.classList.add('is-active');
+      stopTicker();
+      updateProgressUI();
+    };
+
+    const onEnded = () => {
+      playBtn.innerHTML = SVG_PLAY;
+      controller.classList.add('is-paused');
+      controller.classList.add('is-active');
+      stopTicker();
+      updateProgressUI();
+    };
+
+    const onTimeUpdate = () => {
+      if (video.paused || !rafTicker) {
+        updateProgressUI();
+      }
+    };
+    video.addEventListener('timeupdate', onTimeUpdate);
+    video.addEventListener('progress', updateProgressUI);
+    video.addEventListener('loadedmetadata', updateProgressUI);
+    video.addEventListener('durationchange', updateProgressUI);
+    video.addEventListener('play', onPlay);
+    video.addEventListener('pause', onPause);
+    video.addEventListener('ended', onEnded);
+    video.addEventListener('volumechange', updateVolumeUI);
+    // DỌN DẸP SẠCH SẼ TẤT CẢ EVENT LISTENER KHI VIDEO RA KHỎI VIEWPORT HOẶC BỊ HỦY (CHỐNG LEAK RAM)
+    video._controllerCleanup = () => {
+      stopTicker();
+      if (isDragging) {
+        onScrubEnd();
+      }
+      window.removeEventListener('pointermove', onScrubMove, true);
+      window.removeEventListener('pointerup', onScrubEnd, true);
+      window.removeEventListener('pointercancel', onScrubEnd, true);
+      window.removeEventListener('mouseup', onScrubEnd, true);
+      window.removeEventListener('blur', onScrubEnd, true);
+      video.removeEventListener('timeupdate', onTimeUpdate);
+      video.removeEventListener('progress', updateProgressUI);
+      video.removeEventListener('loadedmetadata', updateProgressUI);
+      video.removeEventListener('durationchange', updateProgressUI);
+      video.removeEventListener('play', onPlay);
+      video.removeEventListener('pause', onPause);
+      video.removeEventListener('ended', onEnded);
+      video.removeEventListener('volumechange', updateVolumeUI);
+      video.removeEventListener('pointerenter', showControls);
+      video.removeEventListener('pointermove', showControls);
+      video.removeEventListener('pointerleave', hideControlsImmediate);
+      container.removeEventListener('pointerenter', showControls);
+      container.removeEventListener('pointermove', showControls);
+      container.removeEventListener('pointerleave', hideControlsImmediate);
+      controller.removeEventListener('pointerenter', showControls);
+      controller.removeEventListener('pointermove', showControls);
+      controller.removeEventListener('pointerleave', hideControlsImmediate);
+      clearTimeout(hideTimer);
+    };
+
+    ensureVideoUnmuted(video);
+    if (!video.paused) {
+      startTicker();
+    } else {
+      controller.classList.add('is-paused');
+      controller.classList.add('is-active');
+    }
+    updateProgressUI();
+    updateVolumeUI();
   }
+
+  // GLOBAL FULLSCREEN LISTENER (Chỉ đăng ký 1 lần duy nhất, không nhân bản theo từng video)
+  const onGlobalFullscreenChange = () => {
+    const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+    document.querySelectorAll('.ig-vctl-fullscreen-btn').forEach(btn => {
+      const isFs = Boolean(fsEl && (fsEl.contains(btn) || btn.closest(fsEl.tagName)));
+      btn.innerHTML = isFs ? SVG_FULLSCREEN_EXIT : SVG_FULLSCREEN;
+      btn.title = isFs ? 'Thoát toàn màn hình (Esc)' : 'Toàn màn hình';
+    });
+    if (fsEl && fsEl.getAttribute('data-ig-vctl-container') === 'true') {
+      const vid = fsEl.querySelector('video');
+      if (vid) {
+        vid.style.setProperty('object-fit', 'contain', 'important');
+      }
+    }
+  };
+  document.addEventListener('fullscreenchange', onGlobalFullscreenChange);
+  document.addEventListener('webkitfullscreenchange', onGlobalFullscreenChange);
+
+  // VIRTUAL SCROLLING OBSERVER CHO VIDEO (CHỈ GẮN CONTROLLER CHO VIDEO ĐANG Ở TRONG VIEWPORT)
+  const videoIntersectionObserver = (typeof IntersectionObserver !== 'undefined')
+    ? new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        const video = entry.target;
+        if (entry.isIntersecting) {
+          if (!video._hasCustomController && video.isConnected) {
+            attachVideoController(video);
+          }
+        } else {
+          // Khi video cuộn ra xa khỏi màn hình -> tháo gỡ controller giải phóng RAM tức thì!
+          if (video._hasCustomController) {
+            detachVideoController(video);
+          }
+        }
+      });
+    }, {
+      rootMargin: '250px 0px 250px 0px',
+      threshold: 0.05
+    })
+    : null;
+
+  function scanAndAttachVideoControllers() {
+    if (window.location.pathname.includes('/stories/')) {
+      return;
+    }
+
+    hideNativeAudioWidgets();
+
+    const videos = document.querySelectorAll('video');
+    for (let i = 0; i < videos.length; i++) {
+      const video = videos[i];
+      if (video._isObservedByController) {
+        if (video._hasCustomController && !video.isConnected) {
+          detachVideoController(video);
+        }
+        continue;
+      }
+
+      if (video.closest('header') || video.closest('nav') || video.closest('aside')) continue;
+
+      video._isObservedByController = true;
+      if (videoIntersectionObserver) {
+        videoIntersectionObserver.observe(video);
+      } else {
+        attachVideoController(video);
+      }
+    }
+  }
+
+  // Ẩn nút Loa mặc định trong Header Story (do đã auto phát âm thanh/nhạc)
+  function hideStorySpeakerButtons() {
+    document.querySelectorAll('header button, div[role="dialog"] button, section header button, div[role="button"]').forEach(btn => {
+      if (btn.classList.contains('ig-story-download-btn') || btn.classList.contains('ig-vctl-btn')) return;
+      const rect = btn.getBoundingClientRect();
+      if (rect.top >= 0 && rect.top < 240 && rect.width >= 10 && rect.height >= 10) {
+        const aria = (btn.getAttribute('aria-label') || '').toLowerCase();
+        const svgAria = (btn.querySelector('svg')?.getAttribute('aria-label') || '').toLowerCase();
+        const title = (btn.getAttribute('title') || '').toLowerCase();
+        const label = `${aria} ${svgAria} ${title}`;
+        if (/audio|mute|sound|tiếng|âm thanh|loa/i.test(label)) {
+          btn.style.setProperty('display', 'none', 'important');
+          btn.style.setProperty('visibility', 'hidden', 'important');
+          btn.style.setProperty('opacity', '0', 'important');
+          btn.style.setProperty('pointer-events', 'none', 'important');
+          btn.setAttribute('data-ig-story-speaker-hidden', 'true');
+        }
+      }
+    });
+  }
+
+  // --- 8.1. THANH TRƯỢT STORY & HIGHLIGHTS (v2.5.0 - Thanh đỉnh sát viền mép trên cùng của Story) ---
+  let activeStoryScrubber = null;
+
+  function scanAndAttachStoryScrubber() {
+    // 1. Dọn dẹp triệt để bất kỳ thanh đáy cũ và badge cũ nếu còn sót lại
+    const oldBar = document.querySelector('.ig-story-scrubber-bar');
+    if (oldBar) oldBar.remove();
+    const oldTopTime = document.querySelector('.ig-story-top-time');
+    if (oldTopTime) oldTopTime.remove();
+
+    if (!window.location.pathname.includes('/stories/')) {
+      if (activeStoryScrubber) {
+        if (activeStoryScrubber.cleanup) activeStoryScrubber.cleanup();
+        activeStoryScrubber = null;
+      }
+      const t = document.querySelector('.ig-story-header-time');
+      if (t) t.remove();
+      const topBar = document.querySelector('.ig-story-top-progress-bar');
+      if (topBar) topBar.remove();
+      return;
+    }
+
+    hideStorySpeakerButtons();
+
+    const storyVideo = getActiveStoryVideo();
+    if (!storyVideo) {
+      const t = document.querySelector('.ig-story-header-time');
+      if (t) t.style.display = 'none';
+      const topBar = document.querySelector('.ig-story-top-progress-bar');
+      if (topBar) topBar.style.display = 'none';
+      return;
+    }
+
+    ensureVideoUnmuted(storyVideo);
+
+    const progressContainer = findStoryProgressBarContainer();
+    if (!progressContainer) return;
+
+    const currentSlideIndex = getActiveStorySlideIndex();
+
+    // Nếu đã gắn đúng video, progress container và slide index này thì chỉ cập nhật UI
+    if (activeStoryScrubber &&
+        activeStoryScrubber.video === storyVideo &&
+        activeStoryScrubber.container === progressContainer &&
+        activeStoryScrubber.slideIndex === currentSlideIndex) {
+      if (activeStoryScrubber.updateUI) activeStoryScrubber.updateUI();
+      return;
+    }
+
+    // Nếu video hoặc slide thay đổi -> gỡ bỏ listener cũ
+    if (activeStoryScrubber?.cleanup) {
+      activeStoryScrubber.cleanup();
+    }
+
+    // 2. Trả nguyên vạch - - - - gốc của Instagram về vị trí tự nhiên bên dưới
+    progressContainer.classList.remove('ig-story-native-progress-hidden');
+    progressContainer.style.removeProperty('display');
+    progressContainer.style.removeProperty('visibility');
+    progressContainer.style.removeProperty('opacity');
+    progressContainer.style.removeProperty('height');
+    progressContainer.style.removeProperty('position');
+    progressContainer.style.removeProperty('top');
+    progressContainer.style.removeProperty('margin-top');
+
+    // 3. Đưa thanh tiến trình custom lên trên sát hẳn mép viền đỉnh của Story (top: 0)
+    let topBar = document.querySelector('.ig-story-top-progress-bar');
+    if (!topBar) {
+      topBar = document.createElement('div');
+      topBar.className = 'ig-story-top-progress-bar';
+      topBar.title = 'Kéo hoặc bấm để tua Story';
+      topBar.innerHTML = `
+        <div class="ig-story-top-track">
+          <div class="ig-story-top-hover"></div>
+          <div class="ig-story-top-fill"></div>
+          <div class="ig-story-top-thumb"></div>
+        </div>
+        <div class="ig-story-top-tooltip">0:00</div>
+      `;
+    }
+    topBar.style.display = 'flex';
+
+    // Gắn trực tiếp lên container header của Story (vùng <div class="xoqlrxr...">)
+    const targetHeader = progressContainer.closest('.xoqlrxr, [class*="xoqlrxr"]') ||
+                         progressContainer.parentElement?.parentElement ||
+                         progressContainer.parentElement;
+
+    if (targetHeader) {
+      const cs = window.getComputedStyle(targetHeader);
+      if (cs.position === 'static') {
+        targetHeader.style.setProperty('position', 'relative', 'important');
+      }
+      if (topBar.parentElement !== targetHeader) {
+        targetHeader.appendChild(topBar);
+      }
+    }
+
+    const track = topBar.querySelector('.ig-story-top-track');
+    const hover = topBar.querySelector('.ig-story-top-hover');
+    const fill = topBar.querySelector('.ig-story-top-fill');
+    const thumb = topBar.querySelector('.ig-story-top-thumb');
+    const tooltip = topBar.querySelector('.ig-story-top-tooltip');
+
+    hideStorySpeakerButtons();
+
+    // 5. Hiển thị thời gian trực tiếp trong hàng Action Header Story (nằm trước nút Play/Pause)
+    const attachHeaderTime = () => {
+      hideStorySpeakerButtons();
+      const controls = findStoryControlsContainer();
+      if (!controls || !controls.parent) return null;
+
+      let timeEl = controls.parent.querySelector('.ig-story-header-time');
+      if (!timeEl) {
+        timeEl = document.createElement('div');
+        timeEl.className = 'ig-story-header-time';
+        timeEl.innerHTML = `<span class="ig-story-sc-cur">0:00</span><span class="ig-story-sc-sep">/</span><span class="ig-story-sc-dur">0:00</span>`;
+      }
+
+      // Đưa time vào trước nút Pause (hoặc trước Download / Options)
+      const anchor = (controls.pauseBtn && controls.pauseBtn.parentElement === controls.parent) ? controls.pauseBtn :
+                     (controls.optionsBtn && controls.optionsBtn.parentElement === controls.parent) ? controls.optionsBtn :
+                     controls.parent.querySelector('.ig-story-download-btn') || controls.parent.firstElementChild;
+
+      if (anchor && anchor !== timeEl) {
+        if (timeEl.nextSibling !== anchor) {
+          controls.parent.insertBefore(timeEl, anchor);
+        }
+      } else if (timeEl.parentElement !== controls.parent) {
+        controls.parent.prepend(timeEl);
+      }
+
+      timeEl.style.display = 'inline-flex';
+      return timeEl;
+    };
+
+    const timeBadge = attachHeaderTime();
+    const curEl = timeBadge?.querySelector('.ig-story-sc-cur');
+    const durEl = timeBadge?.querySelector('.ig-story-sc-dur');
+
+    let isDraggingStory = false;
+
+    // 6. Xử lý thao tác kéo hoặc bấm tua trên thanh đỉnh chuyên biệt
+    const applyScrub = (clientX) => {
+      const trackRect = track.getBoundingClientRect();
+      if (trackRect.width <= 0) return;
+      const rawPct = (clientX - trackRect.left) / trackRect.width;
+      const pct = Math.max(0, Math.min(0.995, rawPct));
+      const dur = storyVideo.duration || 0;
+      if (dur > 0) {
+        storyVideo.currentTime = pct * dur;
+      }
+      const pct100 = (pct * 100).toFixed(2) + '%';
+      if (fill) fill.style.setProperty('width', pct100, 'important');
+      if (thumb) thumb.style.setProperty('left', pct100, 'important');
+      if (tooltip) {
+        tooltip.style.setProperty('left', pct100, 'important');
+        tooltip.textContent = formatTime(pct * dur);
+        tooltip.style.opacity = '1';
+      }
+      const badge = attachHeaderTime();
+      const currentCurEl = badge?.querySelector('.ig-story-sc-cur') || curEl;
+      if (currentCurEl) currentCurEl.textContent = formatTime(pct * dur);
+    };
+
+    const onPointerDown = (e) => {
+      if (e.button !== undefined && e.button !== 0) return;
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      e.preventDefault();
+
+      isDraggingStory = true;
+      topBar.classList.add('is-dragging');
+      applyScrub(e.clientX);
+
+      const onPointerMove = (moveEvt) => {
+        if (!isDraggingStory) return;
+        if (moveEvt.buttons === 0 || (moveEvt.buttons !== undefined && (moveEvt.buttons & 1) === 0)) {
+          onPointerUp(moveEvt);
+          return;
+        }
+        applyScrub(moveEvt.clientX);
+      };
+
+      const onPointerUp = () => {
+        if (!isDraggingStory) return;
+        isDraggingStory = false;
+        topBar.classList.remove('is-dragging');
+        if (tooltip && !topBar.matches(':hover')) tooltip.style.opacity = '0';
+        window.removeEventListener('pointermove', onPointerMove, true);
+        window.removeEventListener('pointerup', onPointerUp, true);
+        window.removeEventListener('pointercancel', onPointerUp, true);
+        window.removeEventListener('mouseup', onPointerUp, true);
+        window.removeEventListener('blur', onPointerUp, true);
+      };
+
+      window.addEventListener('pointermove', onPointerMove, true);
+      window.addEventListener('pointerup', onPointerUp, true);
+      window.addEventListener('pointercancel', onPointerUp, true);
+      window.addEventListener('mouseup', onPointerUp, true);
+      window.addEventListener('blur', onPointerUp, true);
+    };
+
+    const onPointerHoverMove = (e) => {
+      if (isDraggingStory) return;
+      const trackRect = track.getBoundingClientRect();
+      if (trackRect.width <= 0) return;
+      const rawPct = (e.clientX - trackRect.left) / trackRect.width;
+      const pct = Math.max(0, Math.min(1, rawPct));
+      const dur = storyVideo.duration || 0;
+      const pct100 = (pct * 100).toFixed(2) + '%';
+      if (hover) hover.style.setProperty('width', pct100, 'important');
+      if (tooltip) {
+        tooltip.style.setProperty('left', pct100, 'important');
+        tooltip.textContent = formatTime(pct * dur);
+        tooltip.style.opacity = '1';
+      }
+    };
+
+    const onPointerLeave = () => {
+      if (!isDraggingStory) {
+        if (hover) hover.style.setProperty('width', '0%', 'important');
+        if (tooltip) tooltip.style.opacity = '0';
+      }
+    };
+
+    const stopCapture = (e) => {
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      e.preventDefault();
+    };
+
+    topBar.addEventListener('pointerdown', onPointerDown, true);
+    topBar.addEventListener('mousedown', stopCapture, true);
+    topBar.addEventListener('click', stopCapture, true);
+    topBar.addEventListener('pointermove', onPointerHoverMove);
+    topBar.addEventListener('pointerleave', onPointerLeave);
+
+    const updateStoryUI = () => {
+      const latestSlideIdx = getActiveStorySlideIndex();
+      if (latestSlideIdx !== currentSlideIndex) {
+        scanAndAttachStoryScrubber();
+        return;
+      }
+
+      if (isDraggingStory) return;
+      const cur = storyVideo.currentTime || 0;
+      const dur = storyVideo.duration || 0;
+      const pct = dur > 0 ? Math.min(100, Math.max(0, (cur / dur) * 100)) : 0;
+      const pctStr = `${pct.toFixed(2)}%`;
+
+      if (fill) fill.style.setProperty('width', pctStr, 'important');
+      if (thumb) thumb.style.setProperty('left', pctStr, 'important');
+
+      const badge = attachHeaderTime();
+      const currentCurEl = badge?.querySelector('.ig-story-sc-cur') || curEl;
+      const currentDurEl = badge?.querySelector('.ig-story-sc-dur') || durEl;
+
+      if (currentCurEl) currentCurEl.textContent = formatTime(cur);
+      if (currentDurEl && dur > 0) currentDurEl.textContent = formatTime(dur);
+    };
+
+    let storyRafTicker = null;
+    let lastStoryTick = 0;
+    const startStoryTicker = () => {
+      stopStoryTicker();
+      const tick = (now) => {
+        if (!storyVideo.paused && !storyVideo.ended) {
+          if (!lastStoryTick || (now - lastStoryTick >= 80)) {
+            lastStoryTick = now;
+            updateStoryUI();
+          }
+          storyRafTicker = requestAnimationFrame(tick);
+        }
+      };
+      storyRafTicker = requestAnimationFrame(tick);
+    };
+    const stopStoryTicker = () => {
+      if (storyRafTicker) {
+        cancelAnimationFrame(storyRafTicker);
+        storyRafTicker = null;
+      }
+    };
+
+    const onStoryPlay = () => startStoryTicker();
+    const onStoryPause = () => {
+      stopStoryTicker();
+      updateStoryUI();
+    };
+
+    storyVideo.addEventListener('play', onStoryPlay);
+    storyVideo.addEventListener('pause', onStoryPause);
+    storyVideo.addEventListener('ended', onStoryPause);
+    storyVideo.addEventListener('timeupdate', () => {
+      if (storyVideo.paused || !storyRafTicker) updateStoryUI();
+    });
+    storyVideo.addEventListener('loadedmetadata', updateStoryUI);
+    storyVideo.addEventListener('durationchange', updateStoryUI);
+
+    if (!storyVideo.paused) {
+      startStoryTicker();
+    }
+
+    activeStoryScrubber = {
+      video: storyVideo,
+      container: progressContainer,
+      slideIndex: currentSlideIndex,
+      updateUI: updateStoryUI,
+      cleanup: () => {
+        stopStoryTicker();
+        storyVideo.removeEventListener('play', onStoryPlay);
+        storyVideo.removeEventListener('pause', onStoryPause);
+        storyVideo.removeEventListener('ended', onStoryPause);
+        storyVideo.removeEventListener('timeupdate', updateStoryUI);
+        storyVideo.removeEventListener('loadedmetadata', updateStoryUI);
+        storyVideo.removeEventListener('durationchange', updateStoryUI);
+
+        topBar.removeEventListener('pointerdown', onPointerDown, true);
+        topBar.removeEventListener('mousedown', stopCapture, true);
+        topBar.removeEventListener('click', stopCapture, true);
+        topBar.removeEventListener('pointermove', onPointerHoverMove);
+        topBar.removeEventListener('pointerleave', onPointerLeave);
+
+        progressContainer.classList.remove('ig-story-native-progress-hidden');
+        progressContainer.style.removeProperty('position');
+        progressContainer.style.removeProperty('top');
+        progressContainer.style.removeProperty('margin-top');
+        if (topBar) topBar.style.display = 'none';
+
+        const timeElem = document.querySelector('.ig-story-header-time');
+        if (timeElem) timeElem.style.display = 'none';
+      }
+    };
+
+    updateStoryUI();
+  }
+
+  // LẮNG NGHE SỰ KIỆN PHÁT CỦA MỌI VIDEO TRÊN TRANG ĐỂ TỰ ĐỘNG BẬT TIẾNG (Feed, Reels, Dialog, Stories)
+  document.addEventListener('play', (e) => {
+    if (e.target && e.target.tagName === 'VIDEO') {
+      ensureVideoUnmuted(e.target);
+    }
+  }, { capture: true, passive: true });
+
+  document.addEventListener('playing', (e) => {
+    if (e.target && e.target.tagName === 'VIDEO') {
+      ensureVideoUnmuted(e.target);
+    }
+  }, { capture: true, passive: true });
+
+  // Đảm bảo kích hoạt âm thanh ngay khi người dùng tương tác lần đầu trên trang
+  const onFirstUserGesture = () => {
+    document.querySelectorAll('video').forEach(vid => {
+      if (!vid.paused && !vid._userMuted) {
+        ensureVideoUnmuted(vid);
+      }
+    });
+  };
+  window.addEventListener('pointerdown', onFirstUserGesture, { once: true, passive: true });
+  window.addEventListener('keydown', onFirstUserGesture, { once: true, passive: true });
 
   // --- 7.2. DOWNLOAD CHO INSTAGRAM STORIES ---
   function getBestImageUrl(img) {
@@ -1397,17 +2908,24 @@
 
   // Tìm container chứa các vạch tiến trình (progress bar) trên Stories / Highlights
   function findStoryProgressBarContainer() {
+    const existing = document.querySelector('[data-ig-story-progress="true"]');
+    if (existing && existing.isConnected) return existing;
+
     const allDivs = Array.from(document.body.querySelectorAll('div')).filter(d => {
+      if (d.closest('.ig-video-controller, .ig-music-feed-bar, .ig-story-scrubber-bar, .ig-story-top-progress-bar')) return false;
       const count = d.children.length;
-      if (count < 2 || count > 100) return false;
+      if (count < 1 || count > 100) return false;
       const r = d.getBoundingClientRect();
       // Vạch tiến trình Story luôn nằm ở đỉnh (top <= 140px) và có chiều cao mảnh (height <= 25px)
       if (r.top < 0 || r.top > 140) return false;
       if (r.width < 120 || r.height > 25 || r.height < 1) return false;
-      // Phải là thanh tiến trình ngang: các con nằm nối tiếp nhau từ trái sang phải
+      if (count > 1) {
+        const c0 = d.children[0].getBoundingClientRect();
+        const c1 = d.children[1].getBoundingClientRect();
+        return c1.left > c0.left;
+      }
       const c0 = d.children[0].getBoundingClientRect();
-      const c1 = d.children[1].getBoundingClientRect();
-      return c1.left > c0.left;
+      return c0.width > 80 && c0.height <= 25;
     });
 
     if (allDivs.length === 0) return null;
@@ -1471,7 +2989,7 @@
             if (scale > 0.005 && scale < 0.995) return i;
           }
         }
-      } catch (_) {}
+      } catch (_) { }
     }
 
     return 0;
@@ -1644,7 +3162,7 @@
         ) {
           return true;
         }
-      } catch (_) {}
+      } catch (_) { }
     }
     return false;
   }
@@ -1787,11 +3305,11 @@
           ? window.performance.getEntriesByType('resource')
           : [];
         const videoEntries = perfEntries
-          .filter(r => r.name && (r.name.includes('.mp4') || r.name.includes('/o1/v/') || r.name.includes('/v/t')) && (r.name.includes('fbcdn.net') || r.name.includes('cdninstagram.com')) && !isDashAudioUrl(r.name))
+          .filter(r => r.name && (r.name.includes('.mp4') || r.name.includes('/o1/v/') || r.name.includes('/v/t')) && (r.name.includes('fbcdn.net') || r.name.includes('cdninstagram.com')) && !isDashAudioUrl(r.name) && !r.name.includes('bytestart=') && !r.name.includes('byteend='))
           .sort((a, b) => b.startTime - a.startTime);
 
         if (videoEntries.length > 0) {
-          fallbackVideoUrl = videoEntries[0].name.replace(/[?&]bytestart=\d+&byteend=\d+/g, '');
+          fallbackVideoUrl = videoEntries[0].name;
         }
       }
 
@@ -1842,8 +3360,10 @@
       .filter(btn => {
         if (btn.classList.contains('ig-story-download-btn')) return false;
         const rect = btn.getBoundingClientRect();
+        // Chỉ lấy các nút thuộc Story đang hiển thị trực tiếp trên màn hình (loại bỏ story tải ngầm ngoài mép trái/phải)
         const inTopHeader = rect.top >= 0 && rect.top < 220;
-        return inTopHeader && rect.width >= 10 && rect.height >= 10;
+        const onScreen = rect.left >= 0 && rect.right <= window.innerWidth;
+        return inTopHeader && onScreen && rect.width >= 10 && rect.height >= 10;
       });
 
     let pauseBtn = null;
@@ -1867,27 +3387,34 @@
         speakerBtn = btn;
       }
       // Nút Ba chấm (...) hoặc Menu
-      else if (label.includes('more') || label.includes('khác') || label.includes('options') || label.includes('menu') || btn.querySelector('svg circle')) {
+      else if (label.includes('more') || label.includes('khác') || label.includes('options') || label.includes('tùy chọn') || label.includes('menu') || btn.getAttribute('aria-haspopup') === 'menu' || btn.querySelector('svg circle')) {
         optionsBtn = btn;
       }
     }
 
-    // Ưu tiên 1: Đặt ngay SAU nút Pause (ở giữa nút Pause và Ba chấm như trong ảnh)
-    if (pauseBtn && pauseBtn.parentElement) {
-      return { insertAfter: pauseBtn, parent: pauseBtn.parentElement };
+    const parent = pauseBtn?.parentElement || optionsBtn?.parentElement || speakerBtn?.parentElement || null;
+    if (!parent) return null;
+
+    let insertAfter = null;
+    let insertBefore = null;
+
+    // Thứ tự hiển thị chuẩn: [Time] -> [Pause] -> [DOWNLOAD] -> [Options ...]
+    if (pauseBtn && pauseBtn.parentElement === parent) {
+      insertAfter = pauseBtn;
+    } else if (optionsBtn && optionsBtn.parentElement === parent) {
+      insertBefore = optionsBtn;
+    } else if (speakerBtn && speakerBtn.parentElement === parent) {
+      insertAfter = speakerBtn;
     }
 
-    // Ưu tiên 2: Đặt ngay TRƯỚC nút Ba chấm / Menu (...)
-    if (optionsBtn && optionsBtn.parentElement) {
-      return { insertBefore: optionsBtn, parent: optionsBtn.parentElement };
-    }
-
-    // Ưu tiên 3: Đặt ngay sau nút Loa nếu ở /stories/
-    if (speakerBtn && speakerBtn.parentElement && window.location.pathname.includes('/stories/')) {
-      return { insertAfter: speakerBtn, parent: speakerBtn.parentElement };
-    }
-
-    return null;
+    return {
+      parent,
+      speakerBtn,
+      pauseBtn,
+      optionsBtn,
+      insertAfter,
+      insertBefore
+    };
   }
 
   function scanAndAttachStoryDownload() {
@@ -1980,7 +3507,7 @@
       const label = (svg.getAttribute('aria-label') || '').toLowerCase();
       const title = (svg.querySelector('title')?.textContent || '').toLowerCase();
       return label.includes('option') || label.includes('tùy chọn') || label.includes('cài đặt') || label.includes('settings') ||
-             title.includes('option') || title.includes('tùy chọn') || title.includes('cài đặt') || title.includes('settings');
+        title.includes('option') || title.includes('tùy chọn') || title.includes('cài đặt') || title.includes('settings');
     });
 
     if (optionSvgs.length > 0) {
@@ -2111,7 +3638,7 @@
       if (!iconPhotosUrl && typeof chrome !== 'undefined' && chrome.runtime?.getURL) {
         iconPhotosUrl = chrome.runtime.getURL('icons/opt_photos.png');
       }
-    } catch (_) {}
+    } catch (_) { }
 
     const overlay = document.createElement('div');
     overlay.className = 'ig-profile-modal-overlay';
@@ -2658,7 +4185,7 @@
                 item.type = 'image';
               }
             }
-          } catch (_) {}
+          } catch (_) { }
         }
 
         const nameBytes = textEncoder.encode(targetZipPath);
@@ -2742,13 +4269,13 @@
       }
 
       if (isCancelled) {
-        try { await writable.abort(); } catch (_) {}
+        try { await writable.abort(); } catch (_) { }
         cleanupListeners();
         return;
       }
 
       if (centralRecords.length === 0) {
-        try { await writable.abort(); } catch (_) {}
+        try { await writable.abort(); } catch (_) { }
         cleanupListeners();
         restoreFromFloating();
         overlay.__isDownloading = false;
@@ -3019,7 +4546,12 @@
   });
 
   function handleFeedPostInViewport(post) {
-    if (isSingleVideoPost(post)) {
+    // Nếu trang hiện tại là Reels hoặc bài viết thuần túy là 1 video đơn lẻ (Single Video Post):
+    // Tuyệt đối không chèn thanh phát nhạc để tránh phát đè và tiết kiệm băng thông (vẫn giữ thanh nhạc cho bài Carousel)
+    if (window.location.pathname.includes('/reels') || 
+        window.location.pathname.includes('/reel') || 
+        isSingleVideoPost(post)) {
+      post.querySelectorAll('.ig-music-controls-container, .ig-music-feed-bar').forEach(el => el.remove());
       attachFloatingDownloadButton(post);
       return;
     }
@@ -3045,9 +4577,25 @@
     }
   }
 
+  // Ngăn chặn chuyển trang ngoài ý muốn khi tương tác trên controller video hoặc thanh tiến trình story
+  document.addEventListener('click', (e) => {
+    if (e.target && e.target.closest && e.target.closest('.ig-video-controller, .ig-story-top-progress-bar')) {
+      const link = e.target.closest('a');
+      if (link) {
+        e.preventDefault();
+      }
+    }
+  }, true);
+
   function scanAndAttachPlayers() {
     readInitialCache();
     scanAndAttachStoryDownload();
+    if (window.location.pathname.includes('/stories/')) {
+      hideStorySpeakerButtons();
+      scanAndAttachStoryScrubber();
+    } else {
+      scanAndAttachVideoControllers();
+    }
 
     if (!isPostViewingContext()) {
       cleanupIfPostClosed();
@@ -3063,10 +4611,10 @@
     }
 
     posts.forEach((post) => {
-      if (isSingleVideoPost(post)) {
-        if (currentActive?.wrapper && post.contains(currentActive.wrapper)) {
-          pauseCurrentAudio();
-        }
+      if (window.location.pathname.includes('/reels') || 
+          window.location.pathname.includes('/reel') || 
+          isSingleVideoPost(post)) {
+        pauseCurrentAudio();
         post.querySelectorAll('.ig-music-controls-container, .ig-music-feed-bar').forEach(el => el.remove());
         attachFloatingDownloadButton(post);
         return;
@@ -3112,7 +4660,7 @@
       }
 
       if (activePost) {
-        // Nếu bài viết này là 1 Video duy nhất: Nhường âm thanh cho video gốc
+        // Nếu bài viết này là Video đơn lẻ hoặc Reels: Nhường âm thanh cho video gốc
         if (isSingleVideoPost(activePost)) {
           pauseCurrentAudio();
           return;
@@ -3154,22 +4702,66 @@
 
   // --- 10. SỰ KIỆN ĐIỀU HƯỚNG VÀ ĐÓNG BÀI VIẾT ---
   window.addEventListener('__IG_NAVIGATED__', () => {
+    verifyActiveAudioMatchesCurrentView();
     cleanupIfPostClosed();
     scanAndAttachProfileDownload();
-    setTimeout(scanAndAttachPlayers, 80);
-    setTimeout(scanAndAttachPlayers, 350);
+    setTimeout(scanAndAttachPlayers, 100);
+    setTimeout(scanAndAttachPlayers, 400);
   });
 
   window.addEventListener('popstate', () => {
+    pauseCurrentAudio();
     setTimeout(cleanupIfPostClosed, 40);
-    setTimeout(scanAndAttachProfileDownload, 50);
+    setTimeout(scanAndAttachProfileDownload, 60);
     setTimeout(scanAndAttachPlayers, 150);
   });
 
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      pauseCurrentAudio();
       setTimeout(cleanupIfPostClosed, 40);
       setTimeout(cleanupIfPostClosed, 150);
+      return;
+    }
+
+    // Phím tắt điều khiển Video khi hover chuột qua video (Space, Mũi tên Trái/Phải, Lên/Xuống, M)
+    const activeEl = document.activeElement;
+    if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable)) {
+      return;
+    }
+
+    const hoveredCtrl = document.querySelector('.ig-video-controller.is-active, .ig-video-controller:hover');
+    const hoveredVideo = hoveredCtrl?.parentElement?.querySelector('video');
+    if (hoveredVideo) {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (hoveredVideo.paused) hoveredVideo.play().catch(() => { });
+        else hoveredVideo.pause();
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        e.stopPropagation();
+        hoveredVideo.currentTime = Math.max(0, (hoveredVideo.currentTime || 0) - 5);
+      } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        e.stopPropagation();
+        const dur = hoveredVideo.duration || Infinity;
+        hoveredVideo.currentTime = Math.min(dur, (hoveredVideo.currentTime || 0) + 5);
+      } else if (e.code === 'ArrowUp') {
+        e.preventDefault();
+        e.stopPropagation();
+        hoveredVideo.volume = Math.min(1, (hoveredVideo.volume || 0) + 0.1);
+        hoveredVideo.muted = false;
+      } else if (e.code === 'ArrowDown') {
+        e.preventDefault();
+        e.stopPropagation();
+        hoveredVideo.volume = Math.max(0, (hoveredVideo.volume || 0) - 0.1);
+      } else if (e.code === 'KeyM') {
+        e.preventDefault();
+        e.stopPropagation();
+        hoveredVideo.muted = !hoveredVideo.muted;
+        hoveredVideo._userMuted = hoveredVideo.muted;
+      }
     }
   });
 
@@ -3181,6 +4773,7 @@
       );
       const isDialogBackdrop = target.getAttribute && target.getAttribute('role') === 'dialog';
       if (isCloseBtn || isDialogBackdrop) {
+        pauseCurrentAudio();
         setTimeout(cleanupIfPostClosed, 30);
         setTimeout(cleanupIfPostClosed, 120);
       }
@@ -3194,18 +4787,45 @@
     });
   }, { passive: true });
 
+  // Kiểm tra đồng bộ âm thanh liên tục (dừng ngay nếu người dùng đóng bài viết hoặc đổi bài)
   setInterval(() => {
+    if (currentActive && !currentActive.audio?.paused) {
+      verifyActiveAudioMatchesCurrentView();
+    }
+  }, 250);
+
+  setInterval(() => {
+    if (document.hidden) return;
     cleanupIfPostClosed();
     scanAndAttachStoryDownload();
     scanAndAttachProfileDownload();
-  }, 250);
+    if (window.location.pathname.includes('/stories/')) {
+      scanAndAttachStoryScrubber();
+    } else {
+      scanAndAttachVideoControllers();
+    }
+  }, 3500);
+
+  // Lắng nghe thao tác chuyển slide (click hoặc phím mũi tên) trong Stories/Highlights để kiểm tra nút tải
+  document.addEventListener('click', () => {
+    if (window.location.pathname.includes('/stories/')) {
+      setTimeout(scanAndAttachStoryDownload, 50);
+      setTimeout(scanAndAttachStoryDownload, 200);
+    }
+  }, true);
+
+  document.addEventListener('keydown', (e) => {
+    if (window.location.pathname.includes('/stories/') && ['ArrowRight', 'ArrowLeft', ' '].includes(e.key)) {
+      setTimeout(scanAndAttachStoryDownload, 50);
+      setTimeout(scanAndAttachStoryDownload, 200);
+    }
+  }, true);
 
   let debounceTimer = null;
+  let storyFastTimer = null;
   const observer = new MutationObserver((mutations) => {
-    scanAndAttachStoryDownload();
-    scanAndAttachProfileDownload();
-    // Chỉ kích hoạt khi có phần tử mới được thêm/bớt vào DOM (ví dụ cuộn thêm bài mới vào feed)
-    // Bỏ qua các thay đổi style/attribute trong khi Instagram animate chuyển ảnh carousel
+    if (document.hidden) return;
+    // Chỉ kích hoạt khi có phần tử thực sự thêm/bớt trong DOM
     let hasStructuralChanges = false;
     for (let i = 0; i < mutations.length; i++) {
       if (mutations[i].addedNodes.length > 0 || mutations[i].removedNodes.length > 0) {
@@ -3215,15 +4835,33 @@
     }
     if (!hasStructuralChanges) return;
 
+    if (window.location.pathname.includes('/stories/')) {
+      if (!storyFastTimer) {
+        storyFastTimer = setTimeout(() => {
+          storyFastTimer = null;
+          scanAndAttachStoryDownload();
+        }, 50);
+      }
+    }
+
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
+      if (document.hidden) return;
       cleanupIfPostClosed();
+      scanAndAttachStoryDownload();
+      scanAndAttachProfileDownload();
+      if (window.location.pathname.includes('/stories/')) {
+        scanAndAttachStoryScrubber();
+      } else {
+        scanAndAttachVideoControllers();
+      }
+
       if ('requestIdleCallback' in window) {
         window.requestIdleCallback(scanAndAttachPlayers);
       } else {
         scanAndAttachPlayers();
       }
-    }, 350);
+    }, 450);
   });
 
   observer.observe(document.body, { childList: true, subtree: true });

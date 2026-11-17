@@ -10,8 +10,8 @@
 (function () {
   'use strict';
 
-  const MAX_TRACKS_CACHE = 100;
-  const MAX_NO_AUDIO_CACHE = 150;
+  const MAX_TRACKS_CACHE = 80;
+  const MAX_NO_AUDIO_CACHE = 100;
 
   const discoveredTracks = new Map();
   const noAudioSet = new Set();
@@ -25,6 +25,39 @@
   let lastKnownPostDocId = localStorage.getItem('__ig_post_doc_id__') || '8845758582119845';
   let lastKnownProfileDocId = localStorage.getItem('__ig_profile_doc_id__') || '6936306999797079';
   let lastKnownStoryDocId = localStorage.getItem('__ig_story_doc_id__') || '8845758582119845';
+
+  // HÀM QUẢN LÝ BỘ NHỚ AN TOÀN (CHỐNG TRÀN RAM - GIỚI HẠN KÍCH THƯỚC MAP & SET)
+  function safeMapSet(map, key, value, maxSize = 60) {
+    if (!map || key === undefined || key === null) return;
+    if (map.has(key)) {
+      map.set(key, value);
+      return;
+    }
+    if (map.size >= maxSize) {
+      const firstKey = map.keys().next().value;
+      if (firstKey !== undefined) map.delete(firstKey);
+    }
+    map.set(key, value);
+  }
+
+  function safeSetAdd(set, val, maxSize = 80) {
+    if (!set || val === undefined || val === null) return;
+    if (set.has(val)) return;
+    if (set.size >= maxSize) {
+      const firstVal = set.values().next().value;
+      if (firstVal !== undefined) set.delete(firstVal);
+    }
+    set.add(val);
+  }
+
+  function isValidVideoMp4Url(url) {
+    if (!url || typeof url !== 'string' || !url.startsWith('http')) return false;
+    if (isDashAudioUrl(url)) return false;
+    if (url.includes('bytestart=') || url.includes('byteend=')) return false;
+    if (/\.(jpg|jpeg|png|webp|gif|mp3|m4a|aac|wav|ogg)(\?|$)/i.test(url)) return false;
+    if (url.includes('.mp4') || url.includes('/v/t50.') || url.includes('/o1/v/')) return true;
+    return false;
+  }
 
   function isDashAudioUrl(url) {
     if (!url || typeof url !== 'string') return false;
@@ -78,7 +111,8 @@
       (url.includes('/o1/v/') && (url.includes('cdninstagram') || url.includes('fbcdn'))) ||
       (url.includes('/v/t') && url.includes('cdninstagram'))
     ) {
-      let cleanUrl = url.replace(/[?&]bytestart=\d+&byteend=\d+/g, '');
+      if (url.includes('bytestart=') || url.includes('byteend=')) return;
+      let cleanUrl = url;
 
       // Ghi nhận video stream chuẩn xác để dự phòng khi tải Story
       const existing = activeStoryVideos.find(it => it.url === cleanUrl);
@@ -128,8 +162,11 @@
     }
   }
 
+  let lastSyncTrackCount = 0;
   function syncCacheToDOM() {
     try {
+      if (discoveredTracks.size === lastSyncTrackCount) return;
+      lastSyncTrackCount = discoveredTracks.size;
       let cacheEl = document.getElementById('__ig_music_cache__');
       if (!cacheEl) {
         cacheEl = document.createElement('script');
@@ -188,8 +225,13 @@
 
     let code = currentCode;
     if (!code) {
-      const urlMatch = window.location.pathname.match(/\/(?:p|reel)\/([A-Za-z0-9_-]+)/);
-      if (urlMatch) code = urlMatch[1];
+      if (window.location.pathname.includes('/reels') || window.location.pathname.includes('/reel')) {
+        return null;
+      }
+      const urlMatch = window.location.pathname.match(/\/p\/([A-Za-z0-9_-]+)/);
+      if (urlMatch && !['audio', 'videos', 'reels', 'comments', 'explore', 'stories'].includes(urlMatch[1].toLowerCase())) {
+        code = urlMatch[1];
+      }
     }
 
     return {
@@ -207,6 +249,11 @@
 
   function extractAudioTracks(obj, found = new Map(), inheritedCode = null, inheritedId = null) {
     if (!obj || typeof obj !== 'object') return found;
+
+    // Bỏ qua trích xuất khi đang ở trang Reels (/reels/ hoặc /reel/) để tiết kiệm băng thông
+    if (window.location.pathname.includes('/reels') || window.location.pathname.includes('/reel')) {
+      return found;
+    }
 
     const currentCode = obj.code || obj.shortcode || inheritedCode;
     const currentId = obj.id || obj.pk || inheritedId;
@@ -280,7 +327,8 @@
   }
 
   function dispatchTrack(track) {
-    const activePageShortcode = window.location.pathname.match(/\/(?:p|reel)\/([A-Za-z0-9_-]+)/)?.[1];
+    const match = window.location.pathname.match(/\/(?:p|reel|reels)\/([A-Za-z0-9_-]+)/);
+    const activePageShortcode = (match && !['audio', 'videos', 'reels', 'comments', 'explore', 'stories'].includes(match[1].toLowerCase())) ? match[1] : null;
     if (!track.code && activePageShortcode) {
       track.code = activePageShortcode;
     }
@@ -333,9 +381,19 @@
 
     const getBestVidUrl = (versions) => {
       if (!Array.isArray(versions) || versions.length === 0) return null;
-      const valid = versions.filter(v => ((v.width || v.config_width || 0) > 0) && ((v.height || v.config_height || 0) > 0));
-      const list = valid.length > 0 ? valid : versions;
-      const sorted = [...list].sort((a, b) => (((b.width || b.config_width || 0) * (b.height || b.config_height || 0)) - ((a.width || a.config_width || 0) * (a.height || a.config_height || 0))));
+      const valid = versions.filter(v => {
+        const u = v?.url || v?.src;
+        if (!u || typeof u !== 'string') return false;
+        if (isDashAudioUrl(u)) return false;
+        if (u.includes('bytestart=') || u.includes('byteend=')) return false;
+        return true;
+      });
+      if (valid.length === 0) return null;
+
+      const prog = valid.find(v => (v.url || v.src || '').includes('progressive') || v.type === 101);
+      if (prog) return prog.url || prog.src;
+
+      const sorted = [...valid].sort((a, b) => (((b.width || b.config_width || 0) * (b.height || b.config_height || 0)) - ((a.width || a.config_width || 0) * (a.height || a.config_height || 0))));
       return sorted[0]?.url || sorted[0]?.src || null;
     };
 
@@ -401,7 +459,7 @@
       if (mediaList.length > 0) {
         const existing = postMediaMap.get(code);
         if (!existing || mediaList.length > existing.length) {
-          postMediaMap.set(code, mediaList);
+          safeMapSet(postMediaMap, code, mediaList, 60);
         }
       }
     }
@@ -459,24 +517,28 @@
     // A. Lấy URL Video (không lọc bỏ phiên bản hợp lệ nếu thiếu width/height)
     let videoUrl = null;
     if (Array.isArray(cand.video_versions) && cand.video_versions.length > 0) {
-      const valid = cand.video_versions.filter(v => v && typeof (v.url || v.src) === 'string' && !isDashAudioUrl(v.url || v.src));
+      const valid = cand.video_versions.filter(v => {
+        const u = v && (v.url || v.src);
+        return u && typeof u === 'string' && !isDashAudioUrl(u) && !u.includes('bytestart=') && !u.includes('byteend=');
+      });
       if (valid.length > 0) {
-        const prog = valid.find(v => (v.url || v.src || '').includes('progressive'));
+        const prog = valid.find(v => (v.url || v.src || '').includes('progressive') || v.type === 101);
         const sorted = [...valid].sort((a, b) => ((b.width || b.config_width || 0) * (b.height || b.config_height || 0)) - ((a.width || a.config_width || 0) * (a.height || a.config_height || 0)));
-        const best = (prog?.url || prog?.src) || (sorted[0]?.url || sorted[0]?.src);
-        if (best) videoUrl = best.replace(/[?&]bytestart=\d+&byteend=\d+/g, '');
+        videoUrl = (prog?.url || prog?.src) || (sorted[0]?.url || sorted[0]?.src) || null;
       }
-    } else if (typeof cand.video_url === 'string' && cand.video_url.startsWith('http') && !isDashAudioUrl(cand.video_url)) {
-      videoUrl = cand.video_url.replace(/[?&]bytestart=\d+&byteend=\d+/g, '');
+    } else if (typeof cand.video_url === 'string' && cand.video_url.startsWith('http') && !isDashAudioUrl(cand.video_url) && !cand.video_url.includes('bytestart=')) {
+      videoUrl = cand.video_url;
     } else if (Array.isArray(cand.video_resources) && cand.video_resources.length > 0) {
-      const valid = cand.video_resources.filter(v => v && typeof (v.src || v.url) === 'string' && !isDashAudioUrl(v.src || v.url));
+      const valid = cand.video_resources.filter(v => {
+        const u = v && (v.src || v.url);
+        return u && typeof u === 'string' && !isDashAudioUrl(u) && !u.includes('bytestart=') && !u.includes('byteend=');
+      });
       if (valid.length > 0) {
         const sorted = [...valid].sort((a, b) => ((b.config_width || b.width || 0) * (b.config_height || b.height || 0)) - ((a.config_width || a.width || 0) * (a.config_height || a.height || 0)));
-        const best = sorted[0]?.src || sorted[0]?.url;
-        if (best) videoUrl = best.replace(/[?&]bytestart=\d+&byteend=\d+/g, '');
+        videoUrl = sorted[0]?.src || sorted[0]?.url || null;
       }
-    } else if (typeof cand.playbackUrl === 'string' && cand.playbackUrl.startsWith('http') && !isDashAudioUrl(cand.playbackUrl)) {
-      videoUrl = cand.playbackUrl.replace(/[?&]bytestart=\d+&byteend=\d+/g, '');
+    } else if (typeof cand.playbackUrl === 'string' && cand.playbackUrl.startsWith('http') && !isDashAudioUrl(cand.playbackUrl) && !cand.playbackUrl.includes('bytestart=')) {
+      videoUrl = cand.playbackUrl;
     }
 
     // B. Lấy URL Ảnh (lấy ảnh gốc chất lượng cao nhất)
@@ -544,33 +606,31 @@
     visited.add(obj);
 
     if (typeof obj === 'string') {
-      if (obj.startsWith('http') && (obj.includes('.mp4') || obj.includes('cdninstagram') || obj.includes('fbcdn')) && !isDashAudioUrl(obj)) {
-        return obj.replace(/[?&]bytestart=\d+&byteend=\d+/g, '');
+      if (isValidVideoMp4Url(obj)) {
+        return obj;
       }
       return null;
     }
     if (Array.isArray(obj.video_versions) && obj.video_versions.length > 0) {
-      const valid = obj.video_versions.filter(v => v && typeof (v.url || v.src) === 'string' && !isDashAudioUrl(v.url || v.src));
+      const valid = obj.video_versions.filter(v => v && typeof (v.url || v.src) === 'string' && isValidVideoMp4Url(v.url || v.src));
       if (valid.length > 0) {
-        const prog = valid.find(v => (v.url || v.src || '').includes('progressive'));
+        const prog = valid.find(v => (v.url || v.src || '').includes('progressive') || v.type === 101);
         const sorted = [...valid].sort((a, b) => ((b.width || b.config_width || 0) * (b.height || b.config_height || 0)) - ((a.width || a.config_width || 0) * (a.height || a.config_height || 0)));
         const best = (prog?.url || prog?.src) || (sorted[0]?.url || sorted[0]?.src);
-        if (best) return best.replace(/[?&]bytestart=\d+&byteend=\d+/g, '');
+        if (best && isValidVideoMp4Url(best)) return best;
       }
     }
     const directProps = [obj.video_url, obj.playbackUrl, obj.videoUrl, obj.src, obj.url];
     for (const p of directProps) {
-      if (typeof p === 'string' && p.startsWith('http') && !p.startsWith('blob:') && !isDashAudioUrl(p)) {
-        if (p.includes('.mp4') || p.includes('cdninstagram') || p.includes('fbcdn')) {
-          return p.replace(/[?&]bytestart=\d+&byteend=\d+/g, '');
-        }
+      if (typeof p === 'string' && isValidVideoMp4Url(p)) {
+        return p;
       }
     }
     if (Array.isArray(obj.sources)) {
       for (const s of obj.sources) {
         const u = s?.src || s?.url;
-        if (typeof u === 'string' && u.startsWith('http') && !isDashAudioUrl(u)) {
-          return u.replace(/[?&]bytestart=\d+&byteend=\d+/g, '');
+        if (typeof u === 'string' && isValidVideoMp4Url(u)) {
+          return u;
         }
       }
     }
@@ -584,6 +644,7 @@
       for (let i = 0; i < keys.length; i++) {
         const k = keys[i];
         if (k === 'user' || k === 'owner' || k === 'profile_pic_url' || k === 'header' || k === 'avatar') continue;
+        if (/audio|music|sound|track/i.test(k)) continue;
         if (typeof obj[k] === 'object' && obj[k] !== null) {
           const found = findVideoUrlInObject(obj[k], depth + 1, visited);
           if (found) return found;
@@ -653,19 +714,19 @@
             entry.index = idx;
             if (!entry.user) entry.user = user;
             parsedItems.push(entry);
-            if (entry.id) storyMediaMap.set(entry.id, entry);
-            if (entry.rawId) storyMediaMap.set(entry.rawId, entry);
-            if (entry.code) storyMediaMap.set(entry.code, entry);
+            if (entry.id) safeMapSet(storyMediaMap, entry.id, entry, 60);
+            if (entry.rawId) safeMapSet(storyMediaMap, entry.rawId, entry, 60);
+            if (entry.code) safeMapSet(storyMediaMap, entry.code, entry, 60);
           }
         }
 
         if (parsedItems.length > 0) {
           if (isHighlight) {
-            if (cleanReelId) reelMediaMap.set(cleanReelId, parsedItems);
-            if (rawReelId) reelMediaMap.set(rawReelId, parsedItems);
+            if (cleanReelId) safeMapSet(reelMediaMap, cleanReelId, parsedItems, 60);
+            if (rawReelId) safeMapSet(reelMediaMap, rawReelId, parsedItems, 60);
           } else if (isUserStory) {
-            if (user) reelMediaMap.set(user, parsedItems);
-            if (cleanReelId) reelMediaMap.set(cleanReelId, parsedItems);
+            if (user) safeMapSet(reelMediaMap, user, parsedItems, 60);
+            if (cleanReelId) safeMapSet(reelMediaMap, cleanReelId, parsedItems, 60);
           }
         }
       }
@@ -674,9 +735,9 @@
     // 2. NHẬN DIỆN STORY ITEM ĐƠN LẺ
     const single = extractMediaFromCandidateObj(obj);
     if (single && single.id) {
-      if (single.id) storyMediaMap.set(single.id, single);
-      if (single.rawId) storyMediaMap.set(single.rawId, single);
-      if (single.code) storyMediaMap.set(single.code, single);
+      if (single.id) safeMapSet(storyMediaMap, single.id, single, 60);
+      if (single.rawId) safeMapSet(storyMediaMap, single.rawId, single, 60);
+      if (single.code) safeMapSet(storyMediaMap, single.code, single, 60);
     }
 
     if (Array.isArray(obj)) {
@@ -709,11 +770,11 @@
       if (!id) return;
       const clean = String(id).replace(/^highlight:/, '').trim();
       if (!clean) return;
-      cachedHighlights.set(clean, {
+      safeMapSet(cachedHighlights, clean, {
         id: clean,
         title: sanitizePathTitle(title || 'Highlight'),
         user: ownerUser
-      });
+      }, 60);
     }
 
     if (obj.edge_highlight_reels && Array.isArray(obj.edge_highlight_reels.edges)) {
@@ -754,9 +815,11 @@
   function processPayload(json, fallbackCode = null) {
     if (!json) return;
     try {
-      const found = extractAudioTracks(json, new Map(), fallbackCode);
-      for (const track of found.values()) {
-        dispatchTrack(track);
+      if (!window.location.pathname.includes('/reels') && !window.location.pathname.includes('/reel')) {
+        const found = extractAudioTracks(json, new Map(), fallbackCode);
+        for (const track of found.values()) {
+          dispatchTrack(track);
+        }
       }
       extractMediaCollections(json, fallbackCode);
       extractStoryItems(json);
@@ -765,7 +828,7 @@
   }
 
   function parseMetaResponseText(text, fallbackCode = null) {
-    if (!text || typeof text !== 'string') return;
+    if (!text || typeof text !== 'string' || text.length > 2500000) return;
     let cleaned = text.trim();
 
     if (cleaned.startsWith('for (;;);')) {
@@ -783,15 +846,17 @@
     try {
       const firstBrace = cleaned.indexOf('{');
       const lastBrace = cleaned.lastIndexOf('}');
-      if (firstBrace !== -1 && lastBrace > firstBrace) {
+      if (firstBrace !== -1 && lastBrace > firstBrace && (lastBrace - firstBrace) < 1500000) {
         processPayload(JSON.parse(cleaned.substring(firstBrace, lastBrace + 1)), fallbackCode);
         return;
       }
     } catch (_) {}
 
-    if (cleaned.includes('\n')) {
+    // Chỉ tách dòng khi chuỗi nhỏ < 200KB và duyệt tối đa 30 dòng để bảo vệ RAM và CPU tuyệt đối
+    if (cleaned.length < 200000 && cleaned.includes('\n')) {
       const lines = cleaned.split('\n');
-      for (let i = 0; i < lines.length; i++) {
+      const maxLines = Math.min(lines.length, 30);
+      for (let i = 0; i < maxLines; i++) {
         const line = lines[i].trim();
         if ((line.startsWith('{') && line.endsWith('}')) || (line.startsWith('[') && line.endsWith(']'))) {
           try {
@@ -802,10 +867,16 @@
     }
   }
 
-  function isIgnoredUrl(url) {
-    if (!url || typeof url !== 'string') return true;
-    if (url.includes('.jpg') || url.includes('.png') || url.includes('.webp') || url.includes('.mp4') || url.includes('.woff') || url.includes('.css') || url.includes('.js')) return true;
-    if (url.includes('/ajax/bz') || url.includes('/logging/') || url.includes('metrics')) return true;
+  function isRelevantApiUrl(url) {
+    if (!url || typeof url !== 'string') return false;
+    // BỎ QUA NGAY LẬP TỨC: tất cả domain CDN đa phương tiện (ảnh, video stream, audio stream)
+    // TUYỆT ĐỐI KHÔNG clone hay decode binary stream vào RAM, giải phóng triệt để RAM trình duyệt!
+    if (url.includes('cdninstagram') || url.includes('fbcdn') || url.includes('.cdn.') || url.includes('fna.')) return false;
+    if (url.includes('/ajax/bz') || url.includes('/logging/') || url.includes('metrics') || url.includes('/browser_push/') || url.includes('/realtime') || url.includes('/live/') || url.includes('/stream')) return false;
+    if (/\.(mp4|m4v|m4a|webm|mp3|ogg|wav|jpg|jpeg|png|webp|gif|svg|woff2?|css|ico)(\?|$)/i.test(url)) return false;
+
+    // CHỈ CHẤP NHẬN các API endpoint thực sự trả về dữ liệu bài viết / media JSON:
+    if (url.includes('/graphql') || url.includes('/api/v1/') || url.includes('/api/v2/') || url.includes('/api/')) return true;
     return false;
   }
 
@@ -840,8 +911,18 @@
     const response = await originalFetch.apply(this, args);
     try {
       const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
-      if (!isIgnoredUrl(url)) {
-        response.clone().text().then(text => parseMetaResponseText(text)).catch(() => {});
+      if (isRelevantApiUrl(url)) {
+        const ct = (response.headers?.get('content-type') || '').toLowerCase();
+        if (ct.includes('event-stream')) {
+          return response; // KHÔNG clone SSE/persistent streams
+        }
+        if (ct.includes('json') || ct.includes('javascript') || ct.includes('text/plain')) {
+          response.clone().text().then(text => {
+            if (text && text.length > 0 && text.length < 2000000) {
+              parseMetaResponseText(text);
+            }
+          }).catch(() => {});
+        }
       }
     } catch (_) {}
     return response;
@@ -879,10 +960,10 @@
       }
     } catch (_) {}
 
-    if (!isIgnoredUrl(this._ig_url)) {
+    if (isRelevantApiUrl(this._ig_url)) {
       this.addEventListener('load', function () {
         try {
-          if (this.responseText) {
+          if (this.responseText && this.responseText.length < 2000000) {
             parseMetaResponseText(this.responseText);
           }
         } catch (_) {}
@@ -1012,6 +1093,7 @@
   // --- 6. CHỦ ĐỘNG TRUY VẤN MEDIA KHI MỞ TRỰC TIẾP QUA URL HOẶC VIEWPORT ---
   async function fetchDirectPostMusic(shortcode) {
     if (!shortcode) return;
+    if (window.location.pathname.includes('/reels') || window.location.pathname.includes('/reel')) return;
 
     if (discoveredTracks.has(shortcode) || discoveredTracks.has(`code_${shortcode}`)) {
       const track = discoveredTracks.get(shortcode) || discoveredTracks.get(`code_${shortcode}`);
@@ -1115,6 +1197,7 @@
   window.addEventListener('__IG_REQUEST_INSPECT_POST__', (e) => {
     const { shortcode } = e.detail || {};
     if (!shortcode) return;
+    if (window.location.pathname.includes('/reels') || window.location.pathname.includes('/reel')) return;
 
     if (noAudioSet.has(shortcode)) {
       dispatchNoAudio(shortcode);
@@ -1153,7 +1236,7 @@
       return;
     }
 
-    scanReactFibers();
+    scanReactFibers(shortcode);
     scanScriptTags();
 
     if (postMediaMap.has(shortcode)) {
@@ -1163,7 +1246,13 @@
       return;
     }
 
-    await fetchDirectPostMusic(shortcode);
+    const fullItems = await fetchPostFullMedia(shortcode);
+    if (Array.isArray(fullItems) && fullItems.length > 0) {
+      window.dispatchEvent(new CustomEvent('__IG_POST_MEDIA_FOUND__', {
+        detail: { shortcode, items: fullItems }
+      }));
+      return;
+    }
 
     if (postMediaMap.has(shortcode)) {
       window.dispatchEvent(new CustomEvent('__IG_POST_MEDIA_FOUND__', {
@@ -1174,6 +1263,232 @@
         detail: { shortcode }
       }));
     }
+  });
+
+  // Lấy media trực tiếp từ React Fiber của video đang xem (Hoạt động trên Reels / Feed / Explore / Dialog)
+  function findActiveVideoMedia(targetIdx = -1) {
+    const targetVid = document.querySelector('video[data-ig-target-video="true"]') ||
+      Array.from(document.querySelectorAll('video')).find(v => {
+        const r = v.getBoundingClientRect();
+        return r.width > 120 && r.height > 120 && r.top < window.innerHeight && r.bottom > 0;
+      });
+
+    if (!targetVid) return null;
+
+    let cur = targetVid;
+    let depth = 0;
+    while (cur && depth < 25) {
+      const fiberKey = Object.keys(cur).find(k => k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$'));
+      if (fiberKey) {
+        let fiber = cur[fiberKey];
+        let fDepth = 0;
+        while (fiber && fDepth < 60) {
+          fDepth++;
+          const props = fiber.memoizedProps;
+          if (props && typeof props === 'object') {
+            const rawCandidates = [
+              props.item,
+              props.clip,
+              props.clip?.media,
+              props.media,
+              props.post,
+              props.videoData,
+              props.playbackSource,
+              props.feedItem,
+              props.feedItem?.media,
+              props.reelItem,
+              props.video
+            ];
+
+            for (const raw of rawCandidates) {
+              const c = raw?.media || raw?.node || raw;
+              if (c && typeof c === 'object') {
+                // 1. ƯU TIÊN 1: Lấy URL Video trực tiếp từ video_versions (CHUẨN 100% VIDEO MP4, TUYỆT ĐỐI KHÔNG LẤY AUDIO & CHUNK)
+                if (Array.isArray(c.video_versions) && c.video_versions.length > 0) {
+                  const valid = c.video_versions.filter(v => v && typeof (v.url || v.src) === 'string' && isValidVideoMp4Url(v.url || v.src));
+                  if (valid.length > 0) {
+                    const prog = valid.find(v => (v.url || v.src || '').includes('progressive') || v.type === 101);
+                    const sorted = [...valid].sort((a, b) => ((b.width || b.config_width || 0) * (b.height || b.config_height || 0)) - ((a.width || a.config_width || 0) * (a.height || a.config_height || 0)));
+                    const best = (prog?.url || prog?.src) || (sorted[0]?.url || sorted[0]?.src);
+                    if (best && isValidVideoMp4Url(best)) {
+                      const sc = (c.code && !['audio', 'reels', 'videos', 'comments'].includes(c.code.toLowerCase())) ? c.code : null;
+                      return {
+                        url: best,
+                        shortcode: sc
+                      };
+                    }
+                  }
+                }
+
+                // 2. ƯU TIÊN 2: Dùng extractMediaFromPostNode (chọn đúng slideIndex nếu có)
+                const items = extractMediaFromPostNode(c);
+                if (items && items.length > 0) {
+                  let vidUrl = null;
+                  if (targetIdx >= 0 && targetIdx < items.length && items[targetIdx]?.type === 'video' && isValidVideoMp4Url(items[targetIdx].url)) {
+                    vidUrl = items[targetIdx].url;
+                  } else {
+                    const vidItem = items.find(it => it.type === 'video' && isValidVideoMp4Url(it.url));
+                    if (vidItem?.url) vidUrl = vidItem.url;
+                  }
+                  if (vidUrl) {
+                    const sc = (c.code && !['audio', 'reels', 'videos', 'comments'].includes(c.code.toLowerCase())) ? c.code : null;
+                    if (sc) safeMapSet(postMediaMap, sc, items, 60);
+                    return {
+                      url: vidUrl,
+                      shortcode: sc,
+                      items
+                    };
+                  }
+                }
+
+                // 3. ƯU TIÊN 3: Quét sâu trong object (đã lọc bỏ audio keys)
+                const url = findVideoUrlInObject(c);
+                if (url && isValidVideoMp4Url(url)) {
+                  const sc = (c.code && !['audio', 'reels', 'videos', 'comments'].includes(c.code.toLowerCase())) ? c.code : null;
+                  return {
+                    url,
+                    shortcode: sc
+                  };
+                }
+              }
+            }
+
+            // Fallback: Quét props tổng thể
+            const fallbackUrl = findVideoUrlInObject(props);
+            if (fallbackUrl && isValidVideoMp4Url(fallbackUrl)) {
+              return { url: fallbackUrl, shortcode: null };
+            }
+          }
+          fiber = fiber.return;
+        }
+      }
+      cur = cur.parentElement;
+      depth++;
+    }
+
+    return null;
+  }
+
+  function findVideoUrlFromDomScripts(targetShortcode) {
+    if (!targetShortcode) return null;
+    try {
+      const scripts = document.querySelectorAll('script[type="application/json"], script[data-sjs]');
+      for (let i = 0; i < scripts.length; i++) {
+        const text = scripts[i].textContent || '';
+        if (!text.includes(targetShortcode)) continue;
+        if (!text.includes('video_versions') && !text.includes('video_url')) continue;
+
+        try {
+          const json = JSON.parse(text);
+          let foundUrl = null;
+          function walk(obj, depth = 0) {
+            if (!obj || typeof obj !== 'object' || depth > 20 || foundUrl) return;
+            if (obj.code === targetShortcode || obj.shortcode === targetShortcode) {
+              if (Array.isArray(obj.video_versions) && obj.video_versions.length > 0) {
+                const valid = obj.video_versions.filter(v => v && typeof (v.url || v.src) === 'string' && isValidVideoMp4Url(v.url || v.src));
+                if (valid.length > 0) {
+                  const prog = valid.find(v => (v.url || v.src || '').includes('progressive') || v.type === 101);
+                  const sorted = [...valid].sort((a, b) => ((b.width || b.config_width || 0) * (b.height || b.config_height || 0)) - ((a.width || a.config_width || 0) * (a.height || a.config_height || 0)));
+                  foundUrl = (prog?.url || prog?.src) || (sorted[0]?.url || sorted[0]?.src);
+                  return;
+                }
+              }
+              if (obj.video_url && isValidVideoMp4Url(obj.video_url)) {
+                foundUrl = obj.video_url;
+                return;
+              }
+            }
+            if (Array.isArray(obj)) {
+              for (let j = 0; j < obj.length; j++) walk(obj[j], depth + 1);
+            } else {
+              const keys = Object.keys(obj);
+              for (let j = 0; j < keys.length; j++) walk(obj[keys[j]], depth + 1);
+            }
+          }
+          walk(json);
+          if (foundUrl) return foundUrl;
+        } catch (_) {}
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  window.addEventListener('__IG_REQUEST_ACTIVE_VIDEO_URL__', async (e) => {
+    const { shortcode, slideIndex } = e.detail || {};
+    const targetIdx = (typeof slideIndex === 'number' && slideIndex >= 0) ? slideIndex : -1;
+
+    // Helper: Chọn video chính xác theo slideIndex (img_index)
+    const pickVideoFromItems = (items) => {
+      if (!Array.isArray(items) || items.length === 0) return null;
+
+      // 1. Nếu có slideIndex chính xác và vị trí đó là video: Lấy đúng video này!
+      if (targetIdx >= 0 && targetIdx < items.length) {
+        const itemAtIdx = items[targetIdx];
+        if (itemAtIdx?.type === 'video' && isValidVideoMp4Url(itemAtIdx.url)) {
+          return itemAtIdx.url;
+        }
+      }
+
+      // 2. Nếu tại targetIdx không phải video (hoặc không có slideIndex), tìm video gần targetIdx nhất
+      const allVideos = [];
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type === 'video' && isValidVideoMp4Url(items[i].url)) {
+          allVideos.push({ index: i, item: items[i] });
+        }
+      }
+      if (allVideos.length === 0) return null;
+
+      if (targetIdx >= 0) {
+        allVideos.sort((a, b) => Math.abs(a.index - targetIdx) - Math.abs(b.index - targetIdx));
+        return allVideos[0].item.url;
+      }
+
+      return allVideos[0].item.url;
+    };
+
+    // 1. NẾU CÓ SHORTCODE: ƯU TIÊN TRA TRONG postMediaMap ĐÃ CÓ
+    if (shortcode && postMediaMap.has(shortcode)) {
+      const items = postMediaMap.get(shortcode);
+      const url = pickVideoFromItems(items);
+      if (url) {
+        window.dispatchEvent(new CustomEvent('__IG_ACTIVE_VIDEO_URL_RESULT__', {
+          detail: { url, shortcode, items }
+        }));
+        return;
+      }
+    }
+
+    // 2. NẾU CÓ SHORTCODE: GỌI fetchPostFullMedia(shortcode) ĐỂ LẤY URL VIDEO ĐẦY ĐỦ TRỰC TIẾP TỪ REST/GRAPHQL
+    if (shortcode) {
+      const fetched = await fetchPostFullMedia(shortcode);
+      const url = pickVideoFromItems(fetched);
+      if (url) {
+        window.dispatchEvent(new CustomEvent('__IG_ACTIVE_VIDEO_URL_RESULT__', {
+          detail: { url, shortcode, items: fetched }
+        }));
+        return;
+      }
+    }
+
+    // 3. THỬ TRÍCH XUẤT TỪ REACT FIBER (CHỈ CHẤP NHẬN VIDEO HOÀN CHỈNH, KHÔNG LẤY CHUNK)
+    let result = findActiveVideoMedia(targetIdx);
+    if (result && result.url && isValidVideoMp4Url(result.url)) {
+      window.dispatchEvent(new CustomEvent('__IG_ACTIVE_VIDEO_URL_RESULT__', { detail: result }));
+      return;
+    }
+
+    // 4. QUÉT CÁC THẺ SCRIPT SSR TRONG DOM
+    if (shortcode) {
+      const domUrl = findVideoUrlFromDomScripts(shortcode);
+      if (domUrl) {
+        window.dispatchEvent(new CustomEvent('__IG_ACTIVE_VIDEO_URL_RESULT__', {
+          detail: { url: domUrl, shortcode }
+        }));
+        return;
+      }
+    }
+
+    window.dispatchEvent(new CustomEvent('__IG_ACTIVE_VIDEO_URL_RESULT__', { detail: null }));
   });
 
   function findStoryMediaFromFiber(targetEl = null, preferredSlideIndex = -1) {
@@ -1471,8 +1786,8 @@
             const html = await res.text();
             const items = extractTargetReelItems(html, cleanReel);
             if (items && items.length > 0) {
-              reelMediaMap.set(cleanReel, items);
-              reelMediaMap.set(`highlight:${cleanReel}`, items);
+              safeMapSet(reelMediaMap, cleanReel, items, 60);
+              safeMapSet(reelMediaMap, `highlight:${cleanReel}`, items, 60);
               inFlightReelFetches.delete(fetchKey);
               return items;
             }
@@ -1646,7 +1961,7 @@
       )
     );
     if (isOwn && dsId && dsId.match(/^\d+$/)) {
-      userNumericIdCache.set(clean, dsId);
+      safeMapSet(userNumericIdCache, clean, dsId, 60);
       return dsId;
     }
 
@@ -1662,14 +1977,14 @@
         const reg1 = new RegExp(`"username"\\s*:\\s*"${clean}"[\\s\\S]{1,500}?"(?:id|pk)"\\s*:\\s*"(\\d{5,})"`, 'i');
         const m1 = txt.match(reg1);
         if (m1) {
-          userNumericIdCache.set(clean, m1[1]);
+          safeMapSet(userNumericIdCache, clean, m1[1], 60);
           return m1[1];
         }
 
         const reg2 = new RegExp(`"(?:id|pk)"\\s*:\\s*"(\\d{5,})"[\\s\\S]{1,500}?"username"\\s*:\\s*"${clean}"`, 'i');
         const m2 = txt.match(reg2);
         if (m2) {
-          userNumericIdCache.set(clean, m2[1]);
+          safeMapSet(userNumericIdCache, clean, m2[1], 60);
           return m2[1];
         }
       }
@@ -1836,7 +2151,7 @@
           if (Array.isArray(json.items) && json.items.length > 0) {
             const items = extractMediaFromPostNode(json.items[0]);
             if (items.length > 0) {
-              postMediaMap.set(shortcode, items);
+              safeMapSet(postMediaMap, shortcode, items, 60);
               return items;
             }
           }
@@ -2155,7 +2470,7 @@
             const uData = uJson?.data?.user;
             if (uData && uData.id && String(uData.username || '').toLowerCase() === cleanUser) {
               numericUserId = String(uData.id);
-              userNumericIdCache.set(cleanUser, numericUserId);
+              safeMapSet(userNumericIdCache, cleanUser, numericUserId, 60);
               extractHighlightsFromPayload(uData, cleanUser);
             }
           }
@@ -2407,8 +2722,8 @@
                   if (Array.isArray(t.items) && t.items.length > 0) {
                     const parsed = extractTargetReelItems(t.items);
                     if (parsed.length > 0) {
-                      reelMediaMap.set(clean, parsed);
-                      reelMediaMap.set(`highlight:${clean}`, parsed);
+                      safeMapSet(reelMediaMap, clean, parsed, 60);
+                      safeMapSet(reelMediaMap, `highlight:${clean}`, parsed, 60);
                     }
                   }
                 }
@@ -2452,7 +2767,7 @@
                   const parsed = extractTargetReelItems(htmlText, cleanId, cleanUser);
                   if (parsed.length > 0) {
                     cachedReel = parsed;
-                    reelMediaMap.set(cleanId, parsed);
+                    safeMapSet(reelMediaMap, cleanId, parsed, 60);
                   }
                 }
               } catch (_) {}
@@ -2475,7 +2790,7 @@
                   const parsed = extractTargetReelItems(qJson, cleanId, cleanUser);
                   if (parsed.length > 0) {
                     cachedReel = parsed;
-                    reelMediaMap.set(cleanId, parsed);
+                    safeMapSet(reelMediaMap, cleanId, parsed, 60);
                   }
                 }
               } catch (_) {}
@@ -2550,7 +2865,7 @@
               const parsed = extractTargetReelItems(sHtml, null, cleanUser);
               if (parsed.length > 0) {
                 for (const it of parsed) storyItemsFound.push(it);
-                reelMediaMap.set(cleanUser, parsed);
+                safeMapSet(reelMediaMap, cleanUser, parsed, 60);
               }
             }
           } catch (_) {}
@@ -2568,7 +2883,7 @@
               const parsed = extractTargetReelItems(sJson, null, cleanUser);
               if (parsed.length > 0) {
                 for (const it of parsed) storyItemsFound.push(it);
-                reelMediaMap.set(cleanUser, parsed);
+                safeMapSet(reelMediaMap, cleanUser, parsed, 60);
               }
             }
           } catch (_) {}
@@ -2687,7 +3002,9 @@
   }
 
   function checkCurrentUrlPost() {
-    const sc = window.location.pathname.match(/\/(?:p|reel)\/([A-Za-z0-9_-]+)/)?.[1];
+    if (window.location.pathname.includes('/reels') || window.location.pathname.includes('/reel')) return;
+    const match = window.location.pathname.match(/\/p\/([A-Za-z0-9_-]+)/);
+    const sc = (match && !['audio', 'videos', 'reels', 'comments', 'explore', 'stories'].includes(match[1].toLowerCase())) ? match[1] : null;
     if (!sc) return;
 
     const existing = discoveredTracks.get(sc) || discoveredTracks.get(`code_${sc}`);

@@ -337,33 +337,105 @@
   white-space: nowrap;
 }
 
+.ig-feed-time-wrap {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 10.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  margin-left: auto !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.ig-feed-cur-time {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.ig-feed-time-sep {
+  opacity: 0.4;
+}
+
 .ig-clip-duration {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 10px;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.5);
-  background: rgba(255, 255, 255, 0.08);
-  padding: 1px 5px;
-  border-radius: 4px;
-  flex-shrink: 0;
-  margin-left: auto !important;
 }
 
-/* Thanh Tiến Trình (Progress bar) */
+/* Thanh Tiến Trình & Thanh Trượt Media Bài Viết (Progress Scrubber) */
 .ig-progress-track {
   width: 100%;
-  height: 2px;
-  background: rgba(255, 255, 255, 0.12);
+  height: 3px;
+  background: rgba(255, 255, 255, 0.16);
   position: absolute;
   bottom: 0;
   left: 0;
+  cursor: pointer;
+  z-index: 10;
+  transition: height 0.15s ease, background 0.15s ease;
+  touch-action: none;
+}
+
+.ig-music-feed-bar:hover .ig-progress-track,
+.ig-progress-track:hover,
+.ig-progress-track.is-dragging {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .ig-progress-fill {
   width: 0%;
   height: 100%;
   background: linear-gradient(90deg, #fd1d1d, #fcb045);
-  transition: width 0.15s linear;
+  transition: width 0.05s linear;
+  position: relative;
+  pointer-events: none;
+}
+
+.ig-progress-thumb {
+  position: absolute;
+  top: 50%;
+  left: 0%;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.6);
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform 0.12s ease;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.ig-music-feed-bar:hover .ig-progress-thumb,
+.ig-progress-track:hover .ig-progress-thumb,
+.ig-progress-track.is-dragging .ig-progress-thumb {
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.ig-progress-tooltip {
+  position: absolute;
+  bottom: 12px;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.9);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
 /* Responsive khi màn hình nhỏ */
@@ -1569,4 +1641,630 @@ body[class*="dark"] .ig-profile-download-btn:hover,
 .ig-profile-modal-min:hover {
   background: rgba(255, 255, 255, 0.16) !important;
   color: #ffffff !important;
+}
+
+/* ========================================================
+   D. THANH ĐIỀU KHIỂN & THANH TRƯỢT MEDIA CHO VIDEO (v2.5.0)
+   ======================================================== */
+
+[data-ig-vctl-container="true"] {
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+/* Ẩn triệt để toàn bộ cụm điều khiển âm thanh mặc định của Instagram trên video có thanh điều khiển custom */
+[data-ig-vctl-container="true"] .xbjudin,
+[data-ig-vctl-container="true"] [data-ig-native-audio-hidden="true"],
+[data-ig-vctl-container="true"] div:has(> [data-ig-native-audio-hidden="true"]),
+[data-ig-vctl-container="true"] div:has(> .xbjudin),
+[data-ig-vctl-container="true"] div[role="slider"][aria-label*="volume" i],
+[data-ig-vctl-container="true"] div[role="slider"][aria-label*="âm thanh" i],
+[data-ig-vctl-container="true"] div[role="slider"][aria-label*="tiếng" i],
+[data-ig-vctl-container="true"] div[aria-label="Adjust volume"],
+[data-ig-vctl-container="true"] .ig-floating-download-btn,
+[data-ig-vctl-container="true"] .xbjudin,
+[data-ig-vctl-container="true"] [role="slider"][aria-label*="volume" i],
+[data-ig-vctl-container="true"] [role="slider"][aria-label*="âm thanh" i],
+[data-ig-vctl-container="true"] [role="slider"][aria-label*="tiếng" i],
+[data-ig-vctl-container="true"] div[aria-label="Adjust volume"],
+[data-ig-vctl-container="true"] button:not(.ig-vctl-btn):is([aria-label*="audio" i], [aria-label*="sound" i], [aria-label*="volume" i], [aria-label*="mute" i], [aria-label*="unmute" i], [aria-label*="tiếng" i], [aria-label*="âm thanh" i]),
+[data-ig-vctl-container="true"] [role="button"]:not(.ig-vctl-btn):is([aria-label*="audio" i], [aria-label*="sound" i], [aria-label*="volume" i], [aria-label*="mute" i], [aria-label*="unmute" i], [aria-label*="tiếng" i], [aria-label*="âm thanh" i]),
+[data-ig-vctl-container="true"] button:not(.ig-vctl-btn):has(svg:is([aria-label*="audio" i], [aria-label*="sound" i], [aria-label*="volume" i], [aria-label*="mute" i], [aria-label*="unmute" i], [aria-label*="tiếng" i], [aria-label*="âm thanh" i])),
+[data-ig-vctl-container="true"] [role="button"]:not(.ig-vctl-btn):has(svg:is([aria-label*="audio" i], [aria-label*="sound" i], [aria-label*="volume" i], [aria-label*="mute" i], [aria-label*="unmute" i], [aria-label*="tiếng" i], [aria-label*="âm thanh" i])),
+div:has(> [data-ig-vctl-container="true"]) > div > button:not(.ig-vctl-btn):is([aria-label*="audio" i], [aria-label*="sound" i], [aria-label*="volume" i], [aria-label*="mute" i], [aria-label*="unmute" i], [aria-label*="tiếng" i], [aria-label*="âm thanh" i]),
+div:has(> [data-ig-vctl-container="true"]) > div > [role="button"]:not(.ig-vctl-btn):is([aria-label*="audio" i], [aria-label*="sound" i], [aria-label*="volume" i], [aria-label*="mute" i], [aria-label*="unmute" i], [aria-label*="tiếng" i], [aria-label*="âm thanh" i]),
+div:has(> [data-ig-vctl-container="true"]) > div > button:not(.ig-vctl-btn):has(svg:is([aria-label*="audio" i], [aria-label*="sound" i], [aria-label*="volume" i], [aria-label*="mute" i], [aria-label*="unmute" i], [aria-label*="tiếng" i], [aria-label*="âm thanh" i])),
+div:has(> [data-ig-vctl-container="true"]) > div > [role="button"]:not(.ig-vctl-btn):has(svg:is([aria-label*="audio" i], [aria-label*="sound" i], [aria-label*="volume" i], [aria-label*="mute" i], [aria-label*="unmute" i], [aria-label*="tiếng" i], [aria-label*="âm thanh" i])) {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: 0 !important;
+  max-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Vạch tiến trình mini mỏng ở đáy video (luôn hiển thị đồng nhất khi không hover) */
+.ig-vctl-mini-progress {
+  position: absolute !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  height: 4px !important;
+  background: rgba(255, 255, 255, 0.22) !important;
+  z-index: 99998 !important;
+  pointer-events: none !important;
+  transition: opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1), transform 0.24s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  transform: translateY(0) !important;
+  opacity: 1 !important;
+}
+
+.ig-vctl-mini-fill {
+  height: 100% !important;
+  width: 0%;
+  background: linear-gradient(90deg, #ff8a00, #e52e71, #ff3366) !important;
+  transition: width 0.08s linear !important;
+}
+
+.ig-video-controller {
+  position: absolute !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: 99999 !important;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.94) 0%, rgba(0, 0, 0, 0.65) 65%, transparent 100%) !important;
+  padding: 32px 14px 10px 14px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(100%) !important;
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s ease !important;
+  box-sizing: border-box !important;
+  will-change: transform, opacity !important;
+}
+
+/* Hover mượt mà vào khung video hoặc toolbar -> trượt êm lên */
+[data-ig-vctl-container="true"]:hover .ig-video-controller,
+[data-ig-vctl-container="true"].vctl-active .ig-video-controller,
+.ig-video-controller:hover,
+.ig-video-controller.is-active,
+.ig-video-controller.is-paused,
+.ig-video-controller.is-dragging {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transform: translateY(0) !important;
+}
+
+/* Hiệu ứng đồng nhất: Khi hover vào video, vạch mini trượt ẩn nhịp nhàng nhường chỗ cho thanh chính trượt lên */
+[data-ig-vctl-container="true"]:hover .ig-vctl-mini-progress,
+[data-ig-vctl-container="true"].vctl-active .ig-vctl-mini-progress,
+.ig-video-controller.is-active ~ .ig-vctl-mini-progress,
+.ig-video-controller:hover ~ .ig-vctl-mini-progress,
+.ig-video-controller.is-dragging ~ .ig-vctl-mini-progress,
+.ig-video-controller.is-paused ~ .ig-vctl-mini-progress {
+  opacity: 0 !important;
+  transform: translateY(100%) !important;
+}
+
+/* Scrubber Container (Được thiết kế mượt và nhạy theo chuẩn YouTube) */
+.ig-vctl-progress-container {
+  width: 100% !important;
+  height: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  position: relative !important;
+  cursor: pointer !important;
+  touch-action: none !important;
+  pointer-events: auto !important;
+  z-index: 100000 !important;
+  padding: 6px 0 !important;
+  box-sizing: border-box !important;
+}
+
+.ig-vctl-progress-track {
+  width: 100% !important;
+  height: 4px !important;
+  background: rgba(255, 255, 255, 0.25) !important;
+  border-radius: 2px !important;
+  position: relative !important;
+  transition: height 0.12s ease !important;
+  pointer-events: none !important;
+}
+
+.ig-vctl-progress-container:hover .ig-vctl-progress-track,
+.ig-video-controller.is-dragging .ig-vctl-progress-track {
+  height: 6px !important;
+  border-radius: 3px !important;
+}
+
+.ig-vctl-progress-buffer {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  height: 100% !important;
+  width: 0%;
+  background: rgba(255, 255, 255, 0.38) !important;
+  border-radius: inherit !important;
+  pointer-events: none !important;
+  z-index: 1 !important;
+}
+
+/* Vạch ghost preview khi hover chuột qua (Chuẩn YouTube) */
+.ig-vctl-progress-hover {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  height: 100% !important;
+  width: 0%;
+  background: rgba(255, 255, 255, 0.32) !important;
+  border-radius: inherit !important;
+  pointer-events: none !important;
+  z-index: 2 !important;
+}
+
+.ig-vctl-progress-fill {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  height: 100% !important;
+  width: 0%;
+  background: linear-gradient(90deg, #ff8a00, #e52e71, #ff3366) !important;
+  border-radius: inherit !important;
+  pointer-events: none !important;
+  z-index: 3 !important;
+  transition: width 0.08s linear !important;
+  will-change: width !important;
+}
+
+.ig-vctl-progress-thumb {
+  position: absolute !important;
+  top: 50% !important;
+  left: 0%;
+  width: 12px !important;
+  height: 12px !important;
+  border-radius: 50% !important;
+  background: #ffffff !important;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.8) !important;
+  transform: translate(-50%, -50%) scale(1) !important;
+  transition: left 0.08s linear, width 0.12s ease, height 0.12s ease, transform 0.12s ease !important;
+  pointer-events: none !important;
+  z-index: 4 !important;
+  will-change: left !important;
+}
+
+.ig-vctl-progress-container:hover .ig-vctl-progress-thumb,
+.ig-video-controller.is-dragging .ig-vctl-progress-thumb {
+  width: 15px !important;
+  height: 15px !important;
+  transform: translate(-50%, -50%) scale(1.15) !important;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.95) !important;
+}
+
+/* Khi đang kéo: Tắt tuyệt đối mọi transition để di chuột tức thì 0ms, không lag, không khựng */
+.ig-video-controller.is-dragging .ig-vctl-progress-fill,
+.ig-video-controller.is-dragging .ig-vctl-progress-thumb,
+.ig-video-controller.is-dragging .ig-vctl-progress-hover {
+  transition: none !important;
+}
+
+.ig-vctl-time-bubble {
+  position: absolute !important;
+  bottom: 26px !important;
+  transform: translateX(-50%) !important;
+  background: rgba(18, 18, 22, 0.96) !important;
+  color: #ffffff !important;
+  padding: 3px 8px !important;
+  border-radius: 5px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-variant-numeric: tabular-nums !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+  transition: opacity 0.12s ease !important;
+  white-space: nowrap !important;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  z-index: 5 !important;
+}
+
+/* Control Row */
+.ig-vctl-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  position: relative !important;
+  z-index: 100000 !important;
+}
+
+.ig-vctl-left, .ig-vctl-right {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.ig-vctl-btn {
+  background: none !important;
+  border: none !important;
+  color: #ffffff !important;
+  padding: 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  border-radius: 6px !important;
+  opacity: 0.9 !important;
+  transition: opacity 0.15s ease, transform 0.12s ease, background 0.15s ease !important;
+  line-height: 1 !important;
+  pointer-events: auto !important;
+  position: relative !important;
+  z-index: 100001 !important;
+}
+
+.ig-vctl-btn svg,
+.ig-vctl-btn * {
+  pointer-events: none !important;
+}
+
+.ig-vctl-btn:hover {
+  opacity: 1 !important;
+  background: rgba(255, 255, 255, 0.18) !important;
+  transform: scale(1.08) !important;
+}
+
+.ig-vctl-btn:active {
+  transform: scale(0.95) !important;
+}
+
+.ig-vctl-time-display {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.85);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 4px;
+}
+
+.ig-vctl-cur-time {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.ig-vctl-time-sep {
+  opacity: 0.45;
+}
+
+.ig-vctl-speed-select {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.16) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  padding: 3px 6px !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  outline: none !important;
+  transition: background 0.15s ease, border-color 0.15s ease !important;
+  line-height: 1.2 !important;
+}
+
+.ig-vctl-speed-select:hover {
+  background: rgba(255, 255, 255, 0.28) !important;
+  border-color: rgba(255, 255, 255, 0.45) !important;
+}
+
+.ig-vctl-speed-select option {
+  background: #18181c !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  padding: 4px 8px !important;
+}
+
+/* Volume Slider Group */
+.ig-vctl-vol-group {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.ig-vctl-vol-slider-wrap {
+  width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: width 0.2s ease, opacity 0.2s ease, margin-left 0.2s ease;
+  display: flex;
+  align-items: center;
+}
+
+.ig-vctl-vol-group:hover .ig-vctl-vol-slider-wrap,
+.ig-vctl-vol-group:focus-within .ig-vctl-vol-slider-wrap {
+  width: 56px;
+  opacity: 1;
+  margin-left: 4px;
+}
+
+.ig-vctl-vol-slider {
+  width: 54px;
+  height: 4px;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.ig-vctl-vol-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+}
+
+/* ========================================================
+   E. THANH TIẾN TRÌNH CUSTOME TRÊN ĐỈNH STORY (v2.5.0)
+   Đặt ở sát mép trên cùng của Story, tách biệt rõ ràng phía trên vạch - - - - gốc
+   ======================================================== */
+
+/* Ẩn triệt để thanh đáy cũ nếu còn tồn tại */
+.ig-story-scrubber-bar {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Ẩn triệt để nút Loa mặc định trong Header Story (đã có tính năng auto phát âm thanh) */
+div[role="dialog"] header button:not(.ig-vctl-btn):not(.ig-story-download-btn)[aria-label*="tiếng" i],
+div[role="dialog"] header button:not(.ig-vctl-btn):not(.ig-story-download-btn)[aria-label*="âm thanh" i],
+div[role="dialog"] header button:not(.ig-vctl-btn):not(.ig-story-download-btn)[aria-label*="mute" i],
+div[role="dialog"] header button:not(.ig-vctl-btn):not(.ig-story-download-btn)[aria-label*="sound" i],
+div[role="dialog"] header button:not(.ig-vctl-btn):not(.ig-story-download-btn)[aria-label*="audio" i],
+section header button:not(.ig-vctl-btn):not(.ig-story-download-btn)[aria-label*="tiếng" i],
+section header button:not(.ig-vctl-btn):not(.ig-story-download-btn)[aria-label*="âm thanh" i],
+section header button:not(.ig-vctl-btn):not(.ig-story-download-btn)[aria-label*="mute" i],
+section header button:not(.ig-vctl-btn):not(.ig-story-download-btn)[aria-label*="sound" i],
+section header button:not(.ig-vctl-btn):not(.ig-story-download-btn)[aria-label*="audio" i],
+[data-ig-story-speaker-hidden="true"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Thanh tiến trình custom nằm sát viền mép trên cùng của Story (top: 0) */
+.ig-story-top-progress-bar {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  height: 4px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+  z-index: 10050 !important;
+  display: flex !important;
+  align-items: center !important;
+  cursor: pointer !important;
+  touch-action: none !important;
+  user-select: none !important;
+  border-top-left-radius: inherit !important;
+  border-top-right-radius: inherit !important;
+  overflow: visible !important;
+  transition: height 0.15s ease !important;
+}
+
+.ig-story-top-progress-bar::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 12px !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+.ig-story-top-track {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  height: 3.5px !important;
+  background: rgba(255, 255, 255, 0.28) !important;
+  border-top-left-radius: inherit !important;
+  border-top-right-radius: inherit !important;
+  overflow: hidden !important;
+  transition: height 0.15s ease !important;
+}
+
+.ig-story-top-progress-bar:hover,
+.ig-story-top-progress-bar.is-dragging {
+  height: 6px !important;
+}
+
+.ig-story-top-progress-bar:hover .ig-story-top-track,
+.ig-story-top-progress-bar.is-dragging .ig-story-top-track {
+  height: 6px !important;
+}
+
+.ig-story-top-hover {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  width: 0% !important;
+  background: rgba(255, 255, 255, 0.45) !important;
+  border-radius: inherit !important;
+  pointer-events: none !important;
+  transition: width 0.05s ease !important;
+}
+
+.ig-story-top-fill {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  width: 0% !important;
+  background: linear-gradient(90deg, #ff8a00, #e52e71, #ff3366) !important;
+  box-shadow: 0 0 8px rgba(229, 46, 113, 0.7) !important;
+  border-radius: inherit !important;
+  pointer-events: none !important;
+  transition: width 0.08s linear !important;
+  will-change: width !important;
+}
+
+.ig-story-top-thumb {
+  position: absolute !important;
+  top: 50% !important;
+  left: 0% !important;
+  width: 12px !important;
+  height: 12px !important;
+  border-radius: 50% !important;
+  background: #ffffff !important;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.85) !important;
+  transform: translate(-50%, -50%) !important;
+  pointer-events: none !important;
+  opacity: 0;
+  transition: left 0.08s linear, opacity 0.15s ease !important;
+  z-index: 2 !important;
+  will-change: left !important;
+}
+
+.ig-story-top-progress-bar.is-dragging .ig-story-top-fill,
+.ig-story-top-progress-bar.is-dragging .ig-story-top-thumb {
+  transition: none !important;
+}
+
+.ig-story-top-progress-bar:hover .ig-story-top-thumb,
+.ig-story-top-progress-bar.is-dragging .ig-story-top-thumb {
+  opacity: 1 !important;
+}
+
+.ig-story-top-tooltip {
+  position: absolute !important;
+  top: 14px !important;
+  left: 0% !important;
+  transform: translateX(-50%) !important;
+  background: rgba(12, 12, 16, 0.92) !important;
+  color: #ffffff !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
+  font-variant-numeric: tabular-nums !important;
+  pointer-events: none !important;
+  opacity: 0;
+  transition: opacity 0.12s ease !important;
+  white-space: nowrap !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  z-index: 10022 !important;
+}
+
+/* ========================================================
+   G. CHẾ ĐỘ TOÀN MÀN HÌNH (FULLSCREEN) CHUẨN KHÔNG MÉO/VỠ
+   Giữ nguyên 100% tỷ lệ gốc của video (object-fit: contain)
+   ======================================================== */
+[data-ig-vctl-container="true"]:fullscreen,
+[data-ig-vctl-container="true"]:-webkit-full-screen {
+  background: #000000 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  overflow: hidden !important;
+}
+
+[data-ig-vctl-container="true"]:fullscreen video,
+[data-ig-vctl-container="true"]:-webkit-full-screen video,
+video:fullscreen,
+video:-webkit-full-screen {
+  object-fit: contain !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  margin: auto !important;
+  background: #000000 !important;
+}
+
+[data-ig-vctl-container="true"]:fullscreen .ig-video-controller,
+[data-ig-vctl-container="true"]:-webkit-full-screen .ig-video-controller {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100vw !important;
+  z-index: 2147483647 !important;
+}
+
+/* Ẩn nút loa trong Header Story (do đã auto phát nhạc/tiếng) */
+[data-ig-story-speaker-hidden="true"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Hiển thị thời gian trực tiếp trong hàng Action Header Story (gọn, thuần số) */
+.ig-story-header-time {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  font-variant-numeric: tabular-nums !important;
+  color: #ffffff !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85) !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 4px !important;
+  margin-right: 4px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 2.5px !important;
+  user-select: none !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  opacity: 0.95 !important;
+  line-height: 1 !important;
+  z-index: 10 !important;
+}
+
+.ig-story-header-time .ig-story-sc-cur {
+  color: #ffffff !important;
+}
+
+.ig-story-header-time .ig-story-sc-sep {
+  opacity: 0.6 !important;
+  margin: 0 1px !important;
+}
+
+.ig-story-header-time .ig-story-sc-dur {
+  color: rgba(255, 255, 255, 0.85) !important;
 }
