@@ -50,7 +50,7 @@
       CACHED_PROFILE_ICONS.video = chrome.runtime.getURL('icons/opt_video.png');
       CACHED_PROFILE_ICONS.photos = chrome.runtime.getURL('icons/opt_photos.png');
     }
-  } catch (_) {}
+  } catch (_) { }
 
   const config = {
     autoplay: true,
@@ -92,7 +92,7 @@
         if (Array.isArray(list)) {
           list.forEach(saveTrackLocally);
         }
-      } catch (_) {}
+      } catch (_) { }
     }
   }
 
@@ -476,7 +476,7 @@
         // Instagram tạo video wrapper 1 FPS cho ảnh kèm nhạc (1 sample/giây). Video thật luôn >= 24 FPS.
         return (fps > 0 && fps < 3) || (sampleCount > 0 && sampleCount <= 25 && durationSec >= 5);
       }
-    } catch (_) {}
+    } catch (_) { }
     return false;
   }
 
@@ -679,7 +679,7 @@
             const arrayBuf = await res.arrayBuffer();
             filesToZip.push({ name: filename, data: new Uint8Array(arrayBuf) });
           }
-        } catch (_) {}
+        } catch (_) { }
       }
 
       if (filesToZip.length > 0) {
@@ -865,7 +865,7 @@
       try {
         currentActive.audio.pause();
         currentActive.audio.currentTime = 0;
-      } catch (_) {}
+      } catch (_) { }
       if (currentActive.updatePausedUI) {
         currentActive.updatePausedUI();
       }
@@ -1153,7 +1153,7 @@
       if (startSec > 0 && Math.abs(audio.currentTime - startSec) > 0.4) {
         try {
           audio.currentTime = startSec;
-        } catch (_) {}
+        } catch (_) { }
       }
     };
     audio.addEventListener('loadedmetadata', applyStartTime);
@@ -1201,7 +1201,7 @@
           const unlockAudio = () => {
             document.removeEventListener('click', unlockAudio);
             if (audio.paused && bar.isConnected && isPostViewingContext()) {
-              audio.play().then(updatePlayingUI).catch(() => {});
+              audio.play().then(updatePlayingUI).catch(() => { });
             }
           };
           document.addEventListener('click', unlockAudio, { once: true });
@@ -1260,7 +1260,27 @@
         }
       });
 
+      const onAudioScrubEnd = (e) => {
+        if (!isDraggingAudio) return;
+        isDraggingAudio = false;
+        progressTrack.classList.remove('is-dragging');
+        if (e && e.pointerId !== undefined) {
+          try {
+            progressTrack.releasePointerCapture(e.pointerId);
+          } catch (_) { }
+        }
+        window.removeEventListener('pointerup', onAudioScrubEnd, true);
+        window.removeEventListener('pointercancel', onAudioScrubEnd, true);
+        window.removeEventListener('mouseup', onAudioScrubEnd, true);
+        window.removeEventListener('blur', onAudioScrubEnd, true);
+        if (progressTooltip) progressTooltip.style.opacity = '0';
+      };
+
       progressTrack.addEventListener('pointermove', (e) => {
+        if (isDraggingAudio && (e.buttons === 0 || (e.buttons !== undefined && (e.buttons & 1) === 0))) {
+          onAudioScrubEnd(e);
+          return;
+        }
         const pct = getAudioScrubPct(e);
         const relativeSec = pct * clipDurationSec;
         if (progressTooltip) {
@@ -1273,13 +1293,14 @@
       });
 
       progressTrack.addEventListener('pointerdown', (e) => {
+        if (e.button !== undefined && e.button !== 0) return;
         e.preventDefault();
         e.stopPropagation();
         isDraggingAudio = true;
         progressTrack.classList.add('is-dragging');
         try {
           progressTrack.setPointerCapture(e.pointerId);
-        } catch (_) {}
+        } catch (_) { }
 
         const pct = getAudioScrubPct(e);
         applyScrubAudio(pct);
@@ -1294,17 +1315,12 @@
         if (audio.paused && !currentActive) {
           startPlay();
         }
-      });
 
-      const onAudioScrubEnd = (e) => {
-        if (!isDraggingAudio) return;
-        isDraggingAudio = false;
-        progressTrack.classList.remove('is-dragging');
-        try {
-          progressTrack.releasePointerCapture(e.pointerId);
-        } catch (_) {}
-        if (progressTooltip) progressTooltip.style.opacity = '0';
-      };
+        window.addEventListener('pointerup', onAudioScrubEnd, true);
+        window.addEventListener('pointercancel', onAudioScrubEnd, true);
+        window.addEventListener('mouseup', onAudioScrubEnd, true);
+        window.addEventListener('blur', onAudioScrubEnd, true);
+      });
 
       progressTrack.addEventListener('pointerup', onAudioScrubEnd);
       progressTrack.addEventListener('pointercancel', onAudioScrubEnd);
@@ -1340,7 +1356,7 @@
       if (audio.currentTime >= endSec) {
         if (config.loop) {
           audio.currentTime = startSec;
-          audio.play().catch(() => {});
+          audio.play().catch(() => { });
         } else {
           audio.pause();
           audio.currentTime = startSec;
@@ -1476,7 +1492,7 @@
         if (video.volume === 0 || Math.abs(video.volume - targetVolume) > 0.3) {
           video.volume = targetVolume;
         }
-      } catch (_) {}
+      } catch (_) { }
     };
 
     applyUnmute();
@@ -1526,7 +1542,7 @@
     if (video._controllerCleanup) {
       try {
         video._controllerCleanup();
-      } catch (_) {}
+      } catch (_) { }
       video._controllerCleanup = null;
     }
     if (video._controllerEl) {
@@ -1541,7 +1557,7 @@
       try {
         video._vctlContainer.removeAttribute('data-ig-vctl-container');
         video._vctlContainer.classList.remove('vctl-active');
-      } catch (_) {}
+      } catch (_) { }
       video._vctlContainer = null;
     }
     video._hasCustomController = false;
@@ -1680,8 +1696,6 @@
     let isDragging = false;
     let wasPlayingBeforeDrag = false;
     let cachedTrackRect = null;
-    let pendingSeekFrame = null;
-    let lastSeekTime = -1;
     let hideTimer = null;
     let savedVolume = video.volume > 0 ? video.volume : 0.8;
 
@@ -1720,16 +1734,16 @@
     controller.addEventListener('pointermove', showControls);
     controller.addEventListener('pointerleave', hideControlsImmediate);
 
-    // Ngăn triệt để mọi sự kiện bấm trên toolbar nổi bọt lên các lớp overlay hay link của Instagram
+    // Ngăn chặn sự kiện tương tác trên toolbar nổi bọt lên các lớp cha/overlay của Instagram
     const stopBubble = (e) => {
+      // TUYỆT ĐỐI KHÔNG chặn pointerup, pointercancel, mouseup - để window luôn bắt được sự kiện nhả chuột!
+      if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'mouseup') return;
       e.stopPropagation();
       e.stopImmediatePropagation();
     };
     controller.addEventListener('click', stopBubble);
     controller.addEventListener('pointerdown', stopBubble);
-    controller.addEventListener('pointerup', stopBubble);
     controller.addEventListener('mousedown', stopBubble);
-    controller.addEventListener('mouseup', stopBubble);
     controller.addEventListener('touchstart', stopBubble, { passive: true });
 
     let rafTicker = null;
@@ -1750,32 +1764,6 @@
       }
     };
 
-    const getScrubPct = (clientX) => {
-      const r = cachedTrackRect || progressTrack.getBoundingClientRect();
-      if (!r || r.width <= 0) return 0;
-      return Math.max(0, Math.min(1, (clientX - r.left) / r.width));
-    };
-
-    const performSeek = (targetTime) => {
-      if (Math.abs((video.currentTime || 0) - targetTime) < 0.04) return;
-      if (typeof video.fastSeek === 'function') {
-        try { video.fastSeek(targetTime); } catch (_) { video.currentTime = targetTime; }
-      } else {
-        video.currentTime = targetTime;
-      }
-    };
-
-    const scheduleSeek = (targetTime) => {
-      lastSeekTime = targetTime;
-      if (pendingSeekFrame) return;
-      pendingSeekFrame = requestAnimationFrame(() => {
-        pendingSeekFrame = null;
-        if (lastSeekTime >= 0) {
-          performSeek(lastSeekTime);
-        }
-      });
-    };
-
     const updateProgressUI = () => {
       if (isDragging) return;
       const cur = video.currentTime || 0;
@@ -1794,150 +1782,147 @@
           const bufEnd = video.buffered.end(video.buffered.length - 1);
           const bufPct = Math.min(100, Math.max(0, (bufEnd / dur) * 100));
           bufferBar.style.setProperty('width', `${bufPct}%`, 'important');
-        } catch (_) {}
+        } catch (_) { }
       }
     };
 
-    // 1. Ghost preview khi hover chuột qua thanh tua (chuẩn YouTube)
-    const onProgressHover = (e) => {
-      if (isDragging) return;
-      const rect = progressTrack.getBoundingClientRect();
-      const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-      const dur = video.duration || 0;
-      const hoverSec = pct * dur;
+    const getScrubPct = (clientX) => {
+      const rect = cachedTrackRect || progressTrack.getBoundingClientRect();
+      if (!rect || rect.width <= 0) return 0;
+      return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    };
 
-      hoverBar.style.setProperty('width', `${(pct * 100).toFixed(2)}%`, 'important');
-      timeBubble.textContent = formatTime(hoverSec);
-      timeBubble.style.setProperty('left', `${(pct * 100).toFixed(2)}%`, 'important');
+    const updateScrubDisplay = (pct) => {
+      const dur = video.duration || 0;
+      if (dur > 0) {
+        try {
+          video.currentTime = pct * dur;
+        } catch (_) { }
+      }
+      const pctStr = `${(pct * 100).toFixed(2)}%`;
+      fillBar.style.setProperty('width', pctStr, 'important');
+      thumbEl.style.setProperty('left', pctStr, 'important');
+      if (miniFill) miniFill.style.setProperty('width', pctStr, 'important');
+      curTimeEl.textContent = formatTime(pct * dur);
+
+      timeBubble.textContent = formatTime(pct * dur);
+      timeBubble.style.setProperty('left', pctStr, 'important');
       timeBubble.style.opacity = '1';
     };
 
-    const onProgressLeave = () => {
-      if (!isDragging) {
-        hoverBar.style.setProperty('width', '0%', 'important');
-        timeBubble.style.opacity = '0';
-      }
-    };
-
-    progressContainer.addEventListener('pointerenter', onProgressHover);
-    progressContainer.addEventListener('pointermove', onProgressHover);
-    progressContainer.addEventListener('pointerleave', onProgressLeave);
-
-    // 2. Kéo tua video (Scrubbing mượt mà 60fps chuẩn YouTube)
     const onScrubMove = (e) => {
       if (!isDragging) return;
-      // An toàn: nếu chuột đã nhả phím -> dừng kéo ngay lập tức
-      if (e.buttons === 0 || (e.buttons & 1) === 0) {
+      // QUAN TRỌNG NHẤT: Nếu chuột di chuyển mà không hề nhấn giữ phím chuột trái (e.buttons === 0),
+      // ngay lập tức ngắt trạng thái kéo, tuyệt đối không để thanh trượt bám theo chuột!
+      if (e.buttons === 0 || (e.buttons !== undefined && (e.buttons & 1) === 0)) {
         onScrubEnd(e);
         return;
       }
-
-      e.preventDefault();
-      const pct = getScrubPct(e.clientX);
-      const dur = video.duration || 0;
-      const targetTime = pct * dur;
-
-      // Cập nhật UI tức thời 0ms không độ trễ
-      fillBar.style.setProperty('width', `${(pct * 100).toFixed(2)}%`, 'important');
-      thumbEl.style.setProperty('left', `${(pct * 100).toFixed(2)}%`, 'important');
-      hoverBar.style.setProperty('width', `${(pct * 100).toFixed(2)}%`, 'important');
-      if (miniFill) miniFill.style.setProperty('width', `${(pct * 100).toFixed(2)}%`, 'important');
-      curTimeEl.textContent = formatTime(targetTime);
-
-      timeBubble.textContent = formatTime(targetTime);
-      timeBubble.style.setProperty('left', `${(pct * 100).toFixed(2)}%`, 'important');
-      timeBubble.style.opacity = '1';
-
-      scheduleSeek(targetTime);
+      const clientX = e.clientX ?? (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+      const pct = getScrubPct(clientX);
+      updateScrubDisplay(pct);
     };
 
     const onScrubEnd = (e) => {
       if (!isDragging) return;
       isDragging = false;
       controller.classList.remove('is-dragging');
+      progressContainer.classList.remove('is-dragging');
+      cachedTrackRect = null;
 
-      if (pendingSeekFrame) {
-        cancelAnimationFrame(pendingSeekFrame);
-        pendingSeekFrame = null;
+      if (e && e.pointerId !== undefined) {
+        try { progressContainer.releasePointerCapture(e.pointerId); } catch (_) { }
       }
-
-      if (lastSeekTime >= 0) {
-        video.currentTime = lastSeekTime;
-        lastSeekTime = -1;
-      }
-
-      try {
-        if (e?.pointerId && progressContainer.hasPointerCapture?.(e.pointerId)) {
-          progressContainer.releasePointerCapture(e.pointerId);
-        }
-      } catch (_) {}
 
       window.removeEventListener('pointermove', onScrubMove, true);
       window.removeEventListener('pointerup', onScrubEnd, true);
       window.removeEventListener('pointercancel', onScrubEnd, true);
+      window.removeEventListener('mouseup', onScrubEnd, true);
       window.removeEventListener('blur', onScrubEnd, true);
+      progressContainer.removeEventListener('pointerup', onScrubEnd);
+      progressContainer.removeEventListener('pointercancel', onScrubEnd);
 
-      cachedTrackRect = null;
-      hoverBar.style.setProperty('width', '0%', 'important');
-      timeBubble.style.opacity = '0';
+      if (!progressContainer.matches(':hover')) {
+        timeBubble.style.opacity = '0';
+        if (hoverBar) hoverBar.style.setProperty('width', '0%', 'important');
+      }
 
-      // Tiếp tục phát nếu trước khi tua video đang phát
       if (wasPlayingBeforeDrag) {
-        video.play().catch(() => {});
+        wasPlayingBeforeDrag = false;
+        video.play().catch(() => { });
       }
 
       showControls();
     };
 
-    progressContainer.addEventListener('pointerdown', (e) => {
-      if (e.button !== 0) return; // Chỉ nhận chuột trái
+    const onScrubStart = (e) => {
+      // Chỉ nhận chuột trái (button === 0) hoặc touch
+      if (e.button !== undefined && e.button !== 0) return;
       e.preventDefault();
       e.stopPropagation();
 
       isDragging = true;
-      controller.classList.add('is-dragging');
-
-      // Tạm dừng để bộ giải mã không bị giật lag
       wasPlayingBeforeDrag = !video.paused;
       if (wasPlayingBeforeDrag) {
         video.pause();
       }
 
+      controller.classList.add('is-dragging');
+      progressContainer.classList.add('is-dragging');
       cachedTrackRect = progressTrack.getBoundingClientRect();
-      const pct = getScrubPct(e.clientX);
-      const dur = video.duration || 0;
-      const targetTime = pct * dur;
-
-      fillBar.style.setProperty('width', `${(pct * 100).toFixed(2)}%`, 'important');
-      thumbEl.style.setProperty('left', `${(pct * 100).toFixed(2)}%`, 'important');
-      hoverBar.style.setProperty('width', `${(pct * 100).toFixed(2)}%`, 'important');
-      if (miniFill) miniFill.style.setProperty('width', `${(pct * 100).toFixed(2)}%`, 'important');
-      curTimeEl.textContent = formatTime(targetTime);
-
-      timeBubble.textContent = formatTime(targetTime);
-      timeBubble.style.setProperty('left', `${(pct * 100).toFixed(2)}%`, 'important');
-      timeBubble.style.opacity = '1';
 
       try {
         progressContainer.setPointerCapture(e.pointerId);
-      } catch (_) {}
+      } catch (_) { }
 
-      scheduleSeek(targetTime);
+      const clientX = e.clientX ?? (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+      const pct = getScrubPct(clientX);
+      updateScrubDisplay(pct);
 
-      // Đăng ký toàn cục với capture: true
+      // Đăng ký toàn cục ở capture phase để đón sự kiện nhả chuột dù chuột ở bất cứ đâu trên màn hình
       window.addEventListener('pointermove', onScrubMove, true);
       window.addEventListener('pointerup', onScrubEnd, true);
       window.addEventListener('pointercancel', onScrubEnd, true);
+      window.addEventListener('mouseup', onScrubEnd, true);
       window.addEventListener('blur', onScrubEnd, true);
-      progressContainer.addEventListener('pointerup', onScrubEnd, true);
-      progressContainer.addEventListener('pointercancel', onScrubEnd, true);
-      progressContainer.addEventListener('lostpointercapture', onScrubEnd);
+      progressContainer.addEventListener('pointerup', onScrubEnd);
+      progressContainer.addEventListener('pointercancel', onScrubEnd);
+    };
+
+    progressContainer.addEventListener('pointerdown', onScrubStart);
+
+    // Hover preview (vạch ghost mờ và bong bóng thời gian giống YouTube)
+    progressContainer.addEventListener('pointerenter', () => {
+      timeBubble.style.opacity = '1';
+    });
+
+    progressContainer.addEventListener('pointerleave', () => {
+      if (!isDragging) {
+        timeBubble.style.opacity = '0';
+        if (hoverBar) hoverBar.style.setProperty('width', '0%', 'important');
+      }
+    });
+
+    progressContainer.addEventListener('pointermove', (e) => {
+      if (isDragging) return;
+      const rect = progressTrack.getBoundingClientRect();
+      if (rect.width <= 0) return;
+      const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      const dur = video.duration || 0;
+      const pctStr = `${(pct * 100).toFixed(1)}%`;
+
+      if (hoverBar) {
+        hoverBar.style.setProperty('width', pctStr, 'important');
+      }
+      timeBubble.textContent = formatTime(pct * dur);
+      timeBubble.style.setProperty('left', pctStr, 'important');
+      timeBubble.style.opacity = '1';
     });
 
     playBtn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      if (video.paused) video.play().catch(() => {});
+      if (video.paused) video.play().catch(() => { });
       else video.pause();
     });
 
@@ -2092,16 +2077,13 @@
     // DỌN DẸP SẠCH SẼ TẤT CẢ EVENT LISTENER KHI VIDEO RA KHỎI VIEWPORT HOẶC BỊ HỦY (CHỐNG LEAK RAM)
     video._controllerCleanup = () => {
       stopTicker();
-      if (isDragging) onScrubEnd();
-      progressContainer.removeEventListener('pointerenter', onProgressHover);
-      progressContainer.removeEventListener('pointermove', onProgressHover);
-      progressContainer.removeEventListener('pointerleave', onProgressLeave);
-      progressContainer.removeEventListener('pointerup', onScrubEnd);
-      progressContainer.removeEventListener('pointercancel', onScrubEnd);
-      progressContainer.removeEventListener('lostpointercapture', onScrubEnd);
+      if (isDragging) {
+        onScrubEnd();
+      }
       window.removeEventListener('pointermove', onScrubMove, true);
       window.removeEventListener('pointerup', onScrubEnd, true);
       window.removeEventListener('pointercancel', onScrubEnd, true);
+      window.removeEventListener('mouseup', onScrubEnd, true);
       window.removeEventListener('blur', onScrubEnd, true);
       video.removeEventListener('timeupdate', updateProgressUI);
       video.removeEventListener('progress', updateProgressUI);
@@ -2146,23 +2128,23 @@
   // VIRTUAL SCROLLING OBSERVER CHO VIDEO (CHỈ GẮN CONTROLLER CHO VIDEO ĐANG Ở TRONG VIEWPORT)
   const videoIntersectionObserver = (typeof IntersectionObserver !== 'undefined')
     ? new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          const video = entry.target;
-          if (entry.isIntersecting) {
-            if (!video._hasCustomController && video.isConnected) {
-              attachVideoController(video);
-            }
-          } else {
-            // Khi video cuộn ra xa khỏi màn hình -> tháo gỡ controller giải phóng RAM tức thì!
-            if (video._hasCustomController) {
-              detachVideoController(video);
-            }
+      entries.forEach(entry => {
+        const video = entry.target;
+        if (entry.isIntersecting) {
+          if (!video._hasCustomController && video.isConnected) {
+            attachVideoController(video);
           }
-        });
-      }, {
-        rootMargin: '250px 0px 250px 0px',
-        threshold: 0.05
-      })
+        } else {
+          // Khi video cuộn ra xa khỏi màn hình -> tháo gỡ controller giải phóng RAM tức thì!
+          if (video._hasCustomController) {
+            detachVideoController(video);
+          }
+        }
+      });
+    }, {
+      rootMargin: '250px 0px 250px 0px',
+      threshold: 0.05
+    })
     : null;
 
   function scanAndAttachVideoControllers() {
@@ -2310,7 +2292,7 @@
     playBtn.onclick = (e) => {
       e.stopPropagation();
       e.preventDefault();
-      if (storyVideo.paused) storyVideo.play().catch(() => {});
+      if (storyVideo.paused) storyVideo.play().catch(() => { });
       else storyVideo.pause();
     };
 
@@ -2348,7 +2330,25 @@
     trackWrap.onpointerenter = () => { tooltip.style.opacity = '1'; };
     trackWrap.onpointerleave = () => { if (!isDraggingStory) tooltip.style.opacity = '0'; };
 
+    const onStoryScrubEnd = (e) => {
+      if (!isDraggingStory) return;
+      isDraggingStory = false;
+      bar.classList.remove('is-dragging');
+      if (e && e.pointerId !== undefined) {
+        try { trackWrap.releasePointerCapture(e.pointerId); } catch (_) { }
+      }
+      window.removeEventListener('pointerup', onStoryScrubEnd, true);
+      window.removeEventListener('pointercancel', onStoryScrubEnd, true);
+      window.removeEventListener('mouseup', onStoryScrubEnd, true);
+      window.removeEventListener('blur', onStoryScrubEnd, true);
+      tooltip.style.opacity = '0';
+    };
+
     trackWrap.onpointermove = (e) => {
+      if (isDraggingStory && (e.buttons === 0 || (e.buttons !== undefined && (e.buttons & 1) === 0))) {
+        onStoryScrubEnd(e);
+        return;
+      }
       const pct = getStoryScrubPct(e);
       const dur = storyVideo.duration || 0;
       tooltip.textContent = formatTime(pct * dur);
@@ -2363,11 +2363,12 @@
     };
 
     trackWrap.onpointerdown = (e) => {
+      if (e.button !== undefined && e.button !== 0) return;
       e.stopPropagation();
       e.preventDefault();
       isDraggingStory = true;
       bar.classList.add('is-dragging');
-      try { trackWrap.setPointerCapture(e.pointerId); } catch (_) {}
+      try { trackWrap.setPointerCapture(e.pointerId); } catch (_) { }
 
       const pct = getStoryScrubPct(e);
       const dur = storyVideo.duration || 0;
@@ -2380,14 +2381,11 @@
       tooltip.style.opacity = '1';
       tooltip.textContent = formatTime(pct * dur);
       tooltip.style.left = `${(pct * 100).toFixed(1)}%`;
-    };
 
-    const onStoryScrubEnd = (e) => {
-      if (!isDraggingStory) return;
-      isDraggingStory = false;
-      bar.classList.remove('is-dragging');
-      try { trackWrap.releasePointerCapture(e.pointerId); } catch (_) {}
-      tooltip.style.opacity = '0';
+      window.addEventListener('pointerup', onStoryScrubEnd, true);
+      window.addEventListener('pointercancel', onStoryScrubEnd, true);
+      window.addEventListener('mouseup', onStoryScrubEnd, true);
+      window.addEventListener('blur', onStoryScrubEnd, true);
     };
 
     trackWrap.onpointerup = onStoryScrubEnd;
@@ -2556,7 +2554,7 @@
             if (scale > 0.005 && scale < 0.995) return i;
           }
         }
-      } catch (_) {}
+      } catch (_) { }
     }
 
     return 0;
@@ -2729,7 +2727,7 @@
         ) {
           return true;
         }
-      } catch (_) {}
+      } catch (_) { }
     }
     return false;
   }
@@ -3065,7 +3063,7 @@
       const label = (svg.getAttribute('aria-label') || '').toLowerCase();
       const title = (svg.querySelector('title')?.textContent || '').toLowerCase();
       return label.includes('option') || label.includes('tùy chọn') || label.includes('cài đặt') || label.includes('settings') ||
-             title.includes('option') || title.includes('tùy chọn') || title.includes('cài đặt') || title.includes('settings');
+        title.includes('option') || title.includes('tùy chọn') || title.includes('cài đặt') || title.includes('settings');
     });
 
     if (optionSvgs.length > 0) {
@@ -3196,7 +3194,7 @@
       if (!iconPhotosUrl && typeof chrome !== 'undefined' && chrome.runtime?.getURL) {
         iconPhotosUrl = chrome.runtime.getURL('icons/opt_photos.png');
       }
-    } catch (_) {}
+    } catch (_) { }
 
     const overlay = document.createElement('div');
     overlay.className = 'ig-profile-modal-overlay';
@@ -3743,7 +3741,7 @@
                 item.type = 'image';
               }
             }
-          } catch (_) {}
+          } catch (_) { }
         }
 
         const nameBytes = textEncoder.encode(targetZipPath);
@@ -3827,13 +3825,13 @@
       }
 
       if (isCancelled) {
-        try { await writable.abort(); } catch (_) {}
+        try { await writable.abort(); } catch (_) { }
         cleanupListeners();
         return;
       }
 
       if (centralRecords.length === 0) {
-        try { await writable.abort(); } catch (_) {}
+        try { await writable.abort(); } catch (_) { }
         cleanupListeners();
         restoreFromFloating();
         overlay.__isDownloading = false;
@@ -4275,7 +4273,7 @@
       if (e.code === 'Space') {
         e.preventDefault();
         e.stopPropagation();
-        if (hoveredVideo.paused) hoveredVideo.play().catch(() => {});
+        if (hoveredVideo.paused) hoveredVideo.play().catch(() => { });
         else hoveredVideo.pause();
       } else if (e.code === 'ArrowLeft') {
         e.preventDefault();
