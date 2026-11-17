@@ -1514,22 +1514,16 @@
 
       // Nếu chứa các nút điều khiển âm thanh mặc định của IG hoặc là khung tương tác chính
       const hasNativeControls = cur.querySelector(`
-        button[aria-label*="Audio" i],
-        button[aria-label*="âm thanh" i],
-        button[aria-label*="tiếng" i],
-        button[aria-label*="sound" i],
-        button[aria-label*="Volume" i],
-        button[aria-label*="mute" i],
-        button[aria-label*="unmute" i],
-        button:has(svg[aria-label*="Audio" i]),
-        button:has(svg[aria-label*="âm thanh" i]),
-        button:has(svg[aria-label*="mute" i])
+        button:not(.ig-vctl-btn):is([aria-label*="audio" i], [aria-label*="sound" i], [aria-label*="volume" i], [aria-label*="mute" i], [aria-label*="unmute" i], [aria-label*="tiếng" i], [aria-label*="âm thanh" i]),
+        [role="button"]:not(.ig-vctl-btn):is([aria-label*="audio" i], [aria-label*="sound" i], [aria-label*="volume" i], [aria-label*="mute" i], [aria-label*="unmute" i], [aria-label*="tiếng" i], [aria-label*="âm thanh" i]),
+        button:not(.ig-vctl-btn):has(svg:is([aria-label*="audio" i], [aria-label*="sound" i], [aria-label*="volume" i], [aria-label*="mute" i], [aria-label*="unmute" i], [aria-label*="tiếng" i], [aria-label*="âm thanh" i])),
+        [role="button"]:not(.ig-vctl-btn):has(svg:is([aria-label*="audio" i], [aria-label*="sound" i], [aria-label*="volume" i], [aria-label*="mute" i], [aria-label*="unmute" i], [aria-label*="tiếng" i], [aria-label*="âm thanh" i]))
       `);
       if (hasNativeControls && cur.contains(video)) {
         return cur;
       }
 
-      if (vW > 0 && vH > 0 && Math.abs(cW - vW) < 20 && Math.abs(cH - vH) < 20) {
+      if (vW > 0 && vH > 0 && Math.abs(cW - vW) < 30 && Math.abs(cH - vH) < 30) {
         best = cur;
       }
       cur = cur.parentElement;
@@ -1586,28 +1580,81 @@
 
     container.querySelectorAll('.ig-video-controller, .ig-vctl-mini-progress').forEach(el => el.remove());
 
-    // Ẩn triệt để nút loa mặc định của Instagram khi đã có controller
+    // Ẩn triệt để nút loa mặc định của Instagram khi đã có controller tùy chỉnh
     const hideNativeAudioButtons = () => {
-      const scopes = [container, container.parentElement, container.closest('article'), container.closest('div[role="dialog"]')];
+      const scopes = [
+        container,
+        container.parentElement,
+        container.parentElement?.parentElement,
+        container.closest('article'),
+        container.closest('div[role="dialog"]'),
+        container.closest('main')
+      ];
       scopes.forEach(sc => {
         if (!sc) return;
-        const btns = sc.querySelectorAll('button:not(.ig-vctl-btn)');
-        btns.forEach(btn => {
-          if (btn.closest('.ig-video-controller')) return;
-          const label = (btn.getAttribute('aria-label') || '') + ' ' + (btn.querySelector('svg')?.getAttribute('aria-label') || '');
-          if (/audio|sound|volume|mute|unmute|âm thanh|tiếng/i.test(label)) {
-            btn.style.setProperty('display', 'none', 'important');
-            btn.style.setProperty('opacity', '0', 'important');
-            btn.style.setProperty('visibility', 'hidden', 'important');
-            btn.style.setProperty('pointer-events', 'none', 'important');
+        const candidates = sc.querySelectorAll('button:not(.ig-vctl-btn), [role="button"]:not(.ig-vctl-btn)');
+        candidates.forEach(el => {
+          if (el.closest('.ig-video-controller')) return;
+          const label = (
+            (el.getAttribute('aria-label') || '') + ' ' +
+            (el.querySelector('svg')?.getAttribute('aria-label') || '') + ' ' +
+            (el.querySelector('title')?.textContent || '')
+          ).toLowerCase();
+
+          if (/audio|sound|volume|mute|unmute|âm thanh|tiếng|tắt tiếng|bật tiếng/i.test(label)) {
+            el.style.setProperty('display', 'none', 'important');
+            el.style.setProperty('opacity', '0', 'important');
+            el.style.setProperty('visibility', 'hidden', 'important');
+            el.style.setProperty('pointer-events', 'none', 'important');
+            el.setAttribute('data-ig-native-audio-hidden', 'true');
           }
         });
       });
+
+      // Phương án dự phòng quét theo tọa độ góc dưới bên phải video (nếu Instagram đổi nhãn hoặc không có nhãn)
+      try {
+        const vRect = video.getBoundingClientRect();
+        if (vRect.width > 0 && vRect.height > 0) {
+          const root = container.closest('article') || container.closest('div[role="dialog"]') || container.parentElement || container;
+          root.querySelectorAll('button:not(.ig-vctl-btn), [role="button"]:not(.ig-vctl-btn)').forEach(el => {
+            if (el.closest('.ig-video-controller')) return;
+            if (el.getAttribute('data-ig-native-audio-hidden') === 'true') return;
+            const eRect = el.getBoundingClientRect();
+            const isBottomRight = (
+              eRect.width > 0 && eRect.width <= 65 &&
+              eRect.height > 0 && eRect.height <= 65 &&
+              eRect.right <= vRect.right + 25 &&
+              eRect.right >= vRect.right - 90 &&
+              eRect.bottom <= vRect.bottom + 25 &&
+              eRect.bottom >= vRect.bottom - 90
+            );
+            if (isBottomRight && el.querySelector('svg')) {
+              el.style.setProperty('display', 'none', 'important');
+              el.style.setProperty('opacity', '0', 'important');
+              el.style.setProperty('visibility', 'hidden', 'important');
+              el.style.setProperty('pointer-events', 'none', 'important');
+              el.setAttribute('data-ig-native-audio-hidden', 'true');
+            }
+          });
+        }
+      } catch (_) { }
     };
+
     hideNativeAudioButtons();
-    setTimeout(hideNativeAudioButtons, 250);
+    setTimeout(hideNativeAudioButtons, 100);
+    setTimeout(hideNativeAudioButtons, 300);
     setTimeout(hideNativeAudioButtons, 700);
     setTimeout(hideNativeAudioButtons, 1500);
+
+    const nativeAudioObserver = new MutationObserver(() => {
+      hideNativeAudioButtons();
+    });
+    try {
+      nativeAudioObserver.observe(container, { childList: true, subtree: true });
+      if (container.parentElement) {
+        nativeAudioObserver.observe(container.parentElement, { childList: true, subtree: true });
+      }
+    } catch (_) { }
 
     // 1. Tạo vạch tiến trình mini (hiển thị mỏng ở đáy khi ẩn thanh điều khiển)
     const miniProgress = document.createElement('div');
@@ -2073,6 +2120,10 @@
     video.addEventListener('pause', onPause);
     video.addEventListener('ended', onEnded);
     video.addEventListener('volumechange', updateVolumeUI);
+    video.addEventListener('play', hideNativeAudioButtons);
+    video.addEventListener('playing', hideNativeAudioButtons);
+    video.addEventListener('pause', hideNativeAudioButtons);
+    container.addEventListener('pointerenter', hideNativeAudioButtons);
 
     // DỌN DẸP SẠCH SẼ TẤT CẢ EVENT LISTENER KHI VIDEO RA KHỎI VIEWPORT HOẶC BỊ HỦY (CHỐNG LEAK RAM)
     video._controllerCleanup = () => {
@@ -2080,6 +2131,7 @@
       if (isDragging) {
         onScrubEnd();
       }
+      try { nativeAudioObserver.disconnect(); } catch (_) { }
       window.removeEventListener('pointermove', onScrubMove, true);
       window.removeEventListener('pointerup', onScrubEnd, true);
       window.removeEventListener('pointercancel', onScrubEnd, true);
@@ -2093,6 +2145,10 @@
       video.removeEventListener('pause', onPause);
       video.removeEventListener('ended', onEnded);
       video.removeEventListener('volumechange', updateVolumeUI);
+      video.removeEventListener('play', hideNativeAudioButtons);
+      video.removeEventListener('playing', hideNativeAudioButtons);
+      video.removeEventListener('pause', hideNativeAudioButtons);
+      container.removeEventListener('pointerenter', hideNativeAudioButtons);
       video.removeEventListener('pointerenter', showControls);
       video.removeEventListener('pointermove', showControls);
       video.removeEventListener('pointerleave', hideControlsImmediate);
