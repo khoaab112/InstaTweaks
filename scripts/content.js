@@ -1637,6 +1637,65 @@
     video._hasCustomController = false;
   }
 
+  function hideNodeTotally(node) {
+    if (!node) return;
+    try {
+      node.style.setProperty('display', 'none', 'important');
+      node.style.setProperty('opacity', '0', 'important');
+      node.style.setProperty('visibility', 'hidden', 'important');
+      node.style.setProperty('pointer-events', 'none', 'important');
+      node.style.setProperty('background', 'transparent', 'important');
+      node.style.setProperty('width', '0', 'important');
+      node.style.setProperty('height', '0', 'important');
+      node.style.setProperty('min-width', '0', 'important');
+      node.style.setProperty('min-height', '0', 'important');
+      node.style.setProperty('max-width', '0', 'important');
+      node.style.setProperty('max-height', '0', 'important');
+      node.style.setProperty('margin', '0', 'important');
+      node.style.setProperty('padding', '0', 'important');
+      node.style.setProperty('border', 'none', 'important');
+      node.style.setProperty('box-shadow', 'none', 'important');
+      node.style.setProperty('position', 'absolute', 'important');
+      node.style.setProperty('left', '-99999px', 'important');
+      node.setAttribute('data-ig-native-audio-hidden', 'true');
+    } catch (_) { }
+  }
+
+  // Ẩn triệt để toàn bộ cụm điều khiển âm thanh mặc định của Instagram (cả nút loa, thanh volume và khung nền tròn xám)
+  function hideNativeAudioWidgets(scope = document) {
+    try {
+      if (!scope) scope = document;
+
+      // 1. Quét theo class và thuộc tính đặc thù của widget âm thanh gốc Instagram (.xbjudin, role="slider", etc.)
+      const nativeContainers = scope.querySelectorAll('.xbjudin, [aria-label="Adjust volume"], div[role="slider"][aria-label*="volume" i], div[role="slider"][aria-label*="tiếng" i], div[role="slider"][aria-label*="âm thanh" i]');
+      nativeContainers.forEach(container => {
+        if (container.closest('.ig-video-controller')) return;
+        hideNodeTotally(container);
+      });
+
+      // 2. Quét các nút bấm âm thanh độc lập và toàn bộ cụm cha bao ngoài
+      const candidates = scope.querySelectorAll('button:not(.ig-vctl-btn):not(.ig-feed-speaker-btn), [role="button"]:not(.ig-vctl-btn):not(.ig-feed-speaker-btn)');
+      candidates.forEach(el => {
+        if (el.closest('.ig-video-controller') || el.closest('.ig-music-feed-bar')) return;
+        const label = (
+          (el.getAttribute('aria-label') || '') + ' ' +
+          (el.querySelector('svg')?.getAttribute('aria-label') || '') + ' ' +
+          (el.querySelector('title')?.textContent || '')
+        ).toLowerCase();
+
+        if (/audio|sound|volume|mute|unmute|âm thanh|tiếng|tắt tiếng|bật tiếng/i.test(label)) {
+          const sliderWrapper = el.closest('[role="slider"], [aria-label*="volume" i], [aria-label*="tiếng" i], [aria-label*="âm thanh" i], .xbjudin');
+          const nodesToHide = [el, el.parentElement, sliderWrapper].filter(Boolean);
+          nodesToHide.forEach(node => {
+            if (node.closest('.ig-video-controller') || node.closest('.ig-music-feed-bar')) return;
+            if (node.tagName === 'ARTICLE' || node.tagName === 'MAIN' || node.tagName === 'BODY' || node.tagName === 'VIDEO') return;
+            hideNodeTotally(node);
+          });
+        }
+      });
+    } catch (_) { }
+  }
+
   function attachVideoController(video) {
     if (!video || video._hasCustomController || !video.isConnected) return;
     if (window.location.pathname.includes('/stories/')) return;
@@ -1660,35 +1719,13 @@
 
     container.querySelectorAll('.ig-video-controller, .ig-vctl-mini-progress').forEach(el => el.remove());
 
-    // Ẩn nút loa mặc định của Instagram trong phạm vi container (phần còn lại CSS đã xử lý triệt để)
-    const hideNativeAudioButtons = () => {
-      try {
-        const scopes = [container, container.parentElement];
-        scopes.forEach(sc => {
-          if (!sc) return;
-          const candidates = sc.querySelectorAll('button:not(.ig-vctl-btn), [role="button"]:not(.ig-vctl-btn)');
-          candidates.forEach(el => {
-            if (el.closest('.ig-video-controller')) return;
-            const label = (
-              (el.getAttribute('aria-label') || '') + ' ' +
-              (el.querySelector('svg')?.getAttribute('aria-label') || '') + ' ' +
-              (el.querySelector('title')?.textContent || '')
-            ).toLowerCase();
-
-            if (/audio|sound|volume|mute|unmute|âm thanh|tiếng|tắt tiếng|bật tiếng/i.test(label)) {
-              el.style.setProperty('display', 'none', 'important');
-              el.style.setProperty('opacity', '0', 'important');
-              el.style.setProperty('visibility', 'hidden', 'important');
-              el.style.setProperty('pointer-events', 'none', 'important');
-              el.setAttribute('data-ig-native-audio-hidden', 'true');
-            }
-          });
-        });
-      } catch (_) { }
-    };
-
-    hideNativeAudioButtons();
-    setTimeout(hideNativeAudioButtons, 250);
+    // Ẩn triệt để nút loa và toàn bộ widget âm thanh gốc của Instagram
+    hideNativeAudioWidgets(container);
+    if (container.parentElement) hideNativeAudioWidgets(container.parentElement);
+    setTimeout(() => {
+      hideNativeAudioWidgets(container);
+      if (container.parentElement) hideNativeAudioWidgets(container.parentElement);
+    }, 250);
 
     // 1. Tạo vạch tiến trình mini (hiển thị mỏng ở đáy khi ẩn thanh điều khiển)
     const miniProgress = document.createElement('div');
@@ -2326,6 +2363,8 @@
     if (window.location.pathname.includes('/stories/')) {
       return;
     }
+
+    hideNativeAudioWidgets();
 
     const videos = document.querySelectorAll('video');
     for (let i = 0; i < videos.length; i++) {
