@@ -1774,33 +1774,46 @@
     };
 
     const onPointerMove = (e) => {
+      if (!isDragging) return;
+      // An toàn tuyệt đối: Nếu người dùng đã nhả chuột (e.buttons === 0 hoặc không giữ chuột trái) -> ngắt tua ngay lập tức
+      if (e.buttons === 0 || (e.buttons & 1) === 0) {
+        stopScrubbing(e);
+        return;
+      }
       const pct = getScrubPercent(e);
       const dur = video.duration || 0;
-      timeBubble.textContent = formatTime(pct * dur);
-      timeBubble.style.setProperty('left', `${(pct * 100).toFixed(1)}%`, 'important');
-
-      if (isDragging && dur > 0) {
+      if (dur > 0) {
         video.currentTime = pct * dur;
         fillBar.style.setProperty('width', `${pct * 100}%`, 'important');
         thumbEl.style.setProperty('left', `${pct * 100}%`, 'important');
         if (miniFill) miniFill.style.setProperty('width', `${pct * 100}%`, 'important');
         curTimeEl.textContent = formatTime(pct * dur);
       }
+      timeBubble.textContent = formatTime(pct * dur);
+      timeBubble.style.setProperty('left', `${(pct * 100).toFixed(1)}%`, 'important');
     };
 
     const stopScrubbing = (e) => {
       if (!isDragging) return;
       isDragging = false;
       controller.classList.remove('is-dragging');
-      try { progressContainer.releasePointerCapture(e.pointerId); } catch (_) {}
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', stopScrubbing);
-      window.removeEventListener('pointercancel', stopScrubbing);
+      try {
+        if (e?.pointerId && progressContainer.hasPointerCapture?.(e.pointerId)) {
+          progressContainer.releasePointerCapture(e.pointerId);
+        }
+      } catch (_) {}
+      window.removeEventListener('pointermove', onPointerMove, true);
+      window.removeEventListener('pointerup', stopScrubbing, true);
+      window.removeEventListener('pointercancel', stopScrubbing, true);
+      window.removeEventListener('blur', stopScrubbing);
+      progressContainer.removeEventListener('pointerup', stopScrubbing, true);
+      progressContainer.removeEventListener('pointercancel', stopScrubbing, true);
+      progressContainer.removeEventListener('lostpointercapture', stopScrubbing);
       timeBubble.style.opacity = '0';
       showControls();
     };
 
-    progressContainer.addEventListener('pointerenter', () => { timeBubble.style.opacity = '1'; });
+    progressContainer.addEventListener('pointerenter', () => { if (!isDragging) timeBubble.style.opacity = '1'; });
     progressContainer.addEventListener('pointerleave', () => { if (!isDragging) timeBubble.style.opacity = '0'; });
 
     progressContainer.addEventListener('pointermove', (e) => {
@@ -1812,7 +1825,12 @@
       }
     });
 
+    progressContainer.addEventListener('pointerup', stopScrubbing);
+    progressContainer.addEventListener('pointercancel', stopScrubbing);
+    progressContainer.addEventListener('lostpointercapture', stopScrubbing);
+
     progressContainer.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return; // Chỉ nhận chuột trái
       e.preventDefault();
       e.stopPropagation();
       isDragging = true;
@@ -1832,9 +1850,13 @@
       timeBubble.textContent = formatTime(pct * dur);
       timeBubble.style.setProperty('left', `${(pct * 100).toFixed(1)}%`, 'important');
 
-      window.addEventListener('pointermove', onPointerMove);
-      window.addEventListener('pointerup', stopScrubbing);
-      window.addEventListener('pointercancel', stopScrubbing);
+      window.addEventListener('pointermove', onPointerMove, true);
+      window.addEventListener('pointerup', stopScrubbing, true);
+      window.addEventListener('pointercancel', stopScrubbing, true);
+      window.addEventListener('blur', stopScrubbing);
+      progressContainer.addEventListener('pointerup', stopScrubbing, true);
+      progressContainer.addEventListener('pointercancel', stopScrubbing, true);
+      progressContainer.addEventListener('lostpointercapture', stopScrubbing);
     });
 
     playBtn.addEventListener('click', (e) => {
@@ -1995,9 +2017,10 @@
     // DỌN DẸP SẠCH SẼ TẤT CẢ EVENT LISTENER KHI VIDEO RA KHỎI VIEWPORT HOẶC BỊ HỦY (CHỐNG LEAK RAM)
     video._controllerCleanup = () => {
       stopTicker();
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', stopScrubbing);
-      window.removeEventListener('pointercancel', stopScrubbing);
+      stopScrubbing();
+      progressContainer.removeEventListener('pointerup', stopScrubbing);
+      progressContainer.removeEventListener('pointercancel', stopScrubbing);
+      progressContainer.removeEventListener('lostpointercapture', stopScrubbing);
       video.removeEventListener('timeupdate', updateProgressUI);
       video.removeEventListener('progress', updateProgressUI);
       video.removeEventListener('loadedmetadata', updateProgressUI);
@@ -2244,6 +2267,11 @@
     trackWrap.onpointerleave = () => { if (!isDraggingStory) tooltip.style.opacity = '0'; };
 
     trackWrap.onpointermove = (e) => {
+      if (isDraggingStory && (e.buttons === 0 || (e.buttons & 1) === 0)) {
+        onStoryScrubEnd(e);
+        return;
+      }
+
       const pct = getStoryScrubPct(e);
       const dur = storyVideo.duration || 0;
       tooltip.textContent = formatTime(pct * dur);
@@ -2258,6 +2286,7 @@
     };
 
     trackWrap.onpointerdown = (e) => {
+      if (e.button !== 0) return;
       e.stopPropagation();
       e.preventDefault();
       isDraggingStory = true;
@@ -2275,6 +2304,9 @@
       tooltip.style.opacity = '1';
       tooltip.textContent = formatTime(pct * dur);
       tooltip.style.left = `${(pct * 100).toFixed(1)}%`;
+
+      window.addEventListener('pointerup', onStoryScrubEnd, true);
+      window.addEventListener('pointercancel', onStoryScrubEnd, true);
     };
 
     const onStoryScrubEnd = (e) => {
@@ -2282,6 +2314,8 @@
       isDraggingStory = false;
       bar.classList.remove('is-dragging');
       try { trackWrap.releasePointerCapture(e.pointerId); } catch (_) {}
+      window.removeEventListener('pointerup', onStoryScrubEnd, true);
+      window.removeEventListener('pointercancel', onStoryScrubEnd, true);
       tooltip.style.opacity = '0';
     };
 
