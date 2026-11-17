@@ -1652,15 +1652,15 @@ body[class*="dark"] .ig-profile-download-btn:hover,
   overflow: hidden !important;
 }
 
-/* Ẩn triệt để toàn bộ cụm điều khiển âm thanh mặc định của Instagram (cả nút và thanh slider/vùng nền tròn xám) */
-.xbjudin,
-[data-ig-native-audio-hidden="true"],
-div:has(> [data-ig-native-audio-hidden="true"]),
-div:has(> .xbjudin),
-div[role="slider"][aria-label*="volume" i],
-div[role="slider"][aria-label*="âm thanh" i],
-div[role="slider"][aria-label*="tiếng" i],
-div[aria-label="Adjust volume"],
+/* Ẩn triệt để toàn bộ cụm điều khiển âm thanh mặc định của Instagram trên video có thanh điều khiển custom */
+[data-ig-vctl-container="true"] .xbjudin,
+[data-ig-vctl-container="true"] [data-ig-native-audio-hidden="true"],
+[data-ig-vctl-container="true"] div:has(> [data-ig-native-audio-hidden="true"]),
+[data-ig-vctl-container="true"] div:has(> .xbjudin),
+[data-ig-vctl-container="true"] div[role="slider"][aria-label*="volume" i],
+[data-ig-vctl-container="true"] div[role="slider"][aria-label*="âm thanh" i],
+[data-ig-vctl-container="true"] div[role="slider"][aria-label*="tiếng" i],
+[data-ig-vctl-container="true"] div[aria-label="Adjust volume"],
 [data-ig-vctl-container="true"] .ig-floating-download-btn,
 [data-ig-vctl-container="true"] .xbjudin,
 [data-ig-vctl-container="true"] [role="slider"][aria-label*="volume" i],

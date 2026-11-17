@@ -1756,6 +1756,7 @@
 
   function hideNodeTotally(node) {
     if (!node) return;
+    if (window.location.pathname.includes('/stories/')) return;
     try {
       node.style.setProperty('display', 'none', 'important');
       node.style.setProperty('opacity', '0', 'important');
@@ -1778,8 +1779,9 @@
     } catch (_) { }
   }
 
-  // Ẩn triệt để toàn bộ cụm điều khiển âm thanh mặc định của Instagram (cả nút loa, thanh volume và khung nền tròn xám)
+  // Ẩn triệt để toàn bộ cụm điều khiển âm thanh mặc định của Instagram trên feed video (không áp dụng trên Stories)
   function hideNativeAudioWidgets(scope = document) {
+    if (window.location.pathname.includes('/stories/')) return;
     try {
       if (!scope) scope = document;
 
