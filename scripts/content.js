@@ -2437,31 +2437,18 @@
     }
     topBar.style.display = 'flex';
 
-    // Tìm Story Card (khung thẻ Story bo góc) để gắn thanh tiến trình sát mép viền đỉnh
-    let storyCard = progressContainer.closest('section') || progressContainer.closest('div[role="dialog"]');
-    if (!storyCard) {
-      let cur = progressContainer.parentElement;
-      while (cur && cur !== document.body) {
-        const r = cur.getBoundingClientRect();
-        if (r.height > 300 && r.width > 200) {
-          storyCard = cur;
-          break;
-        }
-        cur = cur.parentElement;
-      }
-    }
+    // Gắn trực tiếp lên container header của Story (vùng <div class="xoqlrxr...">)
+    const targetHeader = progressContainer.closest('.xoqlrxr, [class*="xoqlrxr"]') ||
+                         progressContainer.parentElement?.parentElement ||
+                         progressContainer.parentElement;
 
-    if (storyCard) {
-      const cs = window.getComputedStyle(storyCard);
+    if (targetHeader) {
+      const cs = window.getComputedStyle(targetHeader);
       if (cs.position === 'static') {
-        storyCard.style.setProperty('position', 'relative', 'important');
+        targetHeader.style.setProperty('position', 'relative', 'important');
       }
-      if (topBar.parentElement !== storyCard) {
-        storyCard.appendChild(topBar);
-      }
-    } else if (progressContainer.parentElement) {
-      if (topBar.parentElement !== progressContainer.parentElement) {
-        progressContainer.parentElement.insertBefore(topBar, progressContainer);
+      if (topBar.parentElement !== targetHeader) {
+        targetHeader.appendChild(topBar);
       }
     }
 
