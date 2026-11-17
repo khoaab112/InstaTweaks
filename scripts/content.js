@@ -184,15 +184,15 @@
 
   const SVG_REWIND_5 = `
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M12 4a8 8 0 1 0 7.8 6.2"></path>
-      <polyline points="12 1 12 5 8 5"></polyline>
+      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+      <polyline points="3 3 3 8 8 8"></polyline>
       <text x="12" y="15.5" font-size="8.5" font-weight="bold" fill="currentColor" stroke="none" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">5</text>
     </svg>`;
 
   const SVG_FORWARD_5 = `
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M12 4a8 8 0 1 1-7.8 6.2"></path>
-      <polyline points="12 1 12 5 16 5"></polyline>
+      <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
+      <polyline points="21 3 21 8 16 8"></polyline>
       <text x="12" y="15.5" font-size="8.5" font-weight="bold" fill="currentColor" stroke="none" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">5</text>
     </svg>`;
 
@@ -1627,6 +1627,14 @@
           <button class="ig-vctl-btn ig-vctl-forward-btn" type="button" title="Tua tới 5 giây (→)">
             ${SVG_FORWARD_5}
           </button>
+          <div class="ig-vctl-vol-group">
+            <button class="ig-vctl-btn ig-vctl-vol-btn" type="button" title="Bật / Tắt tiếng (M)">
+              ${(video.muted || video.volume === 0) ? SVG_SPEAKER_MUTED : SVG_SPEAKER_ON}
+            </button>
+            <div class="ig-vctl-vol-slider-wrap">
+              <input type="range" class="ig-vctl-vol-slider" min="0" max="1" step="0.05" value="${video.muted ? 0 : video.volume}">
+            </div>
+          </div>
           <div class="ig-vctl-time-display">
             <span class="ig-vctl-cur-time">${formatTime(video.currentTime || 0)}</span>
             <span class="ig-vctl-time-sep">/</span>
@@ -1637,14 +1645,6 @@
           <select class="ig-vctl-speed-select" title="Tốc độ phát video">
             ${SPEED_OPTIONS.map(spd => `<option value="${spd}" ${(video.playbackRate || 1) === spd ? 'selected' : ''}>${spd}x</option>`).join('')}
           </select>
-          <div class="ig-vctl-vol-group">
-            <button class="ig-vctl-btn ig-vctl-vol-btn" type="button" title="Bật / Tắt tiếng (M)">
-              ${(video.muted || video.volume === 0) ? SVG_SPEAKER_MUTED : SVG_SPEAKER_ON}
-            </button>
-            <div class="ig-vctl-vol-slider-wrap">
-              <input type="range" class="ig-vctl-vol-slider" min="0" max="1" step="0.05" value="${video.muted ? 0 : video.volume}">
-            </div>
-          </div>
           <button class="ig-vctl-btn ig-vctl-fullscreen-btn" type="button" title="Toàn màn hình">
             ${SVG_FULLSCREEN}
           </button>
