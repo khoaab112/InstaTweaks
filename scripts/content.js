@@ -1403,24 +1403,28 @@
 
   // --- 7. TRÍCH XUẤT SHORTCODE & KHUNG MEDIA ---
   function getPageShortcode() {
-    const match = window.location.pathname.match(/\/(?:p|reel)\/([A-Za-z0-9_-]+)/);
-    return match ? match[1] : null;
+    const match = window.location.pathname.match(/\/(?:p|reel|reels)\/([A-Za-z0-9_-]+)/);
+    if (!match) return null;
+    const sc = match[1];
+    if (['audio', 'videos', 'reels', 'comments', 'explore', 'stories'].includes(sc.toLowerCase())) return null;
+    return sc;
   }
 
   function getShortcodeFromPost(post) {
     if (!post) return null;
-    const timeAnchor = post.querySelector('a:has(time), a[href*="/p/"] time, a[href*="/reel/"] time');
+    const timeAnchor = post.querySelector('a:has(time), a[href*="/p/"] time, a[href*="/reel/"] time, a[href*="/reels/"] time');
     if (timeAnchor) {
       const a = timeAnchor.closest('a');
-      const m = a?.getAttribute('href')?.match(/\/(?:p|reel)\/([A-Za-z0-9_-]+)/);
-      if (m) return m[1];
+      const m = a?.getAttribute('href')?.match(/\/(?:p|reel|reels)\/([A-Za-z0-9_-]+)/);
+      if (m && m[1] && !['audio', 'videos', 'reels', 'comments', 'explore'].includes(m[1].toLowerCase())) return m[1];
     }
 
-    const directLinks = Array.from(post.querySelectorAll('a[href*="/p/"], a[href*="/reel/"]'));
+    const directLinks = Array.from(post.querySelectorAll('a[href*="/p/"], a[href*="/reel/"], a[href*="/reels/"]'));
     for (const link of directLinks) {
       const href = link.getAttribute('href') || '';
-      const m = href.match(/\/(?:p|reel)\/([A-Za-z0-9_-]+)/);
-      if (m && !href.includes('/comments/')) return m[1];
+      if (href.includes('/audio/') || href.includes('/comments/') || href.includes('/liked_by/')) continue;
+      const m = href.match(/\/(?:p|reel|reels)\/([A-Za-z0-9_-]+)/);
+      if (m && m[1] && !['audio', 'videos', 'reels', 'comments', 'explore'].includes(m[1].toLowerCase())) return m[1];
     }
     return null;
   }

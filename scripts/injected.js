@@ -188,8 +188,10 @@
 
     let code = currentCode;
     if (!code) {
-      const urlMatch = window.location.pathname.match(/\/(?:p|reel)\/([A-Za-z0-9_-]+)/);
-      if (urlMatch) code = urlMatch[1];
+      const urlMatch = window.location.pathname.match(/\/(?:p|reel|reels)\/([A-Za-z0-9_-]+)/);
+      if (urlMatch && !['audio', 'videos', 'reels', 'comments', 'explore', 'stories'].includes(urlMatch[1].toLowerCase())) {
+        code = urlMatch[1];
+      }
     }
 
     return {
@@ -280,7 +282,8 @@
   }
 
   function dispatchTrack(track) {
-    const activePageShortcode = window.location.pathname.match(/\/(?:p|reel)\/([A-Za-z0-9_-]+)/)?.[1];
+    const match = window.location.pathname.match(/\/(?:p|reel|reels)\/([A-Za-z0-9_-]+)/);
+    const activePageShortcode = (match && !['audio', 'videos', 'reels', 'comments', 'explore', 'stories'].includes(match[1].toLowerCase())) ? match[1] : null;
     if (!track.code && activePageShortcode) {
       track.code = activePageShortcode;
     }
@@ -803,10 +806,16 @@
     }
   }
 
-  function isIgnoredUrl(url) {
-    if (!url || typeof url !== 'string') return true;
-    if (url.includes('.jpg') || url.includes('.png') || url.includes('.webp') || url.includes('.mp4') || url.includes('.woff') || url.includes('.css') || url.includes('.js')) return true;
-    if (url.includes('/ajax/bz') || url.includes('/logging/') || url.includes('metrics')) return true;
+  function isRelevantApiUrl(url) {
+    if (!url || typeof url !== 'string') return false;
+    // BỎ QUA NGAY LẬP TỨC: tất cả domain CDN đa phương tiện (ảnh, video stream, audio stream)
+    // TUYỆT ĐỐI KHÔNG clone hay decode binary stream vào RAM, giải phóng triệt để RAM trình duyệt!
+    if (url.includes('cdninstagram.com') || url.includes('fbcdn.net') || url.includes('.cdn.') || url.includes('fna.')) return false;
+    if (url.includes('/ajax/bz') || url.includes('/logging/') || url.includes('metrics') || url.includes('/browser_push/')) return false;
+    if (url.includes('.jpg') || url.includes('.png') || url.includes('.webp') || url.includes('.mp4') || url.includes('.woff') || url.includes('.css') || url.includes('.js')) return false;
+
+    // CHỈ CHẤP NHẬN các API endpoint thực sự trả về dữ liệu bài viết / media JSON:
+    if (url.includes('/graphql') || url.includes('/api/v1/') || url.includes('/api/v2/') || url.includes('/api/')) return true;
     return false;
   }
 
@@ -841,8 +850,15 @@
     const response = await originalFetch.apply(this, args);
     try {
       const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
-      if (!isIgnoredUrl(url)) {
-        response.clone().text().then(text => parseMetaResponseText(text)).catch(() => {});
+      if (isRelevantApiUrl(url)) {
+        const ct = response.headers.get('content-type') || '';
+        if (ct.includes('json') || ct.includes('javascript') || ct.includes('text')) {
+          response.clone().text().then(text => {
+            if (text && text.length < 5000000) {
+              parseMetaResponseText(text);
+            }
+          }).catch(() => {});
+        }
       }
     } catch (_) {}
     return response;
@@ -880,10 +896,10 @@
       }
     } catch (_) {}
 
-    if (!isIgnoredUrl(this._ig_url)) {
+    if (isRelevantApiUrl(this._ig_url)) {
       this.addEventListener('load', function () {
         try {
-          if (this.responseText) {
+          if (this.responseText && this.responseText.length < 5000000) {
             parseMetaResponseText(this.responseText);
           }
         } catch (_) {}
@@ -2824,7 +2840,8 @@
   }
 
   function checkCurrentUrlPost() {
-    const sc = window.location.pathname.match(/\/(?:p|reel)\/([A-Za-z0-9_-]+)/)?.[1];
+    const match = window.location.pathname.match(/\/(?:p|reel|reels)\/([A-Za-z0-9_-]+)/);
+    const sc = (match && !['audio', 'videos', 'reels', 'comments', 'explore', 'stories'].includes(match[1].toLowerCase())) ? match[1] : null;
     if (!sc) return;
 
     const existing = discoveredTracks.get(sc) || discoveredTracks.get(`code_${sc}`);
