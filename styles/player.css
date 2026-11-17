@@ -2018,8 +2018,8 @@ div:has(> [data-ig-vctl-container="true"]) > div > [role="button"]:not(.ig-vctl-
 }
 
 /* ========================================================
-   E. THANH TIẾN TRÌNH DÀNH RIÊNG CHO STORY (TOP SCRUBBER)
-   Thanh tiến trình đơn liên tục 100% thay thế vạch vỡ nhỏ
+   E. THANH TIẾN TRÌNH CUSTOME TRÊN ĐỈNH STORY (v2.5.0)
+   Đặt ở sát mép trên cùng của Story (trên các vạch - - - - gốc của IG)
    ======================================================== */
 
 /* Ẩn triệt để thanh đáy cũ nếu còn tồn tại */
@@ -2030,48 +2030,37 @@ div:has(> [data-ig-vctl-container="true"]) > div > [role="button"]:not(.ig-vctl-
   pointer-events: none !important;
 }
 
-/* Ẩn các vạch đứt khúc nguyên bản của Instagram khi có quá nhiều story/highlight */
-.ig-story-native-progress-hidden {
-  opacity: 0 !important;
-  pointer-events: none !important;
-  visibility: hidden !important;
-  height: 0 !important;
-  min-height: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  overflow: hidden !important;
-}
-
-/* Thanh tiến trình chuyên biệt ở đỉnh Story */
+/* Thanh tiến trình custom ở sát mép trên đỉnh của Story */
 .ig-story-top-progress-bar {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
   width: 100% !important;
-  height: 16px !important;
+  height: 10px !important;
+  padding: 0 0 6px 0 !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+  z-index: 10020 !important;
   display: flex !important;
-  align-items: center !important;
+  align-items: flex-start !important;
   cursor: pointer !important;
   touch-action: none !important;
   user-select: none !important;
-  position: relative !important;
-  z-index: 10010 !important;
-  padding: 4px 0 !important;
-  box-sizing: border-box !important;
-  margin-bottom: 2px !important;
 }
 
 .ig-story-top-track {
   position: relative !important;
   width: 100% !important;
-  height: 4px !important;
-  background: rgba(255, 255, 255, 0.28) !important;
-  border-radius: 2px !important;
+  height: 3.5px !important;
+  background: rgba(255, 255, 255, 0.22) !important;
   overflow: visible !important;
   transition: height 0.12s ease !important;
 }
 
 .ig-story-top-progress-bar:hover .ig-story-top-track,
 .ig-story-top-progress-bar.is-dragging .ig-story-top-track {
-  height: 6px !important;
-  border-radius: 3px !important;
+  height: 5.5px !important;
 }
 
 .ig-story-top-hover {
@@ -2080,8 +2069,7 @@ div:has(> [data-ig-vctl-container="true"]) > div > [role="button"]:not(.ig-vctl-
   top: 0 !important;
   bottom: 0 !important;
   width: 0% !important;
-  background: rgba(255, 255, 255, 0.4) !important;
-  border-radius: inherit !important;
+  background: rgba(255, 255, 255, 0.45) !important;
   pointer-events: none !important;
   transition: width 0.05s ease !important;
 }
@@ -2094,7 +2082,6 @@ div:has(> [data-ig-vctl-container="true"]) > div > [role="button"]:not(.ig-vctl-
   width: 0% !important;
   background: linear-gradient(90deg, #ff8a00, #e52e71, #ff3366) !important;
   box-shadow: 0 0 8px rgba(229, 46, 113, 0.7) !important;
-  border-radius: inherit !important;
   pointer-events: none !important;
 }
 
@@ -2121,15 +2108,15 @@ div:has(> [data-ig-vctl-container="true"]) > div > [role="button"]:not(.ig-vctl-
 
 .ig-story-top-tooltip {
   position: absolute !important;
-  top: 18px !important;
+  top: 14px !important;
   left: 0% !important;
   transform: translateX(-50%) !important;
   background: rgba(12, 12, 16, 0.92) !important;
   color: #ffffff !important;
-  padding: 2.5px 7px !important;
+  padding: 2px 6px !important;
   border-radius: 4px !important;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-  font-size: 11px !important;
+  font-size: 10.5px !important;
   font-weight: 600 !important;
   font-variant-numeric: tabular-nums !important;
   pointer-events: none !important;
@@ -2138,7 +2125,7 @@ div:has(> [data-ig-vctl-container="true"]) > div > [role="button"]:not(.ig-vctl-
   white-space: nowrap !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6) !important;
   border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  z-index: 10012 !important;
+  z-index: 10022 !important;
 }
 
 /* Ẩn nút loa trong Header Story (do đã auto phát nhạc/tiếng) */

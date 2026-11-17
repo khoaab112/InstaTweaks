@@ -2287,11 +2287,14 @@
       activeStoryScrubber.cleanup();
     }
 
-    // 2. Ẩn vạch đứt khúc nguyên bản của Instagram (tránh bị vỡ nhỏ li ti khi có nhiều story/highlight)
-    progressContainer.classList.add('ig-story-native-progress-hidden');
-    progressContainer.setAttribute('data-ig-story-progress', 'true');
+    // 2. Trả nguyên các vạch - - - - của Instagram gốc về vị trí cũ (hoàn toàn không can thiệp hay ẩn)
+    progressContainer.classList.remove('ig-story-native-progress-hidden');
+    progressContainer.style.removeProperty('display');
+    progressContainer.style.removeProperty('visibility');
+    progressContainer.style.removeProperty('opacity');
+    progressContainer.style.removeProperty('height');
 
-    // 3. Tạo thanh tiến trình đỉnh chuyên biệt (Top Scrubber) với gradient thương hiệu
+    // 3. Đưa thanh tiến trình custom lên trên hẳn sát mép đỉnh của Story (phía trên các vạch gốc)
     let topBar = document.querySelector('.ig-story-top-progress-bar');
     if (!topBar) {
       topBar = document.createElement('div');
@@ -2308,8 +2311,16 @@
     }
     topBar.style.display = 'flex';
 
-    if (progressContainer.parentElement && topBar.parentElement !== progressContainer.parentElement) {
-      progressContainer.parentElement.insertBefore(topBar, progressContainer);
+    // Đính vào container cha chứa progress bar ở sát mép trên cùng
+    const mountParent = progressContainer.parentElement;
+    if (mountParent) {
+      const pos = window.getComputedStyle(mountParent).position;
+      if (pos === 'static' || !pos) {
+        mountParent.style.position = 'relative';
+      }
+      if (topBar.parentElement !== mountParent) {
+        mountParent.appendChild(topBar);
+      }
     }
 
     const track = topBar.querySelector('.ig-story-top-track');
