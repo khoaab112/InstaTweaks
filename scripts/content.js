@@ -2026,13 +2026,21 @@
           </div>
         </div>
 
-        <div class="ig-profile-limit-row">
+        <div class="ig-profile-limit-row" style="margin-bottom: 10px;">
           <span>Giới hạn số lượng bài viết:</span>
           <select class="ig-profile-limit-select">
             <option value="0" selected>Tất cả bài viết (Toàn bộ)</option>
             <option value="50">50 bài gần nhất</option>
             <option value="30">30 bài gần nhất</option>
             <option value="12">12 bài mới nhất</option>
+          </select>
+        </div>
+
+        <div class="ig-profile-limit-row">
+          <span>Cấu trúc xuất file:</span>
+          <select class="ig-profile-struct-select">
+            <option value="folders" selected>Theo thư mục (Mỗi bài 1 folder, Story xuất thẳng)</option>
+            <option value="bulk">Xuất hàng loạt (Tất cả file gom chung theo loại)</option>
           </select>
         </div>
 
@@ -2070,12 +2078,14 @@
     const startBtn = overlay.querySelector('.ig-profile-start-btn');
     startBtn.addEventListener('click', () => {
       const limitSelect = overlay.querySelector('.ig-profile-limit-select');
+      const structSelect = overlay.querySelector('.ig-profile-struct-select');
       const postLimit = parseInt(limitSelect?.value || '0', 10);
-      startProfileBatchDownload(username, selectedMode, postLimit, overlay);
+      const exportStruct = structSelect?.value || 'folders';
+      startProfileBatchDownload(username, selectedMode, postLimit, overlay, exportStruct);
     });
   }
 
-  async function startProfileBatchDownload(username, selectedMode, postLimit, overlay) {
+  async function startProfileBatchDownload(username, selectedMode, postLimit, overlay, exportStruct = 'folders') {
     const modal = overlay.querySelector('.ig-profile-modal');
     if (!modal) return;
 
@@ -2224,6 +2234,7 @@
           options: {
             type: selectedMode,
             postLimit: postLimit,
+            exportStruct: exportStruct,
             includePosts: selectedMode !== 'stories',
             includeStories: selectedMode === 'all' || selectedMode === 'stories',
             includeHighlights: selectedMode === 'all' || selectedMode === 'stories'

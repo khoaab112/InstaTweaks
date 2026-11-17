@@ -1533,18 +1533,19 @@
   function findNumericUserId(username) {
     const clean = String(username || '').toLowerCase().replace(/^@/, '').trim();
     const dsId = document.cookie.match(/(?:^|;\s*)ds_user_id=([^;]+)/)?.[1];
+    const pageUser = document.querySelector('header h2, header h1')?.textContent?.trim().toLowerCase();
 
-    const isOwn = Boolean(
-      (dsId && document.body.textContent.includes('Edit profile')) ||
-      (dsId && document.body.textContent.includes('Chỉnh sửa trang cá nhân')) ||
-      (dsId && document.body.textContent.includes('View archive')) ||
-      (dsId && document.body.textContent.includes('Xem kho lưu trữ')) ||
-      document.querySelector('header a[href*="/accounts/edit/"], header button, header [role="button"]')
-    );
+    // 1. Kiểm tra chính xác nếu đang xem profile của chính mình
+    const isOwn = (clean === pageUser && Boolean(
+      document.querySelector('header a[href*="/accounts/edit/"], header a[href*="/archive/"]') ||
+      document.body.textContent.includes('Edit profile') ||
+      document.body.textContent.includes('Chỉnh sửa trang cá nhân')
+    ));
     if (isOwn && dsId && dsId.match(/^\d+$/)) {
       return dsId;
     }
 
+    // 2. Tìm trong React Fiber khớp chính xác với username
     try {
       const targets = Array.from(document.querySelectorAll('header, main, section, [role="main"]'));
       for (const el of targets) {
@@ -1562,7 +1563,7 @@
               if (u && (u.id || u.pk)) {
                 const uid = String(u.id || u.pk);
                 if (uid.match(/^\d+$/)) {
-                  if (!clean || String(u.username || '').toLowerCase() === clean) {
+                  if (clean && String(u.username || '').toLowerCase() === clean) {
                     return uid;
                   }
                 }
@@ -1575,20 +1576,27 @@
       }
     } catch (_) {}
 
+    // 3. Tìm trong toàn bộ các thẻ <script> với regex chuẩn xác
     try {
-      const scripts = document.querySelectorAll('script[type="application/json"], script[data-sjs]');
+      const scripts = document.querySelectorAll('script[type="application/json"], script[data-sjs], script:not([src])');
       for (const s of scripts) {
         const txt = s.textContent || '';
-        if (txt.includes('edge_owner_to_timeline_media') || txt.includes(clean)) {
-          const m = txt.match(/"id":\s*"(\d{6,})"/);
-          if (m) return m[1];
-          const mPk = txt.match(/"pk":\s*"?(\d{6,})"?/);
-          if (mPk) return mPk[1];
-        }
+        if (!txt.includes(clean)) continue;
+
+        const reg1 = new RegExp(`"username"\\s*:\\s*"${clean}"[\\s\\S]{1,500}?"(?:id|pk)"\\s*:\\s*"(\\d{5,})"`, 'i');
+        const m1 = txt.match(reg1);
+        if (m1) return m1[1];
+
+        const reg2 = new RegExp(`"(?:id|pk)"\\s*:\\s*"(\\d{5,})"[\\s\\S]{1,500}?"username"\\s*:\\s*"${clean}"`, 'i');
+        const m2 = txt.match(reg2);
+        if (m2) return m2[1];
       }
     } catch (_) {}
 
-    return (dsId && dsId.match(/^\d+$/)) ? dsId : null;
+    // 4. Nếu là profile của mình mà chưa lấy được ở bước 1
+    if (dsId && clean === pageUser) return dsId;
+
+    return null;
   }
 
   function searchObjForHighlights(obj, addHighlight, visited = new WeakSet(), depth = 0) {
@@ -1794,6 +1802,7 @@
     const {
       type = 'all', // 'all', 'stories', 'videos', 'photos'
       postLimit = 0,
+      exportStruct = 'folders', // 'folders' (theo thư mục) hoặc 'bulk' (hàng loạt)
       includePosts = (options.type !== 'stories'),
       includeStories = (options.type === 'all' || options.type === 'stories'),
       includeHighlights = (options.type === 'all' || options.type === 'stories')
@@ -1855,7 +1864,7 @@
           }
         }
 
-        // Áp dụng giới hạn số lượng bài viết nếu có
+        // Áp dụng giới hạn số lượng bài viết nếu có (thứ tự tự nhiên: mới nhất -> cũ nhất)
         const targetPosts = (postLimit > 0) ? shortcodeList.slice(0, postLimit) : shortcodeList;
         const totalToScan = targetPosts.length;
 
@@ -1874,6 +1883,8 @@
             const curIdx = postIdx++;
             const item = targetPosts[curIdx];
             const sc = item.shortcode;
+            // Đánh số bài viết từ Date MỚI -> CŨ: 01, 02, 03...
+            const pIdxStr = String(curIdx + 1).padStart(2, '0');
 
             try {
               const fullItems = await fetchPostFullMedia(sc);
@@ -1884,66 +1895,84 @@
               });
 
               if (Array.isArray(fullItems) && fullItems.length > 0) {
+                // Kiểm tra xem bài viết có phải là 1 video đơn lẻ không
+                const isSingleVideo = (fullItems.length === 1 && fullItems[0].type === 'video');
+
                 for (let mIdx = 0; mIdx < fullItems.length; mIdx++) {
                   const m = fullItems[mIdx];
 
-                  // LỌC CHÍNH XÁC THEO TÙY CHỌN:
-                  // - Mode 'photos': CHỈ LẤY ẢNH (bỏ qua video)
-                  // - Mode 'videos': CHỈ LẤY VIDEO (.mp4) (bỏ qua ảnh)
-                  // - Mode 'all': Lấy cả ảnh và video
                   if (type === 'photos' && m.type !== 'image') continue;
                   if (type === 'videos' && m.type !== 'video') continue;
 
                   const isVideo = (m.type === 'video');
                   const ext = isVideo ? 'mp4' : 'jpg';
-                  // Phân chia thư mục rõ ràng theo loại: photos hoặc videos
-                  const folder = isVideo ? 'videos' : 'photos';
-                  const suffix = fullItems.length > 1 ? `_${mIdx + 1}` : '';
-                  const prefix = isVideo ? 'video' : 'photo';
+                  let filename = '';
+
+                  if (exportStruct === 'folders') {
+                    // Yêu cầu: "Theo thư mục thì mỗi 1 bài viết là 1 thư mục (chứa ảnh, video bài viết đó)"
+                    // "với bài viết là 1 video thì xuất thẳng luôn không cần cho vào folder"
+                    if (isSingleVideo) {
+                      filename = `${pIdxStr}_video_${sc}.mp4`;
+                    } else {
+                      const itemPrefix = isVideo ? 'video' : 'photo';
+                      const suffix = fullItems.length > 1 ? `_${mIdx + 1}` : '';
+                      filename = `${pIdxStr}_post/${itemPrefix}${suffix}.${ext}`;
+                    }
+                  } else {
+                    // Xuất hàng loạt
+                    const folder = isVideo ? 'videos' : 'photos';
+                    const itemPrefix = isVideo ? 'video' : 'photo';
+                    filename = `${folder}/${itemPrefix}_${pIdxStr}_${mIdx + 1}.${ext}`;
+                  }
 
                   addMediaItem({
                     type: m.type,
                     url: m.url,
-                    category: folder,
+                    category: isVideo ? 'videos' : 'photos',
                     shortcode: sc,
                     id: `${sc}_${mIdx + 1}`,
-                    filename: `${folder}/${prefix}_${sc}${suffix}.${ext}`,
+                    filename: filename,
                     timestamp: Math.floor(Date.now() / 1000)
                   });
                 }
               } else {
                 // Fallback nếu bài viết không fetch được API
                 const isReel = item.el.getAttribute('href')?.includes('/reel/');
+                const img = item.el.querySelector('img');
+                let imgUrl = img?.currentSrc || img?.src;
+                if (img?.srcset) {
+                  const parts = img.srcset.split(',').map(s => s.trim().split(' '));
+                  const best = parts.sort((x, y) => parseInt(y[1] || '0') - parseInt(x[1] || '0'))[0];
+                  if (best && best[0]) imgUrl = best[0];
+                }
+
                 if (isReel && type !== 'photos') {
-                  const img = item.el.querySelector('img');
-                  let imgUrl = img?.currentSrc || img?.src;
                   if (imgUrl) {
+                    const filename = (exportStruct === 'folders')
+                      ? `${pIdxStr}_video_${sc}.mp4`
+                      : `videos/video_${pIdxStr}.mp4`;
                     addMediaItem({
                       type: 'video',
                       url: imgUrl,
                       category: 'videos',
                       shortcode: sc,
                       id: sc,
-                      filename: `videos/video_${sc}.mp4`,
+                      filename: filename,
                       timestamp: Math.floor(Date.now() / 1000)
                     });
                   }
                 } else if (type !== 'videos') {
-                  const img = item.el.querySelector('img');
-                  let imgUrl = img?.currentSrc || img?.src;
-                  if (img?.srcset) {
-                    const parts = img.srcset.split(',').map(s => s.trim().split(' '));
-                    const best = parts.sort((x, y) => parseInt(y[1] || '0') - parseInt(x[1] || '0'))[0];
-                    if (best && best[0]) imgUrl = best[0];
-                  }
                   if (imgUrl) {
+                    const filename = (exportStruct === 'folders')
+                      ? `${pIdxStr}_post/photo_1.jpg`
+                      : `photos/photo_${pIdxStr}_1.jpg`;
                     addMediaItem({
                       type: 'image',
                       url: imgUrl,
                       category: 'photos',
                       shortcode: sc,
                       id: sc,
-                      filename: `photos/photo_${sc}.jpg`,
+                      filename: filename,
                       timestamp: Math.floor(Date.now() / 1000)
                     });
                   }
@@ -2007,6 +2036,9 @@
             const hl = highlightList[hIdx];
             const cleanId = hl.id;
             const albumTitle = hl.title;
+            // Yêu cầu: "Còn higline thì lấy theo đầu danh sách -> cuối danh sách hightline ( index_higline )"
+            const hlIdxStr = String(hIdx + 1).padStart(2, '0');
+            const hlFolder = `${hlIdxStr}_${albumTitle}`;
 
             sendProgress('scanning_highlights', `Đang tải album Tin nổi bật (${hIdx + 1}/${highlightList.length}): "${albumTitle}"...`, {
               currentCount: collectedMedia.length
@@ -2019,13 +2051,17 @@
                 const it = cachedReel[i];
                 const isVid = it.type === 'video' || it.isVideo;
                 const ext = isVid ? 'mp4' : 'jpg';
+                const filename = (exportStruct === 'folders')
+                  ? `${hlFolder}/slide_${i + 1}.${ext}`
+                  : `highlights/${hlFolder}_slide_${i + 1}.${ext}`;
+
                 addMediaItem({
                   type: isVid ? 'video' : 'image',
                   url: it.url,
                   category: 'highlight',
                   albumTitle: albumTitle,
                   id: it.id || `highlight_${i + 1}`,
-                  filename: `highlights/${albumTitle}/slide_${i + 1}_${it.id || Date.now()}.${ext}`,
+                  filename: filename,
                   timestamp: Math.floor(Date.now() / 1000)
                 });
               }
@@ -2066,6 +2102,9 @@
                   if (bestUrl) {
                     const finalType = isVid ? 'video' : 'image';
                     const ext = finalType === 'video' ? 'mp4' : 'jpg';
+                    const filename = (exportStruct === 'folders')
+                      ? `${hlFolder}/slide_${i + 1}.${ext}`
+                      : `highlights/${hlFolder}_slide_${i + 1}.${ext}`;
 
                     addMediaItem({
                       type: finalType,
@@ -2073,7 +2112,7 @@
                       category: 'highlight',
                       albumTitle: albumTitle,
                       id: hItem.id || `highlight_${i + 1}`,
-                      filename: `highlights/${albumTitle}/slide_${i + 1}_${hItem.id || Date.now()}.${ext}`,
+                      filename: filename,
                       timestamp: hItem.taken_at || Math.floor(Date.now() / 1000)
                     });
                   }
@@ -2094,55 +2133,126 @@
           currentCount: collectedMedia.length
         });
 
-        const targetStoryIds = [numericUserId, cleanUser].filter(Boolean);
-        for (const tid of targetStoryIds) {
+        const storyItemsFound = [];
+
+        // 1. Kiểm tra cache
+        if (cleanUser && storyMediaMap.has(cleanUser)) {
+          storyItemsFound.push(storyMediaMap.get(cleanUser));
+        }
+        if (cleanUser && reelMediaMap.has(cleanUser)) {
+          const r = reelMediaMap.get(cleanUser);
+          if (Array.isArray(r)) storyItemsFound.push(...r);
+        }
+        if (numericUserId && reelMediaMap.has(numericUserId)) {
+          const r = reelMediaMap.get(numericUserId);
+          if (Array.isArray(r)) storyItemsFound.push(...r);
+        }
+
+        // 2. Kiểm tra React Fiber trên Avatar Header
+        if (storyItemsFound.length === 0) {
           try {
-            let userStoryRes = await originalFetch(`/api/v1/feed/reels_media/?reel_ids=${encodeURIComponent(tid)}`, {
-              headers,
-              credentials: 'include'
-            });
-            if (!userStoryRes.ok && tid === numericUserId) {
-              userStoryRes = await originalFetch(`/api/v1/feed/user/${encodeURIComponent(tid)}/story/`, {
+            const avatarEls = Array.from(document.querySelectorAll('header canvas, header [role="button"], header img, header a[href*="/stories/"]'));
+            for (const av of avatarEls) {
+              const fKey = Object.keys(av).find(k => k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$'));
+              if (!fKey) continue;
+              let cur = av[fKey];
+              let d = 0;
+              while (cur && d < 25) {
+                d++;
+                for (const cand of [cur.memoizedProps, cur.memoizedState]) {
+                  if (cand && typeof cand === 'object') {
+                    const r = cand.story || cand.reel || cand.stories || cand.user?.reel;
+                    if (r && Array.isArray(r.items) && r.items.length > 0) {
+                      for (const it of r.items) storyItemsFound.push(it);
+                    }
+                  }
+                }
+                cur = cur.return;
+              }
+              if (storyItemsFound.length > 0) break;
+            }
+          } catch (_) {}
+        }
+
+        // 3. Gọi các endpoints Story
+        if (storyItemsFound.length === 0) {
+          const targetIds = [numericUserId, cleanUser].filter(Boolean);
+          for (const tid of targetIds) {
+            try {
+              let res = await originalFetch(`/api/v1/feed/reels_media/?reel_ids=${encodeURIComponent(tid)}`, {
                 headers,
                 credentials: 'include'
               });
-            }
-
-            if (userStoryRes.ok) {
-              const storyJson = await userStoryRes.json();
-              const reels = storyJson?.reels || {};
-              const reel = reels[tid] || Object.values(reels)[0] || (storyJson?.items ? storyJson : null);
-              const storyItems = reel?.items || [];
-
-              for (let sIdx = 0; sIdx < storyItems.length; sIdx++) {
-                const sit = storyItems[sIdx];
-                const isVid = sit.media_type === 2 || sit.is_video === true;
-                let bestUrl = null;
-
-                if (isVid && Array.isArray(sit.video_versions) && sit.video_versions.length > 0) {
-                  bestUrl = sit.video_versions.sort((a, b) => (((b.width || 0) * (b.height || 0)) - ((a.width || 0) * (a.height || 0))))[0]?.url;
-                }
-                if (!bestUrl && Array.isArray(sit.image_versions2?.candidates) && sit.image_versions2.candidates.length > 0) {
-                  bestUrl = sit.image_versions2.candidates.sort((a, b) => (((b.width || 0) * (b.height || 0)) - ((a.width || 0) * (a.height || 0))))[0]?.url;
-                }
-
-                if (bestUrl) {
-                  const finalType = isVid ? 'video' : 'image';
-                  const ext = finalType === 'video' ? 'mp4' : 'jpg';
-
-                  addMediaItem({
-                    type: finalType,
-                    url: bestUrl,
-                    category: 'story',
-                    id: sit.id || `story_${sIdx + 1}`,
-                    filename: `stories/story_${sIdx + 1}_${sit.id || Date.now()}.${ext}`,
-                    timestamp: sit.taken_at || Math.floor(Date.now() / 1000)
-                  });
-                }
+              if (!res.ok) {
+                res = await originalFetch(`/api/v1/feed/reels_media/?user_ids=${encodeURIComponent(tid)}`, {
+                  headers,
+                  credentials: 'include'
+                });
               }
-              if (storyItems.length > 0) break;
+              if (!res.ok) {
+                res = await originalFetch(`/api/v1/feed/reels_media/`, {
+                  method: 'POST',
+                  headers: {
+                    ...headers,
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                  },
+                  credentials: 'include',
+                  body: `user_ids=${encodeURIComponent(tid)}`
+                });
+              }
+              if (!res.ok && tid === numericUserId) {
+                res = await originalFetch(`/api/v1/feed/user/${encodeURIComponent(tid)}/story/`, {
+                  headers,
+                  credentials: 'include'
+                });
+              }
+
+              if (res.ok) {
+                const storyJson = await res.json();
+                const reels = storyJson?.reels || {};
+                const reel = reels[tid] || Object.values(reels)[0] || (storyJson?.items ? storyJson : null);
+                const items = reel?.items || [];
+                for (const it of items) storyItemsFound.push(it);
+                if (storyItemsFound.length > 0) break;
+              }
+            } catch (_) {}
+          }
+        }
+
+        // 4. Trích xuất toàn bộ file Story tìm được
+        if (storyItemsFound.length > 0) {
+          for (let sIdx = 0; sIdx < storyItemsFound.length; sIdx++) {
+            const sit = storyItemsFound[sIdx];
+            const isVid = sit.type === 'video' || sit.isVideo || sit.media_type === 2 || sit.is_video === true;
+            let bestUrl = sit.url || null;
+
+            if (!bestUrl && isVid && Array.isArray(sit.video_versions) && sit.video_versions.length > 0) {
+              bestUrl = sit.video_versions.sort((a, b) => (((b.width || 0) * (b.height || 0)) - ((a.width || 0) * (a.height || 0))))[0]?.url;
             }
-          } catch (_) {}
+            if (!bestUrl && Array.isArray(sit.image_versions2?.candidates) && sit.image_versions2.candidates.length > 0) {
+              bestUrl = sit.image_versions2.candidates.sort((a, b) => (((b.width || 0) * (b.height || 0)) - ((a.width || 0) * (a.height || 0))))[0]?.url;
+            }
+
+            if (bestUrl) {
+              const finalType = isVid ? 'video' : 'image';
+              const ext = finalType === 'video' ? 'mp4' : 'jpg';
+              const sNum = String(sIdx + 1).padStart(2, '0');
+
+              // Yêu cầu: "story đang đăng thì xuất thẳng" (không vào subfolder)
+              const filename = (exportStruct === 'folders')
+                ? `story_${sNum}.${ext}`
+                : `stories/story_${sNum}.${ext}`;
+
+              addMediaItem({
+                type: finalType,
+                url: bestUrl,
+                category: 'story',
+                id: sit.id || `story_${sIdx + 1}`,
+                filename: filename,
+                timestamp: sit.taken_at || Math.floor(Date.now() / 1000)
+              });
+            }
+          }
         }
       }
 
