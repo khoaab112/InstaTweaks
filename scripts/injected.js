@@ -1479,87 +1479,153 @@
     return String(name).replace(/[\/\\?%*:|"<>]/g, '_').trim() || 'Highlight';
   }
 
-  function extractUserFromReactFiber(targetUsername) {
+  // Lấy User ID dạng số (numeric) từ cookie hoặc cây Fiber hoặc DOM
+  function findNumericUserId(username) {
+    const isOwn = Boolean(document.querySelector('header a[href*="/accounts/edit/"], header a[href*="/archive/"]'));
+    const dsId = document.cookie.match(/(?:^|;\s*)ds_user_id=([^;]+)/)?.[1];
+    if (isOwn && dsId && dsId.match(/^\d+$/)) {
+      return dsId;
+    }
+
     try {
       const targets = Array.from(document.querySelectorAll('header, main, section, [role="main"]'));
       for (const el of targets) {
         const fiberKey = Object.keys(el).find(k => k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$'));
         if (!fiberKey) continue;
-
-        let cur = el[fiberKey];
-        let depth = 0;
-        while (cur && depth < 50) {
-          depth++;
-          const p = cur.memoizedProps;
-          const s = cur.memoizedState;
-          for (const cand of [p, s]) {
-            if (!cand || typeof cand !== 'object') continue;
-            const u = cand.user || cand.profileUser || cand.profileData?.user || cand.data?.user || (cand.edge_owner_to_timeline_media ? cand : null);
-            if (u && (u.id || u.pk)) {
-              if (!targetUsername || String(u.username || '').toLowerCase() === targetUsername.toLowerCase()) {
-                return u;
-              }
-              // Nếu không khớp chính xác, trả về u nếu có edge_owner_to_timeline_media
-              if (u.edge_owner_to_timeline_media) {
-                return u;
+        const queue = [el[fiberKey]];
+        let visited = 0;
+        while (queue.length > 0 && visited < 350) {
+          const cur = queue.shift();
+          visited++;
+          if (!cur) continue;
+          for (const cand of [cur.memoizedProps, cur.memoizedState]) {
+            if (cand && typeof cand === 'object') {
+              const u = cand.user || cand.profileUser || cand.profileData?.user || cand.data?.user || (cand.edge_owner_to_timeline_media ? cand : null);
+              if (u && (u.id || u.pk)) {
+                const uid = String(u.id || u.pk);
+                if (uid.match(/^\d+$/)) {
+                  if (!username || String(u.username || '').toLowerCase() === username.toLowerCase()) {
+                    return uid;
+                  }
+                }
               }
             }
           }
-          cur = cur.return;
+          if (cur.child) queue.push(cur.child);
+          if (cur.sibling) queue.push(cur.sibling);
         }
       }
     } catch (_) {}
-    return null;
-  }
 
-  function extractUserFromScriptTags(targetUsername) {
     try {
-      const scripts = document.querySelectorAll('script[type="application/json"], script[data-sjs], script:not([src])');
-      for (const script of scripts) {
-        const text = script.textContent || '';
-        if (!text.includes('edge_owner_to_timeline_media') && !text.includes('profile_pic_url')) continue;
-        try {
-          const json = JSON.parse(text);
-          let found = null;
-          function search(obj, d = 0) {
-            if (!obj || typeof obj !== 'object' || d > 12 || found) return;
-            const isUser = (obj.id || obj.pk) && (obj.edge_owner_to_timeline_media || obj.username);
-            if (isUser) {
-              if (!targetUsername || String(obj.username || '').toLowerCase() === targetUsername.toLowerCase()) {
-                found = obj;
-                return;
-              }
-              if (!found && obj.edge_owner_to_timeline_media) found = obj;
-            }
-            if (obj.user && (obj.user.id || obj.user.pk)) {
-              if (!targetUsername || String(obj.user.username || '').toLowerCase() === targetUsername.toLowerCase()) {
-                found = obj.user;
-                return;
-              }
-              if (!found && obj.user.edge_owner_to_timeline_media) found = obj.user;
-            }
-            if (Array.isArray(obj)) {
-              for (let i = 0; i < obj.length; i++) search(obj[i], d + 1);
-            } else {
-              const keys = Object.keys(obj);
-              for (let i = 0; i < keys.length; i++) search(obj[keys[i]], d + 1);
-            }
-          }
-          search(json);
-          if (found) return found;
-        } catch (_) {}
+      const scripts = document.querySelectorAll('script[type="application/json"], script[data-sjs]');
+      for (const s of scripts) {
+        const txt = s.textContent || '';
+        if (txt.includes('edge_owner_to_timeline_media') || txt.includes('profile_pic_url')) {
+          const m = txt.match(/"id":\s*"(\d{6,})"/);
+          if (m) return m[1];
+          const mPk = txt.match(/"pk":\s*"?(\d{6,})"?/);
+          if (mPk) return mPk[1];
+        }
       }
     } catch (_) {}
-    return null;
+
+    return (dsId && dsId.match(/^\d+$/)) ? dsId : null;
+  }
+
+  // Lấy chi tiết toàn bộ media của một bài viết (trích xuất đầy đủ tất cả ảnh carousel và video .mp4)
+  async function fetchPostFullMedia(shortcode) {
+    if (!shortcode) return [];
+
+    if (postMediaMap.has(shortcode)) {
+      const cached = postMediaMap.get(shortcode);
+      if (Array.isArray(cached) && cached.length > 0) return cached;
+    }
+
+    const csrfToken = getCsrfToken();
+    const mediaId = shortcodeToMediaId(shortcode);
+    const headers = {
+      'X-IG-App-ID': '936619743392459',
+      'X-ASBD-ID': '129477',
+      'X-CSRFToken': csrfToken,
+      'X-Requested-With': 'XMLHttpRequest',
+      'Accept': '*/*'
+    };
+
+    // Cách 1: REST Endpoint /api/v1/media/{mediaId}/info/
+    if (mediaId) {
+      try {
+        const res = await originalFetch(`/api/v1/media/${mediaId}/info/`, {
+          headers,
+          credentials: 'include'
+        });
+        if (res.ok) {
+          const json = await res.json();
+          processPayload(json);
+          if (postMediaMap.has(shortcode)) {
+            return postMediaMap.get(shortcode);
+          }
+          if (Array.isArray(json.items) && json.items.length > 0) {
+            const items = extractMediaFromPostNode(json.items[0]);
+            if (items.length > 0) {
+              postMediaMap.set(shortcode, items);
+              return items;
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    // Cách 2: GraphQL Persisted Query
+    const docIds = [
+      lastKnownPostDocId,
+      localStorage.getItem('__ig_post_doc_id__'),
+      '8845758582119845',
+      '26130443479876713'
+    ].filter(Boolean);
+
+    for (const docId of Array.from(new Set(docIds))) {
+      try {
+        const bodyParams = new URLSearchParams();
+        bodyParams.set('doc_id', docId);
+        bodyParams.set('variables', JSON.stringify({
+          shortcode: shortcode,
+          fetch_tagged_user_count: null,
+          hoisted_comment_id: null,
+          hoisted_reply_id: null
+        }));
+
+        const res = await originalFetch('/graphql/query', {
+          method: 'POST',
+          headers: {
+            ...headers,
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-FB-Friendly-Name': 'PolarisPostActionLoadPostQueryQuery'
+          },
+          credentials: 'include',
+          body: bodyParams.toString()
+        });
+
+        if (res.ok) {
+          const text = await res.text();
+          parseMetaResponseText(text, shortcode);
+          if (postMediaMap.has(shortcode)) {
+            return postMediaMap.get(shortcode);
+          }
+        }
+      } catch (_) {}
+    }
+
+    return [];
   }
 
   async function fetchUserProfileMedia(requestId, username, options = {}) {
     const {
-      type = 'all', // 'all', 'photos', 'videos', 'stories'
-      postLimit = 0, // 0 for all
-      includePosts = true,
-      includeStories = true,
-      includeHighlights = true
+      type = 'all', // 'all', 'stories', 'videos', 'photos'
+      postLimit = 0,
+      includePosts = (options.type !== 'stories'),
+      includeStories = (options.type === 'all' || options.type === 'stories'),
+      includeHighlights = (options.type === 'all' || options.type === 'stories')
     } = options;
 
     const cleanUser = String(username || '').toLowerCase().replace(/^@/, '').trim();
@@ -1570,15 +1636,6 @@
       return;
     }
 
-    const csrfToken = getCsrfToken();
-    const headers = {
-      'X-IG-App-ID': '936619743392459',
-      'X-ASBD-ID': '129477',
-      'X-CSRFToken': csrfToken,
-      'X-Requested-With': 'XMLHttpRequest',
-      'Accept': '*/*'
-    };
-
     function sendProgress(stage, message, extra = {}) {
       window.dispatchEvent(new CustomEvent('__IG_PROFILE_SCAN_PROGRESS__', {
         detail: { requestId, stage, message, ...extra }
@@ -1586,146 +1643,18 @@
     }
 
     try {
-      sendProgress('init', `Đang kết nối và lấy thông tin tài khoản @${cleanUser}...`);
+      sendProgress('init', `Đang kết nối và phân tích tài khoản @${cleanUser}...`);
 
-      let userData = null;
-      let userId = null;
-      let timelineEdges = [];
-      let pageInfo = { has_next_page: false, end_cursor: null };
-
-      // CHIẾN LƯỢC 1: Lấy trực tiếp từ React Fiber của trang hiện tại (100% không bị 404 vì trang đã tải)
-      const fiberUser = extractUserFromReactFiber(cleanUser);
-      if (fiberUser) {
-        userData = fiberUser;
-        userId = fiberUser.id || fiberUser.pk;
-        if (fiberUser.edge_owner_to_timeline_media) {
-          timelineEdges = fiberUser.edge_owner_to_timeline_media.edges || [];
-          pageInfo = fiberUser.edge_owner_to_timeline_media.page_info || pageInfo;
-        }
-      }
-
-      // CHIẾN LƯỢC 2: Đọc thẻ Script SSR của trang
-      if (!userData || !userId) {
-        const scriptUser = extractUserFromScriptTags(cleanUser);
-        if (scriptUser) {
-          userData = scriptUser;
-          userId = scriptUser.id || scriptUser.pk;
-          if (scriptUser.edge_owner_to_timeline_media) {
-            timelineEdges = scriptUser.edge_owner_to_timeline_media.edges || [];
-            pageInfo = scriptUser.edge_owner_to_timeline_media.page_info || pageInfo;
-          }
-        }
-      }
-
-      // CHIẾN LƯỢC 3: Gọi API web_profile_info với các biến thể username (xử lý gạch dưới _ và __)
-      if (!userData || !userId) {
-        const userVariants = [cleanUser];
-        // Nếu tên trong DOM header khác tên truyền vào, thêm tên trong DOM
-        const headerHeading = document.querySelector('header h2, header h1, [role="heading"]');
-        if (headerHeading && headerHeading.textContent) {
-          const domName = headerHeading.textContent.trim().replace(/^@/, '').toLowerCase();
-          if (domName && !userVariants.includes(domName)) userVariants.unshift(domName);
-        }
-        if (cleanUser.includes('__')) userVariants.push(cleanUser.replace(/__/g, '_'));
-        if (cleanUser.includes('_') && !cleanUser.includes('__')) userVariants.push(cleanUser.replace(/_/g, '__'));
-
-        for (const u of Array.from(new Set(userVariants))) {
-          try {
-            const profileRes = await originalFetch(`/api/v1/users/web_profile_info/?username=${encodeURIComponent(u)}`, {
-              headers,
-              credentials: 'include'
-            });
-            if (profileRes.ok) {
-              const profileJson = await profileRes.json();
-              userData = profileJson?.data?.user;
-              userId = userData?.id || userData?.pk;
-              const timeline = userData?.edge_owner_to_timeline_media;
-              if (timeline) {
-                timelineEdges = timeline.edges || [];
-                pageInfo = timeline.page_info || { has_next_page: false, end_cursor: null };
-              }
-              break;
-            }
-          } catch (err) {
-            console.warn('[Profile Downloader] web_profile_info fetch error:', u, err);
-          }
-        }
-      }
-
-      // CHIẾN LƯỢC 4: Thử GraphQL Query PolarisProfileRootQuery
-      if (!userData || !userId) {
-        const docIds = ['7181657375267862', '17991443634024225', '6936306999797079'];
-        for (const docId of docIds) {
-          try {
-            const bodyParams = new URLSearchParams();
-            bodyParams.set('doc_id', docId);
-            bodyParams.set('variables', JSON.stringify({ username: cleanUser }));
-            const gRes = await originalFetch('/graphql/query', {
-              method: 'POST',
-              headers: { ...headers, 'Content-Type': 'application/x-www-form-urlencoded' },
-              credentials: 'include',
-              body: bodyParams.toString()
-            });
-            if (gRes.ok) {
-              const gJson = await gRes.json();
-              const u = gJson?.data?.user || gJson?.data?.xdt_users__by_username;
-              if (u && (u.id || u.pk)) {
-                userData = u;
-                userId = u.id || u.pk;
-                if (u.edge_owner_to_timeline_media) {
-                  timelineEdges = u.edge_owner_to_timeline_media.edges || [];
-                  pageInfo = u.edge_owner_to_timeline_media.page_info || pageInfo;
-                }
-                break;
-              }
-            }
-          } catch (_) {}
-        }
-      }
-
-      // CHIẾN LƯỢC 5 (DỰ PHÒNG CUỐI CÙNG): Trích xuất trực tiếp thông tin từ DOM
-      if (!userId) {
-        for (const [k, v] of reelMediaMap.entries()) {
-          if (Array.isArray(v) && v.length > 0 && v[0]?.user === cleanUser && v[0]?.userId) {
-            userId = v[0].userId;
-            break;
-          }
-        }
-      }
-
-      if (!userData && !userId) {
-        const domPostLinks = Array.from(document.querySelectorAll('a[href*="/p/"], a[href*="/reel/"]'));
-        const headerImg = document.querySelector('header img');
-        if (domPostLinks.length > 0 || document.querySelector('header')) {
-          userId = 'user_' + cleanUser;
-          userData = {
-            id: userId,
-            username: cleanUser,
-            full_name: document.querySelector('header span, header h1')?.textContent || cleanUser,
-            profile_pic_url_hd: headerImg?.currentSrc || headerImg?.src || '',
-            edge_owner_to_timeline_media: { count: domPostLinks.length, edges: [] }
-          };
-        }
-      }
-
-      if (!userData && !userId) {
-        window.dispatchEvent(new CustomEvent('__IG_PROFILE_MEDIA_RESULT__', {
-          detail: { requestId, error: `Không thể tìm thấy thông tin của @${cleanUser}. Có thể tài khoản là riêng tư hoặc bị giới hạn truy cập.` }
-        }));
-        return;
-      }
-
-      const totalPostsInProfile = userData?.edge_owner_to_timeline_media?.count || timelineEdges.length || document.querySelectorAll('a[href*="/p/"], a[href*="/reel/"]').length;
-      const userMeta = {
-        id: userId,
-        username: cleanUser,
-        fullName: userData?.full_name || cleanUser,
-        avatarUrl: userData?.profile_pic_url_hd || userData?.profile_pic_url || '',
-        postCount: totalPostsInProfile
+      const csrfToken = getCsrfToken();
+      const headers = {
+        'X-IG-App-ID': '936619743392459',
+        'X-ASBD-ID': '129477',
+        'X-CSRFToken': csrfToken,
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': '*/*'
       };
 
-      sendProgress('profile_loaded', `Đã tìm thấy @${cleanUser} (${totalPostsInProfile} bài viết)`, { user: userMeta });
-
+      const numericUserId = findNumericUserId(cleanUser);
       const collectedMedia = [];
       const seenMediaUrls = new Set();
 
@@ -1735,305 +1664,178 @@
         collectedMedia.push(item);
       }
 
-      // 2. Thu thập bài viết (Posts)
+      // =========================================================================
+      // PHẦN A: BÀI VIẾT (POSTS) - Áp dụng cho mode: 'all', 'photos', 'videos'
+      // =========================================================================
       if (includePosts) {
-        sendProgress('scanning_posts', `Đang đọc danh sách bài viết đợt 1 (${timelineEdges.length} bài)...`, { currentCount: collectedMedia.length });
+        sendProgress('scanning_posts', 'Đang quét danh sách bài viết trên trang...');
 
-        for (let i = 0; i < timelineEdges.length; i++) {
-          const edge = timelineEdges[i];
-          const node = edge?.node;
-          if (!node) continue;
-          const postMedia = extractMediaFromPostNode(node);
-          const shortcode = node.shortcode || node.code || `post_${i + 1}`;
-          for (let mIdx = 0; mIdx < postMedia.length; mIdx++) {
-            const m = postMedia[mIdx];
-            if (type === 'photos' && m.type !== 'image') continue;
-            if (type === 'videos' && m.type !== 'video') continue;
+        // 1. Quét danh sách các shortcodes trên trang cá nhân
+        const postLinkElements = Array.from(document.querySelectorAll('a[href*="/p/"], a[href*="/reel/"]'));
+        const shortcodeList = [];
+        const seenSc = new Set();
 
-            const ext = m.type === 'video' ? 'mp4' : 'jpg';
-            const suffix = postMedia.length > 1 ? `_${mIdx + 1}` : '';
-            addMediaItem({
-              type: m.type,
-              url: m.url,
-              category: 'post',
-              shortcode: shortcode,
-              id: node.id || shortcode,
-              filename: `posts/post_${shortcode}${suffix}.${ext}`,
-              timestamp: node.taken_at_timestamp || Math.floor(Date.now() / 1000)
+        for (const el of postLinkElements) {
+          const href = el.getAttribute('href') || '';
+          const m = href.match(/\/(?:p|reel)\/([A-Za-z0-9_-]+)/);
+          if (m && !seenSc.has(m[1])) {
+            seenSc.add(m[1]);
+            shortcodeList.push({ shortcode: m[1], el });
+          }
+        }
+
+        // Áp dụng giới hạn số lượng bài viết nếu có
+        const targetPosts = (postLimit > 0) ? shortcodeList.slice(0, postLimit) : shortcodeList;
+        const totalToScan = targetPosts.length;
+
+        sendProgress('scanning_posts', `Tìm thấy ${totalToScan} bài viết. Đang trích xuất toàn bộ ảnh carousel & video...`, {
+          currentCount: 0
+        });
+
+        // 2. Trích xuất đầy đủ chi tiết của từng bài viết (concurrency 3)
+        let scannedCount = 0;
+        const postWorkers = [];
+        const concurrency = 3;
+        let postIdx = 0;
+
+        async function postWorker() {
+          while (postIdx < targetPosts.length) {
+            const curIdx = postIdx++;
+            const item = targetPosts[curIdx];
+            const sc = item.shortcode;
+
+            try {
+              const fullItems = await fetchPostFullMedia(sc);
+              scannedCount++;
+
+              sendProgress('scanning_posts', `Đang phân tích bài ${scannedCount}/${totalToScan}: @${sc} (${fullItems.length} media)...`, {
+                currentCount: collectedMedia.length
+              });
+
+              if (Array.isArray(fullItems) && fullItems.length > 0) {
+                for (let mIdx = 0; mIdx < fullItems.length; mIdx++) {
+                  const m = fullItems[mIdx];
+
+                  // LỌC CHÍNH XÁC THEO TÙY CHỌN:
+                  // - Mode 'photos': CHỈ LẤY ẢNH (bỏ qua video)
+                  // - Mode 'videos': CHỈ LẤY VIDEO (.mp4) (bỏ qua ảnh)
+                  // - Mode 'all': Lấy cả ảnh và video
+                  if (type === 'photos' && m.type !== 'image') continue;
+                  if (type === 'videos' && m.type !== 'video') continue;
+
+                  const ext = m.type === 'video' ? 'mp4' : 'jpg';
+                  const folder = type === 'photos' ? 'photos' : (type === 'videos' ? 'videos' : 'posts');
+                  const suffix = fullItems.length > 1 ? `_${mIdx + 1}` : '';
+                  const prefix = m.type === 'video' ? 'video' : 'post';
+
+                  addMediaItem({
+                    type: m.type,
+                    url: m.url,
+                    category: folder,
+                    shortcode: sc,
+                    id: `${sc}_${mIdx + 1}`,
+                    filename: `${folder}/${prefix}_${sc}${suffix}.${ext}`,
+                    timestamp: Math.floor(Date.now() / 1000)
+                  });
+                }
+              } else {
+                // Fallback nếu bài viết không fetch được API: lấy ảnh từ thẻ img nếu là mode photos/all
+                if (type !== 'videos') {
+                  const img = item.el.querySelector('img');
+                  let imgUrl = img?.currentSrc || img?.src;
+                  if (img?.srcset) {
+                    const parts = img.srcset.split(',').map(s => s.trim().split(' '));
+                    const best = parts.sort((x, y) => parseInt(y[1] || '0') - parseInt(x[1] || '0'))[0];
+                    if (best && best[0]) imgUrl = best[0];
+                  }
+                  if (imgUrl) {
+                    addMediaItem({
+                      type: 'image',
+                      url: imgUrl,
+                      category: 'photos',
+                      shortcode: sc,
+                      id: sc,
+                      filename: `photos/post_${sc}.jpg`,
+                      timestamp: Math.floor(Date.now() / 1000)
+                    });
+                  }
+                }
+              }
+            } catch (err) {
+              console.warn('[Profile Downloader] scan post error:', sc, err);
+            }
+          }
+        }
+
+        const numWorkers = Math.min(concurrency, targetPosts.length);
+        for (let w = 0; w < numWorkers; w++) {
+          postWorkers.push(postWorker());
+        }
+        await Promise.all(postWorkers);
+      }
+
+      // =========================================================================
+      // PHẦN B: TIN NỔI BẬT (HIGHLIGHTS) - Áp dụng cho mode: 'all', 'stories'
+      // =========================================================================
+      if (includeHighlights) {
+        sendProgress('scanning_highlights', 'Đang quét danh sách Tin nổi bật (Highlights)...', {
+          currentCount: collectedMedia.length
+        });
+
+        const highlightTrays = [];
+        const seenReelIds = new Set();
+
+        // 1. Quét từ API nếu có numericUserId
+        if (numericUserId) {
+          try {
+            const trayRes = await originalFetch(`/api/v1/highlights/${encodeURIComponent(numericUserId)}/highlights_tray/`, {
+              headers,
+              credentials: 'include'
+            });
+            if (trayRes.ok) {
+              const trayJson = await trayRes.json();
+              if (Array.isArray(trayJson.tray)) {
+                for (const t of trayJson.tray) {
+                  const clean = String(t.id).replace(/^highlight:/, '');
+                  if (!seenReelIds.has(clean)) {
+                    seenReelIds.add(clean);
+                    highlightTrays.push({
+                      id: `highlight:${clean}`,
+                      title: sanitizePathTitle(t.title || 'Highlight')
+                    });
+                  }
+                }
+              }
+            }
+          } catch (_) {}
+        }
+
+        // 2. Quét từ DOM trên trang cá nhân (100% bao quát các highlight đang hiển thị)
+        const domHighlightLinks = Array.from(document.querySelectorAll('a[href*="/stories/highlights/"]'));
+        for (const a of domHighlightLinks) {
+          const href = a.getAttribute('href') || '';
+          const m = href.match(/\/stories\/highlights\/([0-9]+)/);
+          if (m && !seenReelIds.has(m[1])) {
+            seenReelIds.add(m[1]);
+            const titleEl = a.querySelector('span, div') || a;
+            const title = sanitizePathTitle(titleEl.textContent || 'Highlight');
+            highlightTrays.push({
+              id: `highlight:${m[1]}`,
+              title: title
             });
           }
         }
 
-        // Lấy thêm trang bài viết nếu còn và nằm trong giới hạn
-        let hasNext = pageInfo?.has_next_page;
-        let cursor = pageInfo?.end_cursor;
-        let pageCount = 1;
-        const maxPages = postLimit > 0 ? Math.ceil(postLimit / 12) : 50;
-
-        while (hasNext && cursor && pageCount < maxPages && (!postLimit || collectedMedia.length < postLimit)) {
-          pageCount++;
-          sendProgress('scanning_posts', `Đang tải thêm danh sách bài viết (trang ${pageCount})...`, {
+        if (highlightTrays.length > 0) {
+          sendProgress('scanning_highlights', `Tìm thấy ${highlightTrays.length} album Tin nổi bật. Đang trích xuất toàn bộ slide...`, {
             currentCount: collectedMedia.length
           });
 
-          let newEdges = [];
-          let nextCursor = null;
-          let nextHasNext = false;
-          let fetchedOk = false;
-
-          // Thử 1: GraphQL với doc_ids
-          const docIds = [
-            lastKnownProfileDocId,
-            '6936306999797079',
-            '7181657375267862',
-            '17991443634024225'
-          ].filter(Boolean);
-
-          for (const docId of Array.from(new Set(docIds))) {
-            try {
-              const bodyParams = new URLSearchParams();
-              bodyParams.set('doc_id', docId);
-              bodyParams.set('variables', JSON.stringify({
-                id: userId,
-                first: 12,
-                after: cursor
-              }));
-
-              const gRes = await originalFetch('/graphql/query', {
-                method: 'POST',
-                headers: {
-                  ...headers,
-                  'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                credentials: 'include',
-                body: bodyParams.toString()
-              });
-
-              if (gRes.ok) {
-                const gJson = await gRes.json();
-                const tl = gJson?.data?.user?.edge_owner_to_timeline_media;
-                if (tl && Array.isArray(tl.edges)) {
-                  newEdges = tl.edges;
-                  nextCursor = tl.page_info?.end_cursor;
-                  nextHasNext = tl.page_info?.has_next_page;
-                  lastKnownProfileDocId = docId;
-                  localStorage.setItem('__ig_profile_doc_id__', docId);
-                  fetchedOk = true;
-                  break;
-                }
-              }
-            } catch (_) {}
-          }
-
-          // Thử 2: REST Endpoint v1
-          if (!fetchedOk) {
-            try {
-              const restRes = await originalFetch(`/api/v1/feed/user/${encodeURIComponent(userId)}/?count=12&max_id=${encodeURIComponent(cursor)}`, {
-                headers,
-                credentials: 'include'
-              });
-              if (restRes.ok) {
-                const restJson = await restRes.json();
-                if (Array.isArray(restJson.items)) {
-                  for (const it of restJson.items) {
-                    const postMedia = extractMediaFromPostNode(it);
-                    const sc = it.code || `post_${it.id}`;
-                    for (let mIdx = 0; mIdx < postMedia.length; mIdx++) {
-                      const m = postMedia[mIdx];
-                      if (type === 'photos' && m.type !== 'image') continue;
-                      if (type === 'videos' && m.type !== 'video') continue;
-                      const ext = m.type === 'video' ? 'mp4' : 'jpg';
-                      const suffix = postMedia.length > 1 ? `_${mIdx + 1}` : '';
-                      addMediaItem({
-                        type: m.type,
-                        url: m.url,
-                        category: 'post',
-                        shortcode: sc,
-                        id: it.id || sc,
-                        filename: `posts/post_${sc}${suffix}.${ext}`,
-                        timestamp: it.taken_at || Math.floor(Date.now() / 1000)
-                      });
-                    }
-                  }
-                  nextCursor = restJson.next_max_id;
-                  nextHasNext = restJson.more_available;
-                  fetchedOk = true;
-                }
-              }
-            } catch (_) {}
-          }
-
-          if (newEdges.length > 0) {
-            for (let i = 0; i < newEdges.length; i++) {
-              const edge = newEdges[i];
-              const node = edge?.node;
-              if (!node) continue;
-              const postMedia = extractMediaFromPostNode(node);
-              const shortcode = node.shortcode || node.code || `post_${collectedMedia.length + 1}`;
-              for (let mIdx = 0; mIdx < postMedia.length; mIdx++) {
-                const m = postMedia[mIdx];
-                if (type === 'photos' && m.type !== 'image') continue;
-                if (type === 'videos' && m.type !== 'video') continue;
-                const ext = m.type === 'video' ? 'mp4' : 'jpg';
-                const suffix = postMedia.length > 1 ? `_${mIdx + 1}` : '';
-                addMediaItem({
-                  type: m.type,
-                  url: m.url,
-                  category: 'post',
-                  shortcode: shortcode,
-                  id: node.id || shortcode,
-                  filename: `posts/post_${shortcode}${suffix}.${ext}`,
-                  timestamp: node.taken_at_timestamp || Math.floor(Date.now() / 1000)
-                });
-              }
-            }
-          }
-
-          if (postLimit > 0 && collectedMedia.length >= postLimit) {
-            break;
-          }
-
-          if (!fetchedOk || !nextHasNext || !nextCursor) {
-            break;
-          }
-
-          cursor = nextCursor;
-          hasNext = nextHasNext;
-          await new Promise(r => setTimeout(r, 180));
-        }
-
-        // Bổ sung: Nếu chưa thu thập được bài viết nào từ API/Fiber, quét trực tiếp các bài viết đang hiển thị trên DOM!
-        if (collectedMedia.length === 0) {
-          const domPostLinks = Array.from(document.querySelectorAll('a[href*="/p/"], a[href*="/reel/"]'));
-          const seenSc = new Set();
-          for (let pIdx = 0; pIdx < domPostLinks.length; pIdx++) {
-            if (postLimit > 0 && collectedMedia.length >= postLimit) break;
-            const a = domPostLinks[pIdx];
-            const href = a.getAttribute('href') || '';
-            const m = href.match(/\/(?:p|reel)\/([A-Za-z0-9_-]+)/);
-            if (!m || seenSc.has(m[1])) continue;
-            seenSc.add(m[1]);
-            const sc = m[1];
-            const img = a.querySelector('img');
-            const isVid = Boolean(a.querySelector('svg[aria-label*="Video"], svg[aria-label*="Reel"], span[aria-label*="Clip"]'));
-            let mediaUrl = img?.currentSrc || img?.src;
-            if (img?.srcset) {
-              const parts = img.srcset.split(',').map(s => s.trim().split(' '));
-              const best = parts.sort((x, y) => parseInt(y[1] || '0') - parseInt(x[1] || '0'))[0];
-              if (best && best[0]) mediaUrl = best[0];
-            }
-            if (mediaUrl) {
-              const finalType = isVid ? 'video' : 'image';
-              if (type === 'photos' && finalType !== 'image') continue;
-              if (type === 'videos' && finalType !== 'video') continue;
-              const ext = finalType === 'video' ? 'mp4' : 'jpg';
-              addMediaItem({
-                type: finalType,
-                url: mediaUrl,
-                category: 'post',
-                shortcode: sc,
-                id: sc,
-                filename: `posts/post_${sc}.${ext}`,
-                timestamp: Math.floor(Date.now() / 1000)
-              });
-            }
-          }
-        }
-      }
-
-      // 3. Thu thập Story 24h
-      if (includeStories && userId) {
-        sendProgress('scanning_stories', 'Đang quét Story 24h...', { currentCount: collectedMedia.length });
-        try {
-          const userStoryRes = await originalFetch(`/api/v1/feed/reels_media/?reel_ids=${encodeURIComponent(userId)}`, {
-            headers,
-            credentials: 'include'
-          });
-          if (userStoryRes.ok) {
-            const storyJson = await userStoryRes.json();
-            const reel = storyJson?.reels?.[userId];
-            const storyItems = reel?.items || [];
-
-            for (let sIdx = 0; sIdx < storyItems.length; sIdx++) {
-              const sit = storyItems[sIdx];
-              const isVid = sit.media_type === 2 || sit.is_video === true;
-              let bestUrl = null;
-              if (isVid && Array.isArray(sit.video_versions) && sit.video_versions.length > 0) {
-                bestUrl = sit.video_versions.sort((a, b) => (b.width * b.height) - (a.width * a.height))[0]?.url;
-              }
-              if (!bestUrl && Array.isArray(sit.image_versions2?.candidates) && sit.image_versions2.candidates.length > 0) {
-                bestUrl = sit.image_versions2.candidates.sort((a, b) => (b.width * b.height) - (a.width * a.height))[0]?.url;
-              }
-              if (bestUrl) {
-                const finalType = isVid ? 'video' : 'image';
-                if (type === 'photos' && finalType !== 'image') continue;
-                if (type === 'videos' && finalType !== 'video') continue;
-                const ext = finalType === 'video' ? 'mp4' : 'jpg';
-                addMediaItem({
-                  type: finalType,
-                  url: bestUrl,
-                  category: 'story',
-                  id: sit.id || `story_${sIdx + 1}`,
-                  filename: `stories/story_${sIdx + 1}_${sit.id || Date.now()}.${ext}`,
-                  timestamp: sit.taken_at || Math.floor(Date.now() / 1000)
-                });
-              }
-            }
-          }
-        } catch (err) {
-          console.warn('[Profile Downloader] fetch stories error:', err);
-        }
-      }
-
-      // 4. Thu thập Highlights (Tin nổi bật)
-      if (includeHighlights && userId) {
-        sendProgress('scanning_highlights', 'Đang quét danh sách Tin nổi bật (Highlights)...', { currentCount: collectedMedia.length });
-        let highlightTrays = [];
-
-        try {
-          const trayRes = await originalFetch(`/api/v1/highlights/${encodeURIComponent(userId)}/highlights_tray/`, {
-            headers,
-            credentials: 'include'
-          });
-          if (trayRes.ok) {
-            const trayJson = await trayRes.json();
-            if (Array.isArray(trayJson.tray)) {
-              highlightTrays = trayJson.tray;
-            }
-          }
-        } catch (err) {
-          console.warn('[Profile Downloader] highlights_tray API error:', err);
-        }
-
-        // Quét thêm DOM nếu API rỗng
-        if (highlightTrays.length === 0) {
-          const domHighlightLinks = Array.from(document.querySelectorAll('a[href*="/stories/highlights/"]'));
-          const seenReels = new Set();
-          for (const a of domHighlightLinks) {
-            const href = a.getAttribute('href') || '';
-            const m = href.match(/\/stories\/highlights\/([^\/]+)/);
-            if (m && !seenReels.has(m[1])) {
-              const reelId = m[1];
-              seenReels.add(reelId);
-              const titleEl = a.querySelector('span, div') || a;
-              const title = (titleEl.textContent || 'Highlight').trim();
-              highlightTrays.push({
-                id: reelId.startsWith('highlight:') ? reelId : `highlight:${reelId}`,
-                title: title
-              });
-            }
-          }
-        }
-
-        if (highlightTrays.length > 0) {
-          sendProgress('scanning_highlights', `Tìm thấy ${highlightTrays.length} album Tin nổi bật. Đang đọc nội dung...`, { currentCount: collectedMedia.length });
-
-          const reelIds = highlightTrays.map(t => String(t.id).startsWith('highlight:') ? String(t.id) : `highlight:${t.id}`);
           const chunkSize = 5;
+          for (let c = 0; c < highlightTrays.length; c += chunkSize) {
+            const chunk = highlightTrays.slice(c, c + chunkSize);
+            const queryParams = chunk.map(t => `reel_ids=${encodeURIComponent(t.id)}`).join('&');
 
-          for (let c = 0; c < reelIds.length; c += chunkSize) {
-            const chunk = reelIds.slice(c, c + chunkSize);
-            const queryParams = chunk.map(id => `reel_ids=${encodeURIComponent(id)}`).join('&');
             try {
               const res = await originalFetch(`/api/v1/feed/reels_media/?${queryParams}`, {
                 headers,
@@ -2045,9 +1847,8 @@
 
                 for (const reelKey of Object.keys(reels)) {
                   const rObj = reels[reelKey];
-                  const rawId = rObj?.id || reelKey;
-                  const cleanReelId = String(rawId).replace(/^highlight:/, '');
-                  const trayInfo = highlightTrays.find(t => String(t.id).includes(cleanReelId));
+                  const cleanReelId = String(rObj?.id || reelKey).replace(/^highlight:/, '');
+                  const trayInfo = highlightTrays.find(t => t.id.includes(cleanReelId));
                   const albumTitle = sanitizePathTitle(trayInfo?.title || rObj?.title || 'Highlight');
                   const rItems = rObj?.items || [];
 
@@ -2055,17 +1856,18 @@
                     const hItem = rItems[i];
                     const isVid = hItem.media_type === 2 || hItem.is_video === true;
                     let bestUrl = null;
+
                     if (isVid && Array.isArray(hItem.video_versions) && hItem.video_versions.length > 0) {
                       bestUrl = hItem.video_versions.sort((a, b) => (b.width * b.height) - (a.width * a.height))[0]?.url;
                     }
                     if (!bestUrl && Array.isArray(hItem.image_versions2?.candidates) && hItem.image_versions2.candidates.length > 0) {
                       bestUrl = hItem.image_versions2.candidates.sort((a, b) => (b.width * b.height) - (a.width * a.height))[0]?.url;
                     }
+
                     if (bestUrl) {
                       const finalType = isVid ? 'video' : 'image';
-                      if (type === 'photos' && finalType !== 'image') continue;
-                      if (type === 'videos' && finalType !== 'video') continue;
                       const ext = finalType === 'video' ? 'mp4' : 'jpg';
+
                       addMediaItem({
                         type: finalType,
                         url: bestUrl,
@@ -2086,12 +1888,74 @@
         }
       }
 
-      sendProgress('done', `Quét hoàn tất! Sẵn sàng tải ${collectedMedia.length} file.`, { currentCount: collectedMedia.length });
+      // =========================================================================
+      // PHẦN C: STORY 24H - Áp dụng cho mode: 'all', 'stories'
+      // =========================================================================
+      if (includeStories) {
+        sendProgress('scanning_stories', 'Đang quét Story 24h hiện tại...', {
+          currentCount: collectedMedia.length
+        });
 
+        const targetStoryIds = [numericUserId, cleanUser].filter(Boolean);
+        for (const tid of targetStoryIds) {
+          try {
+            const userStoryRes = await originalFetch(`/api/v1/feed/reels_media/?reel_ids=${encodeURIComponent(tid)}`, {
+              headers,
+              credentials: 'include'
+            });
+            if (userStoryRes.ok) {
+              const storyJson = await userStoryRes.json();
+              const reels = storyJson?.reels || {};
+              const reel = reels[tid] || Object.values(reels)[0];
+              const storyItems = reel?.items || [];
+
+              for (let sIdx = 0; sIdx < storyItems.length; sIdx++) {
+                const sit = storyItems[sIdx];
+                const isVid = sit.media_type === 2 || sit.is_video === true;
+                let bestUrl = null;
+
+                if (isVid && Array.isArray(sit.video_versions) && sit.video_versions.length > 0) {
+                  bestUrl = sit.video_versions.sort((a, b) => (b.width * b.height) - (a.width * a.height))[0]?.url;
+                }
+                if (!bestUrl && Array.isArray(sit.image_versions2?.candidates) && sit.image_versions2.candidates.length > 0) {
+                  bestUrl = sit.image_versions2.candidates.sort((a, b) => (b.width * b.height) - (a.width * a.height))[0]?.url;
+                }
+
+                if (bestUrl) {
+                  const finalType = isVid ? 'video' : 'image';
+                  const ext = finalType === 'video' ? 'mp4' : 'jpg';
+
+                  addMediaItem({
+                    type: finalType,
+                    url: bestUrl,
+                    category: 'story',
+                    id: sit.id || `story_${sIdx + 1}`,
+                    filename: `stories/story_${sIdx + 1}_${sit.id || Date.now()}.${ext}`,
+                    timestamp: sit.taken_at || Math.floor(Date.now() / 1000)
+                  });
+                }
+              }
+              if (storyItems.length > 0) break;
+            }
+          } catch (_) {}
+        }
+      }
+
+      sendProgress('done', `Quét hoàn tất! Sẵn sàng tải ${collectedMedia.length} file.`, {
+        currentCount: collectedMedia.length
+      });
+
+      const headerImg = document.querySelector('header img');
       window.dispatchEvent(new CustomEvent('__IG_PROFILE_MEDIA_RESULT__', {
         detail: {
           requestId,
-          user: userMeta,
+          user: {
+            id: numericUserId || 'user_' + cleanUser,
+            username: cleanUser,
+            fullName: document.querySelector('header span, header h1')?.textContent || cleanUser,
+            avatarUrl: headerImg?.currentSrc || headerImg?.src || '',
+            postCount: collectedMedia.length
+          },
           items: collectedMedia
         }
       }));
