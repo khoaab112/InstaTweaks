@@ -2907,14 +2907,7 @@
   // Tìm container chứa các vạch tiến trình (progress bar) trên Stories / Highlights
   function findStoryProgressBarContainer() {
     const existing = document.querySelector('[data-ig-story-progress="true"]');
-    if (existing && existing.isConnected && existing.children.length > 0) return existing;
-
-    // 1. Thử tìm nhanh theo class cấu trúc của Instagram Story Header
-    const byClass = document.querySelector('.xoqlrxr .x1ned7t2, [class*="xoqlrxr"] .x1ned7t2');
-    if (byClass && byClass.children.length > 0) {
-      byClass.setAttribute('data-ig-story-progress', 'true');
-      return byClass;
-    }
+    if (existing && existing.isConnected) return existing;
 
     const allDivs = Array.from(document.body.querySelectorAll('div')).filter(d => {
       if (d.closest('.ig-video-controller, .ig-music-feed-bar, .ig-story-scrubber-bar, .ig-story-top-progress-bar')) return false;
@@ -2935,7 +2928,6 @@
 
     if (allDivs.length === 0) return null;
     allDivs.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
-    allDivs[0].setAttribute('data-ig-story-progress', 'true');
     return allDivs[0];
   }
 
@@ -3361,121 +3353,63 @@
     }, 2200);
   }
 
-  function setupControlsFromRightContainer(rightControls) {
-    if (!rightControls) return null;
-
-    const buttons = Array.from(rightControls.querySelectorAll('button, div[role="button"], div[role="slider"]'))
-      .filter(b => !b.classList.contains('ig-story-download-btn') && !b.classList.contains('ig-story-header-time'));
+  function findStoryControlsContainer() {
+    const allButtons = Array.from(document.querySelectorAll('header button, div[role="dialog"] button, section button, button, div[role="button"]'))
+      .filter(btn => {
+        if (btn.classList.contains('ig-story-download-btn')) return false;
+        const rect = btn.getBoundingClientRect();
+        const inTopHeader = rect.top >= 0 && rect.top < 220;
+        return inTopHeader && rect.width >= 10 && rect.height >= 10;
+      });
 
     let pauseBtn = null;
     let speakerBtn = null;
     let optionsBtn = null;
 
-    for (const btn of buttons) {
+    for (const btn of allButtons) {
       const aria = (btn.getAttribute('aria-label') || '').toLowerCase();
       const svgAria = (btn.querySelector('svg')?.getAttribute('aria-label') || '').toLowerCase();
       const title = (btn.getAttribute('title') || '').toLowerCase();
       const label = `${aria} ${svgAria} ${title}`;
 
-      if (btn.getAttribute('aria-haspopup') === 'menu' || /menu|more|options|tùy chọn|khác/i.test(label) || btn.querySelector('svg circle')) {
-        optionsBtn = btn;
-      } else if (/pause|play|tạm dừng|phát/i.test(label) || btn.querySelector('svg polygon, svg rect')) {
-        if (!/audio|âm thanh/i.test(label)) pauseBtn = btn;
-      } else if (/audio|mute|sound|tiếng|âm thanh/i.test(label) || btn.getAttribute('role') === 'slider' || btn.querySelector('[role="slider"]')) {
+      // Nút Pause hoặc Play (Dấu || hoặc tam giác)
+      if (label.includes('pause') || label.includes('tạm dừng') || label.includes('play') || label.includes('phát') || btn.querySelector('svg polygon, svg rect')) {
+        if (!label.includes('audio') && !label.includes('âm thanh')) {
+          pauseBtn = btn;
+        }
+      }
+      // Nút Loa / Audio / Mute
+      else if (label.includes('audio') || label.includes('mute') || label.includes('sound') || label.includes('tiếng') || label.includes('âm thanh')) {
         speakerBtn = btn;
+      }
+      // Nút Ba chấm (...) hoặc Menu
+      else if (label.includes('more') || label.includes('khác') || label.includes('options') || label.includes('menu') || btn.querySelector('svg circle')) {
+        optionsBtn = btn;
       }
     }
 
-    const getDirectChild = (el) => {
-      if (!el) return null;
-      let curr = el;
-      while (curr && curr.parentElement !== rightControls) {
-        curr = curr.parentElement;
-      }
-      return curr;
-    };
-
-    const directPause = getDirectChild(pauseBtn);
-    const directOptions = getDirectChild(optionsBtn);
-    const directSpeaker = getDirectChild(speakerBtn);
+    const parent = pauseBtn?.parentElement || speakerBtn?.parentElement || optionsBtn?.parentElement || null;
+    if (!parent) return null;
 
     let insertAfter = null;
     let insertBefore = null;
 
-    if (directPause) {
-      insertAfter = directPause;
-    } else if (directOptions) {
-      insertBefore = directOptions;
-    } else if (directSpeaker) {
-      insertAfter = directSpeaker;
+    if (pauseBtn && pauseBtn.parentElement === parent) {
+      insertAfter = pauseBtn;
+    } else if (optionsBtn && optionsBtn.parentElement === parent) {
+      insertBefore = optionsBtn;
+    } else if (speakerBtn && speakerBtn.parentElement === parent) {
+      insertAfter = speakerBtn;
     }
 
     return {
-      parent: rightControls,
-      pauseBtn: directPause || pauseBtn,
-      speakerBtn: directSpeaker || speakerBtn,
-      optionsBtn: directOptions || optionsBtn,
+      parent,
+      speakerBtn,
+      pauseBtn,
+      optionsBtn,
       insertAfter,
       insertBefore
     };
-  }
-
-  function findStoryControlsContainer() {
-    // 1. Phương pháp 1: Dựa vào cấu trúc chuẩn xác của Story Header từ progressContainer
-    const progressContainer = findStoryProgressBarContainer();
-    if (progressContainer) {
-      const headerRow = progressContainer.nextElementSibling || 
-                        progressContainer.parentElement?.querySelector('.x6s0dn4.x78zum5.x1xmf6yo, [class*="x1xmf6yo"]') ||
-                        progressContainer.parentElement?.children[1];
-      if (headerRow) {
-        const rightControls = headerRow.lastElementChild;
-        if (rightControls && rightControls !== headerRow.firstElementChild) {
-          const res = setupControlsFromRightContainer(rightControls);
-          if (res) return res;
-        }
-      }
-    }
-
-    // 2. Phương pháp 2: Tìm container header story (.xoqlrxr, header, v.v.)
-    const storyHeaders = Array.from(document.querySelectorAll('.xoqlrxr, [class*="xoqlrxr"], section header, div[role="dialog"] header'));
-    for (const sh of storyHeaders) {
-      const r = sh.getBoundingClientRect();
-      if (r.top >= 0 && r.top < 150 && r.width > 200) {
-        const headerRow = sh.querySelector('.x6s0dn4.x78zum5.x1xmf6yo, [class*="x1xmf6yo"]') ||
-                          sh.querySelector('.x78zum5:last-child, [class*="x78zum5"]:last-child');
-        const rightControls = headerRow?.lastElementChild || headerRow;
-        if (rightControls && rightControls.children.length > 0) {
-          const res = setupControlsFromRightContainer(rightControls);
-          if (res) return res;
-        }
-      }
-    }
-
-    // 3. Phương pháp 3: Quét các nút Menu/Pause/Options ở góc trên bên phải màn hình
-    const topButtons = Array.from(document.querySelectorAll('div[role="button"], button'))
-      .filter(btn => {
-        if (btn.classList.contains('ig-story-download-btn') || btn.classList.contains('ig-vctl-btn')) return false;
-        const r = btn.getBoundingClientRect();
-        return r.top >= 0 && r.top < 160 && r.right > (window.innerWidth / 2) && r.width >= 10 && r.height >= 10;
-      });
-
-    for (const btn of topButtons) {
-      const aria = (btn.getAttribute('aria-label') || '').toLowerCase();
-      const svgAria = (btn.querySelector('svg')?.getAttribute('aria-label') || '').toLowerCase();
-      const title = (btn.getAttribute('title') || '').toLowerCase();
-      const label = `${aria} ${svgAria} ${title}`;
-      const isMenu = btn.getAttribute('aria-haspopup') === 'menu' || /menu|more|options|tùy chọn|khác/i.test(label) || btn.querySelector('svg circle');
-      const isPause = /pause|play|tạm dừng|phát/i.test(label) || btn.querySelector('svg polygon, svg rect');
-      if (isMenu || isPause) {
-        const parent = btn.parentElement;
-        if (parent) {
-          const res = setupControlsFromRightContainer(parent);
-          if (res) return res;
-        }
-      }
-    }
-
-    return null;
   }
 
   function scanAndAttachStoryDownload() {
@@ -4868,29 +4802,6 @@
   }, 3500);
 
   let debounceTimer = null;
-  let fastStoryTimer = null;
-
-  function fastStoryAttach() {
-    if (!window.location.pathname.includes('/stories/')) return;
-    scanAndAttachStoryDownload();
-    scanAndAttachStoryScrubber();
-  }
-
-  // Lắng nghe thao tác chuyển slide (click hoặc phím mũi tên) trong Stories/Highlights để gắn nút ngay lập tức
-  document.addEventListener('click', () => {
-    if (window.location.pathname.includes('/stories/')) {
-      setTimeout(fastStoryAttach, 50);
-      setTimeout(fastStoryAttach, 250);
-    }
-  }, true);
-
-  document.addEventListener('keydown', (e) => {
-    if (window.location.pathname.includes('/stories/') && ['ArrowRight', 'ArrowLeft', ' '].includes(e.key)) {
-      setTimeout(fastStoryAttach, 50);
-      setTimeout(fastStoryAttach, 250);
-    }
-  }, true);
-
   const observer = new MutationObserver((mutations) => {
     if (document.hidden) return;
     // Chỉ kích hoạt khi có phần tử thực sự thêm/bớt trong DOM
@@ -4902,16 +4813,6 @@
       }
     }
     if (!hasStructuralChanges) return;
-
-    // Phản hồi siêu tốc cho Stories / Highlights (50ms thay vì chờ debounce 450ms)
-    if (window.location.pathname.includes('/stories/')) {
-      if (!fastStoryTimer) {
-        fastStoryTimer = setTimeout(() => {
-          fastStoryTimer = null;
-          fastStoryAttach();
-        }, 50);
-      }
-    }
 
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
