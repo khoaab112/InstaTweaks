@@ -2005,173 +2005,115 @@ div:has(> [data-ig-vctl-container="true"]) > div > [role="button"]:not(.ig-vctl-
 }
 
 /* ========================================================
-   E. THANH TRƯỢT STORY & HIGHLIGHTS (v2.5.0)
+   E. THANH TRƯỢT STORY & HIGHLIGHTS TRÊN ĐỈNH (v2.5.0)
+   Custom trực tiếp từ thanh tiến trình mặc định của Instagram
    ======================================================== */
 
-/* Thanh tiến trình tinh gọn sát đáy Story (Loại bỏ hoàn toàn group đen xì che màn hình) */
+/* Ẩn triệt để thanh đáy cũ nếu còn tồn tại */
 .ig-story-scrubber-bar {
-  position: fixed;
-  z-index: 10005;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 12px 6px 12px;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.2) 65%, transparent 100%) !important;
-  border: none !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  color: #ffffff;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  user-select: none;
-  -webkit-user-select: none;
-  box-sizing: border-box;
-  opacity: 1;
-  pointer-events: auto;
-  transition: opacity 0.2s ease;
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
-.ig-story-sc-play {
-  background: transparent !important;
-  border: none !important;
-  color: #ffffff !important;
-  width: 26px !important;
-  height: 26px !important;
-  padding: 0 !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+/* Custom style cho thanh tiến trình đỉnh Story theo style InstaTweaks */
+.ig-story-custom-progress {
   cursor: pointer !important;
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.9)) !important;
-  opacity: 0.95;
-  transition: transform 0.12s ease, opacity 0.12s ease;
-  flex-shrink: 0;
+  touch-action: none !important;
+  z-index: 10005 !important;
+  padding: 4px 0 !important;
+  box-sizing: border-box !important;
 }
 
-.ig-story-sc-play:hover {
-  opacity: 1;
-  transform: scale(1.15);
+.ig-story-custom-progress > div {
+  transition: height 0.12s ease !important;
+  cursor: pointer !important;
 }
 
-.ig-story-sc-play:active {
-  transform: scale(0.9);
+.ig-story-custom-progress:hover > div,
+.ig-story-custom-progress.is-dragging > div {
+  height: 5.5px !important;
+  border-radius: 3px !important;
 }
 
-.ig-story-sc-play svg {
-  width: 15px;
-  height: 15px;
-  fill: #ffffff;
+/* Đổi màu vạch fill tiến trình đang chạy sang dải màu gradient thương hiệu */
+.ig-story-custom-progress [style*="scaleX"],
+.ig-story-custom-progress [style*="width"],
+.ig-story-custom-progress > div > div {
+  background: linear-gradient(90deg, #ff8a00, #e52e71, #ff3366) !important;
+  border-radius: inherit !important;
 }
 
-.ig-story-sc-track-wrap {
-  flex: 1 1 auto;
-  min-width: 60px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-  position: relative;
-  cursor: pointer;
-  touch-action: none;
-  padding: 6px 0;
-  box-sizing: border-box;
-}
-
-.ig-story-sc-track {
-  width: 100%;
-  height: 3.5px;
-  background: rgba(255, 255, 255, 0.38);
-  border-radius: 2px;
-  position: relative;
-  transition: height 0.12s ease;
-  pointer-events: none;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
-}
-
-.ig-story-sc-track-wrap:hover .ig-story-sc-track,
-.ig-story-scrubber-bar.is-dragging .ig-story-sc-track {
-  height: 5.5px;
-  border-radius: 3px;
-}
-
-.ig-story-sc-fill {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  width: 0%;
-  background: linear-gradient(90deg, #ff8a00, #e52e71, #ff3366);
-  border-radius: inherit;
-  pointer-events: none;
-}
-
-.ig-story-sc-thumb {
-  position: absolute;
-  top: 50%;
-  left: 0%;
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: #ffffff;
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.85);
-  transform: translate(-50%, -50%) scale(0);
-  transition: transform 0.12s ease;
-  pointer-events: none;
-  z-index: 2;
-}
-
-.ig-story-sc-track-wrap:hover .ig-story-sc-thumb,
-.ig-story-scrubber-bar.is-dragging .ig-story-sc-thumb {
-  transform: translate(-50%, -50%) scale(1);
-}
-
-.ig-story-scrubber-bar.is-dragging .ig-story-sc-fill,
-.ig-story-scrubber-bar.is-dragging .ig-story-sc-thumb {
-  transition: none !important;
-}
-
-.ig-story-sc-tooltip {
-  position: absolute;
-  bottom: 22px;
-  transform: translateX(-50%);
-  background: rgba(10, 10, 15, 0.95);
-  color: #ffffff;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 10.5px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  pointer-events: none;
+/* Chấm thumb tròn trắng định vị tiến trình */
+.ig-story-top-thumb {
+  position: fixed !important;
+  width: 11px !important;
+  height: 11px !important;
+  border-radius: 50% !important;
+  background: #ffffff !important;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.9) !important;
+  transform: translate(-50%, -50%) !important;
+  pointer-events: none !important;
+  z-index: 10008 !important;
   opacity: 0;
-  transition: opacity 0.12s ease;
-  white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  transition: opacity 0.15s ease !important;
 }
 
-.ig-story-sc-time {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 11px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: #ffffff;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
-  display: flex;
-  align-items: center;
-  gap: 2.5px;
-  flex-shrink: 0;
-  letter-spacing: 0.2px;
-  user-select: none;
-  white-space: nowrap;
+/* Tooltip xem trước thời gian khi rê chuột trên thanh đỉnh */
+.ig-story-top-tooltip {
+  position: fixed !important;
+  transform: translateX(-50%) !important;
+  background: rgba(12, 12, 16, 0.92) !important;
+  color: #ffffff !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
+  font-variant-numeric: tabular-nums !important;
+  pointer-events: none !important;
+  opacity: 0;
+  transition: opacity 0.12s ease !important;
+  white-space: nowrap !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  z-index: 10009 !important;
 }
 
-.ig-story-sc-cur {
-  color: #ffffff;
+/* Badge hiển thị thời gian ở bên phải thanh tiến trình đỉnh */
+.ig-story-top-time {
+  position: fixed !important;
+  z-index: 10006 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums !important;
+  color: #ffffff !important;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9) !important;
+  background: rgba(0, 0, 0, 0.35) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  padding: 1.5px 7px !important;
+  border-radius: 9999px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 2.5px !important;
+  user-select: none !important;
+  white-space: nowrap !important;
+  pointer-events: none !important;
+  transition: opacity 0.2s ease !important;
 }
 
-.ig-story-sc-sep {
-  opacity: 0.55;
+.ig-story-top-time .ig-story-sc-cur {
+  color: #ffffff !important;
 }
 
-.ig-story-sc-dur {
-  color: rgba(255, 255, 255, 0.85);
+.ig-story-top-time .ig-story-sc-sep {
+  opacity: 0.6 !important;
+}
+
+.ig-story-top-time .ig-story-sc-dur {
+  color: rgba(255, 255, 255, 0.85) !important;
 }

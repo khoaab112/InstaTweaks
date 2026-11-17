@@ -2229,266 +2229,260 @@
     }
   }
 
-  // --- 8.1. THANH TRƯỢT STORY & HIGHLIGHTS (v2.5.0 - Tối ưu bộ nhớ) ---
+  // --- 8.1. THANH TRƯỢT STORY & HIGHLIGHTS (v2.5.0 - Custom trực tiếp từ thanh đỉnh của IG) ---
   let activeStoryScrubber = null;
-  let isStoryGlobalMoveAttached = false;
 
   function scanAndAttachStoryScrubber() {
+    // 1. Dọn dẹp triệt để bất kỳ thanh đáy cũ nào nếu còn sót lại
+    const oldBar = document.querySelector('.ig-story-scrubber-bar');
+    if (oldBar) oldBar.remove();
+
     if (!window.location.pathname.includes('/stories/')) {
       if (activeStoryScrubber) {
         if (activeStoryScrubber.cleanup) activeStoryScrubber.cleanup();
-        if (activeStoryScrubber.bar) activeStoryScrubber.bar.style.display = 'none';
         activeStoryScrubber = null;
       }
+      const t = document.querySelector('.ig-story-top-time');
+      if (t) t.remove();
+      const th = document.querySelector('.ig-story-top-thumb');
+      if (th) th.remove();
+      const tt = document.querySelector('.ig-story-top-tooltip');
+      if (tt) tt.remove();
       return;
     }
 
     const storyVideo = getActiveStoryVideo();
     if (!storyVideo) {
-      if (activeStoryScrubber?.bar) {
-        activeStoryScrubber.bar.style.display = 'none';
-      }
+      const t = document.querySelector('.ig-story-top-time');
+      if (t) t.style.display = 'none';
+      const th = document.querySelector('.ig-story-top-thumb');
+      if (th) th.style.opacity = '0';
       return;
     }
 
     ensureVideoUnmuted(storyVideo);
 
-    // Nếu đã gắn đúng video này và bar đang tồn tại thì chỉ đảm bảo hiển thị & cập nhật vị trí
-    if (activeStoryScrubber && activeStoryScrubber.video === storyVideo && activeStoryScrubber.bar.isConnected) {
-      activeStoryScrubber.bar.style.display = 'flex';
-      if (activeStoryScrubber.updatePos) activeStoryScrubber.updatePos();
+    const progressContainer = findStoryProgressBarContainer();
+    if (!progressContainer) return;
+
+    // Nếu đã gắn đúng video và progress container này thì chỉ cập nhật vị trí & thời gian
+    if (activeStoryScrubber && activeStoryScrubber.video === storyVideo && activeStoryScrubber.container === progressContainer) {
+      if (activeStoryScrubber.updateUI) activeStoryScrubber.updateUI();
       return;
     }
 
-    // Nếu video thay đổi -> gỡ bỏ triệt để listener cũ
+    // Nếu video hoặc slide thay đổi -> gỡ bỏ listener cũ
     if (activeStoryScrubber?.cleanup) {
       activeStoryScrubber.cleanup();
     }
 
-    let bar = document.querySelector('.ig-story-scrubber-bar');
-    // Nếu bar cũ còn chứa các nút thừa (rewind, forward, speed) thì gỡ đi để tạo giao diện 3 phần tối giản
-    if (bar && (bar.querySelector('.ig-story-sc-rewind') || bar.querySelector('.ig-story-sc-speed'))) {
-      bar.remove();
-      bar = null;
+    // 2. Custom style cho thanh tiến trình đỉnh của Instagram
+    progressContainer.classList.add('ig-story-custom-progress');
+    progressContainer.style.setProperty('width', 'calc(100% - 80px)', 'important');
+    progressContainer.style.setProperty('box-sizing', 'border-box', 'important');
+
+    // 3. Tạo Badge hiển thị thời gian ở bên phải thanh tiến trình đỉnh
+    let timeBadge = document.querySelector('.ig-story-top-time');
+    if (!timeBadge) {
+      timeBadge = document.createElement('div');
+      timeBadge.className = 'ig-story-top-time';
+      timeBadge.innerHTML = `<span class="ig-story-sc-cur">0:00</span><span class="ig-story-sc-sep">/</span><span class="ig-story-sc-dur">0:00</span>`;
+      document.body.appendChild(timeBadge);
+    }
+    timeBadge.style.display = 'flex';
+
+    // 4. Tạo chấm Thumb tròn định vị
+    let thumbEl = document.querySelector('.ig-story-top-thumb');
+    if (!thumbEl) {
+      thumbEl = document.createElement('div');
+      thumbEl.className = 'ig-story-top-thumb';
+      document.body.appendChild(thumbEl);
     }
 
-    if (!bar) {
-      bar = document.createElement('div');
-      bar.className = 'ig-story-scrubber-bar';
-      bar.innerHTML = `
-        <button class="ig-story-sc-btn ig-story-sc-play" type="button" title="Phát / Tạm dừng (Space)">
-          ${storyVideo.paused ? SVG_PLAY : SVG_PAUSE}
-        </button>
-        <div class="ig-story-sc-track-wrap" title="Kéo hoặc bấm để tua Story">
-          <div class="ig-story-sc-track">
-            <div class="ig-story-sc-fill"></div>
-            <div class="ig-story-sc-thumb"></div>
-            <div class="ig-story-sc-tooltip">0:00</div>
-          </div>
-        </div>
-        <div class="ig-story-sc-time">
-          <span class="ig-story-sc-cur">0:00</span>
-          <span class="ig-story-sc-sep">/</span>
-          <span class="ig-story-sc-dur">0:00</span>
-        </div>
-      `;
-
-      const stopBubble = (e) => {
-        if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'mouseup') return;
-        e.stopPropagation();
-      };
-      bar.addEventListener('click', stopBubble);
-      bar.addEventListener('pointerdown', stopBubble);
-      bar.addEventListener('mousedown', stopBubble);
-
-      document.body.appendChild(bar);
+    // 5. Tạo Tooltip bong bóng xem trước thời gian khi rê chuột
+    let tooltipEl = document.querySelector('.ig-story-top-tooltip');
+    if (!tooltipEl) {
+      tooltipEl = document.createElement('div');
+      tooltipEl.className = 'ig-story-top-tooltip';
+      tooltipEl.textContent = '0:00';
+      document.body.appendChild(tooltipEl);
     }
 
-    bar.style.display = 'flex';
+    const curEl = timeBadge.querySelector('.ig-story-sc-cur');
+    const durEl = timeBadge.querySelector('.ig-story-sc-dur');
 
-    const playBtn = bar.querySelector('.ig-story-sc-play');
-    const trackWrap = bar.querySelector('.ig-story-sc-track-wrap');
-    const track = bar.querySelector('.ig-story-sc-track');
-    const fill = bar.querySelector('.ig-story-sc-fill');
-    const thumb = bar.querySelector('.ig-story-sc-thumb');
-    const tooltip = bar.querySelector('.ig-story-sc-tooltip');
-    const curTimeEl = bar.querySelector('.ig-story-sc-cur');
-    const durTimeEl = bar.querySelector('.ig-story-sc-dur');
+    const updateTopTimePos = () => {
+      if (!progressContainer.isConnected || !timeBadge.isConnected) return;
+      const pRect = progressContainer.getBoundingClientRect();
+      if (pRect.width <= 0) return;
+      timeBadge.style.top = `${pRect.top + pRect.height / 2}px`;
+      timeBadge.style.left = `${pRect.right + 8}px`;
+      timeBadge.style.transform = 'translateY(-50%)';
+    };
 
     let isDraggingStory = false;
+
+    const getActiveSegment = () => {
+      const segments = Array.from(progressContainer.children).filter(el => !el.classList.contains('ig-story-top-time'));
+      if (segments.length <= 1) return segments[0] || progressContainer;
+      const activeIdx = getActiveStorySlideIndex() || 0;
+      return segments[activeIdx] || segments[0] || progressContainer;
+    };
 
     const updateStoryUI = () => {
       if (isDraggingStory) return;
       const cur = storyVideo.currentTime || 0;
       const dur = storyVideo.duration || 0;
-      const pct = dur > 0 ? Math.min(100, (cur / dur) * 100) : 0;
+      if (curEl) curEl.textContent = formatTime(cur);
+      if (durEl && dur > 0) durEl.textContent = formatTime(dur);
+      updateTopTimePos();
 
-      fill.style.width = `${pct}%`;
-      thumb.style.left = `${pct}%`;
-
-      curTimeEl.textContent = formatTime(cur);
-      if (dur > 0) durTimeEl.textContent = formatTime(dur);
+      const activeSeg = getActiveSegment();
+      if (activeSeg && dur > 0) {
+        const segRect = activeSeg.getBoundingClientRect();
+        const pct = Math.min(1, Math.max(0, cur / dur));
+        if (thumbEl) {
+          thumbEl.style.left = `${segRect.left + pct * segRect.width}px`;
+          thumbEl.style.top = `${segRect.top + segRect.height / 2}px`;
+        }
+      }
     };
 
-    const onPlay = () => { playBtn.innerHTML = SVG_PAUSE; bar.classList.remove('is-paused'); };
-    const onPause = () => { playBtn.innerHTML = SVG_PLAY; bar.classList.add('is-paused'); };
+    // 6. Xử lý thao tác kéo hoặc bấm để tua trực tiếp trên thanh đỉnh
+    const onProgressPointerDown = (e) => {
+      if (e.button !== undefined && e.button !== 0) return;
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      e.preventDefault();
+
+      const activeSeg = getActiveSegment();
+      const segRect = activeSeg.getBoundingClientRect();
+      if (segRect.width <= 0) return;
+
+      isDraggingStory = true;
+      progressContainer.classList.add('is-dragging');
+
+      const applyScrub = (clientX) => {
+        const pct = Math.max(0, Math.min(1, (clientX - segRect.left) / segRect.width));
+        const dur = storyVideo.duration || 0;
+        if (dur > 0) {
+          storyVideo.currentTime = pct * dur;
+        }
+        if (curEl) curEl.textContent = formatTime(pct * dur);
+        if (thumbEl) {
+          thumbEl.style.left = `${segRect.left + pct * segRect.width}px`;
+          thumbEl.style.top = `${segRect.top + segRect.height / 2}px`;
+          thumbEl.style.opacity = '1';
+        }
+        if (tooltipEl) {
+          tooltipEl.textContent = formatTime(pct * dur);
+          tooltipEl.style.left = `${segRect.left + pct * segRect.width}px`;
+          tooltipEl.style.top = `${segRect.bottom + 8}px`;
+          tooltipEl.style.opacity = '1';
+        }
+      };
+
+      applyScrub(e.clientX);
+
+      const onPointerMove = (moveEvt) => {
+        if (!isDraggingStory) return;
+        if (moveEvt.buttons === 0 || (moveEvt.buttons !== undefined && (moveEvt.buttons & 1) === 0)) {
+          onPointerUp(moveEvt);
+          return;
+        }
+        applyScrub(moveEvt.clientX);
+      };
+
+      const onPointerUp = () => {
+        if (!isDraggingStory) return;
+        isDraggingStory = false;
+        progressContainer.classList.remove('is-dragging');
+        if (tooltipEl) tooltipEl.style.opacity = '0';
+        window.removeEventListener('pointermove', onPointerMove, true);
+        window.removeEventListener('pointerup', onPointerUp, true);
+        window.removeEventListener('pointercancel', onPointerUp, true);
+        window.removeEventListener('mouseup', onPointerUp, true);
+        window.removeEventListener('blur', onPointerUp, true);
+      };
+
+      window.addEventListener('pointermove', onPointerMove, true);
+      window.addEventListener('pointerup', onPointerUp, true);
+      window.addEventListener('pointercancel', onPointerUp, true);
+      window.addEventListener('mouseup', onPointerUp, true);
+      window.addEventListener('blur', onPointerUp, true);
+    };
+
+    const stopPropagationOnly = (e) => {
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      e.preventDefault();
+    };
+
+    progressContainer.addEventListener('click', stopPropagationOnly, true);
+    progressContainer.addEventListener('pointerdown', onProgressPointerDown, true);
+
+    const onPointerEnter = () => {
+      if (thumbEl) thumbEl.style.opacity = '1';
+    };
+
+    const onPointerLeave = () => {
+      if (!isDraggingStory) {
+        if (tooltipEl) tooltipEl.style.opacity = '0';
+        if (thumbEl) thumbEl.style.opacity = '0';
+      }
+    };
+
+    const onPointerHoverMove = (e) => {
+      if (isDraggingStory) return;
+      const activeSeg = getActiveSegment();
+      const segRect = activeSeg.getBoundingClientRect();
+      if (segRect.width <= 0) return;
+      const pct = Math.max(0, Math.min(1, (e.clientX - segRect.left) / segRect.width));
+      const dur = storyVideo.duration || 0;
+      if (tooltipEl) {
+        tooltipEl.textContent = formatTime(pct * dur);
+        tooltipEl.style.left = `${segRect.left + pct * segRect.width}px`;
+        tooltipEl.style.top = `${segRect.bottom + 8}px`;
+        tooltipEl.style.opacity = '1';
+      }
+      if (thumbEl) {
+        thumbEl.style.left = `${segRect.left + pct * segRect.width}px`;
+        thumbEl.style.top = `${segRect.top + segRect.height / 2}px`;
+        thumbEl.style.opacity = '1';
+      }
+    };
+
+    progressContainer.addEventListener('pointerenter', onPointerEnter);
+    progressContainer.addEventListener('pointerleave', onPointerLeave);
+    progressContainer.addEventListener('pointermove', onPointerHoverMove);
 
     storyVideo.addEventListener('timeupdate', updateStoryUI);
     storyVideo.addEventListener('loadedmetadata', updateStoryUI);
     storyVideo.addEventListener('durationchange', updateStoryUI);
-    storyVideo.addEventListener('play', onPlay);
-    storyVideo.addEventListener('pause', onPause);
-
-    playBtn.onclick = (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-      if (storyVideo.paused) storyVideo.play().catch(() => { });
-      else storyVideo.pause();
-    };
-
-    const getStoryScrubPct = (e) => {
-      const rect = track.getBoundingClientRect();
-      if (rect.width <= 0) return 0;
-      const clientX = e.clientX ?? (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
-      return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    };
-
-    trackWrap.onpointerenter = () => { tooltip.style.opacity = '1'; };
-    trackWrap.onpointerleave = () => { if (!isDraggingStory) tooltip.style.opacity = '0'; };
-
-    const onStoryScrubEnd = (e) => {
-      if (!isDraggingStory) return;
-      isDraggingStory = false;
-      bar.classList.remove('is-dragging');
-      if (e && e.pointerId !== undefined) {
-        try { trackWrap.releasePointerCapture(e.pointerId); } catch (_) { }
-      }
-      window.removeEventListener('pointerup', onStoryScrubEnd, true);
-      window.removeEventListener('pointercancel', onStoryScrubEnd, true);
-      window.removeEventListener('mouseup', onStoryScrubEnd, true);
-      window.removeEventListener('blur', onStoryScrubEnd, true);
-      tooltip.style.opacity = '0';
-    };
-
-    trackWrap.onpointermove = (e) => {
-      if (isDraggingStory && (e.buttons === 0 || (e.buttons !== undefined && (e.buttons & 1) === 0))) {
-        onStoryScrubEnd(e);
-        return;
-      }
-      const pct = getStoryScrubPct(e);
-      const dur = storyVideo.duration || 0;
-      tooltip.textContent = formatTime(pct * dur);
-      tooltip.style.left = `${(pct * 100).toFixed(1)}%`;
-
-      if (isDraggingStory && dur > 0) {
-        storyVideo.currentTime = pct * dur;
-        fill.style.width = `${pct * 100}%`;
-        thumb.style.left = `${pct * 100}%`;
-        curTimeEl.textContent = formatTime(pct * dur);
-      }
-    };
-
-    trackWrap.onpointerdown = (e) => {
-      if (e.button !== undefined && e.button !== 0) return;
-      e.stopPropagation();
-      e.preventDefault();
-      isDraggingStory = true;
-      bar.classList.add('is-dragging');
-      try { trackWrap.setPointerCapture(e.pointerId); } catch (_) { }
-
-      const pct = getStoryScrubPct(e);
-      const dur = storyVideo.duration || 0;
-      if (dur > 0) {
-        storyVideo.currentTime = pct * dur;
-        fill.style.width = `${pct * 100}%`;
-        thumb.style.left = `${pct * 100}%`;
-        curTimeEl.textContent = formatTime(pct * dur);
-      }
-      tooltip.style.opacity = '1';
-      tooltip.textContent = formatTime(pct * dur);
-      tooltip.style.left = `${(pct * 100).toFixed(1)}%`;
-
-      window.addEventListener('pointerup', onStoryScrubEnd, true);
-      window.addEventListener('pointercancel', onStoryScrubEnd, true);
-      window.addEventListener('mouseup', onStoryScrubEnd, true);
-      window.addEventListener('blur', onStoryScrubEnd, true);
-    };
-
-    trackWrap.onpointerup = onStoryScrubEnd;
-    trackWrap.onpointercancel = onStoryScrubEnd;
-
-    const updateStoryBarPosition = () => {
-      if (!storyVideo || !storyVideo.isConnected || !bar || !bar.isConnected) return;
-      const r = storyVideo.getBoundingClientRect();
-      if (r.width <= 0 || r.height <= 0) return;
-
-      const replyInput = document.querySelector('form textarea, form input, [role="region"] textarea, input[placeholder*="tin nhắn" i], input[placeholder*="message" i]');
-      let bottomPx = Math.max(0, window.innerHeight - r.bottom);
-      if (replyInput) {
-        const inputRect = replyInput.getBoundingClientRect();
-        if (inputRect.top > 0 && inputRect.top < r.bottom) {
-          bottomPx = Math.max(bottomPx, window.innerHeight - inputRect.top);
-        }
-      }
-
-      bar.style.bottom = `${bottomPx}px`;
-      bar.style.left = `${r.left}px`;
-      bar.style.width = `${r.width}px`;
-      bar.style.transform = 'none';
-    };
-
-    updateStoryBarPosition();
-    window.addEventListener('resize', updateStoryBarPosition);
-
-    let storyHideTimer = null;
-    const resetStoryIdleTimer = () => {
-      if (!bar.isConnected) return;
-      bar.classList.add('is-active');
-      clearTimeout(storyHideTimer);
-      if (!storyVideo.paused && !isDraggingStory) {
-        storyHideTimer = setTimeout(() => {
-          if (!storyVideo.paused && !isDraggingStory && !bar.matches(':hover')) {
-            bar.classList.remove('is-active');
-          }
-        }, 2800);
-      }
-    };
-
-    // Chỉ đăng ký pointermove trên window một lần duy nhất
-    if (!isStoryGlobalMoveAttached) {
-      isStoryGlobalMoveAttached = true;
-      window.addEventListener('pointermove', () => {
-        if (activeStoryScrubber?._resetTimerFn) {
-          activeStoryScrubber._resetTimerFn();
-        }
-      }, { passive: true });
-    }
+    window.addEventListener('resize', updateTopTimePos);
 
     activeStoryScrubber = {
       video: storyVideo,
-      bar,
-      updatePos: updateStoryBarPosition,
-      _resetTimerFn: resetStoryIdleTimer,
+      container: progressContainer,
+      updateUI: updateStoryUI,
       cleanup: () => {
         storyVideo.removeEventListener('timeupdate', updateStoryUI);
         storyVideo.removeEventListener('loadedmetadata', updateStoryUI);
         storyVideo.removeEventListener('durationchange', updateStoryUI);
-        storyVideo.removeEventListener('play', onPlay);
-        storyVideo.removeEventListener('pause', onPause);
-        window.removeEventListener('resize', updateStoryBarPosition);
-        clearTimeout(storyHideTimer);
+        window.removeEventListener('resize', updateTopTimePos);
+        progressContainer.removeEventListener('click', stopPropagationOnly, true);
+        progressContainer.removeEventListener('pointerdown', onProgressPointerDown, true);
+        progressContainer.removeEventListener('pointerenter', onPointerEnter);
+        progressContainer.removeEventListener('pointerleave', onPointerLeave);
+        progressContainer.removeEventListener('pointermove', onPointerHoverMove);
+        if (timeBadge) timeBadge.style.display = 'none';
+        if (thumbEl) thumbEl.style.opacity = '0';
+        if (tooltipEl) tooltipEl.style.opacity = '0';
       }
     };
 
-    if (storyVideo.paused) {
-      playBtn.innerHTML = SVG_PLAY;
-      bar.classList.add('is-paused');
-    } else {
-      playBtn.innerHTML = SVG_PAUSE;
-      bar.classList.remove('is-paused');
-    }
     updateStoryUI();
-    resetStoryIdleTimer();
+    updateTopTimePos();
   }
 
   // LẮNG NGHE SỰ KIỆN PHÁT CỦA MỌI VIDEO TRÊN TRANG ĐỂ TỰ ĐỘNG BẬT TIẾNG (Feed, Reels, Dialog, Stories)
@@ -2529,16 +2523,20 @@
   // Tìm container chứa các vạch tiến trình (progress bar) trên Stories / Highlights
   function findStoryProgressBarContainer() {
     const allDivs = Array.from(document.body.querySelectorAll('div')).filter(d => {
+      if (d.closest('.ig-video-controller, .ig-music-feed-bar, .ig-story-scrubber-bar')) return false;
       const count = d.children.length;
-      if (count < 2 || count > 100) return false;
+      if (count < 1 || count > 100) return false;
       const r = d.getBoundingClientRect();
       // Vạch tiến trình Story luôn nằm ở đỉnh (top <= 140px) và có chiều cao mảnh (height <= 25px)
       if (r.top < 0 || r.top > 140) return false;
       if (r.width < 120 || r.height > 25 || r.height < 1) return false;
-      // Phải là thanh tiến trình ngang: các con nằm nối tiếp nhau từ trái sang phải
+      if (count > 1) {
+        const c0 = d.children[0].getBoundingClientRect();
+        const c1 = d.children[1].getBoundingClientRect();
+        return c1.left > c0.left;
+      }
       const c0 = d.children[0].getBoundingClientRect();
-      const c1 = d.children[1].getBoundingClientRect();
-      return c1.left > c0.left;
+      return c0.width > 80 && c0.height <= 25;
     });
 
     if (allDivs.length === 0) return null;
