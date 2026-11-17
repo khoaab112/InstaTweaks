@@ -1183,12 +1183,15 @@ body[class*="dark"] .ig-profile-download-btn:hover,
 .ig-success-stats-pill {
   display: inline-flex !important;
   align-items: center !important;
-  gap: 10px !important;
-  padding: 6px 14px !important;
+  justify-content: center !important;
+  flex-wrap: wrap !important;
+  gap: 6px 10px !important;
+  padding: 8px 16px !important;
   background: rgba(255, 255, 255, 0.06) !important;
   border-radius: 20px !important;
   font-size: 12px !important;
   color: #ffffff !important;
+  line-height: 1.5 !important;
 }
 
 .ig-success-close-btn {

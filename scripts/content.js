@@ -2304,7 +2304,9 @@
 
             filesToZip.push({
               name: item.filename,
-              data: new Uint8Array(arrayBuf)
+              data: new Uint8Array(arrayBuf),
+              category: item.category,
+              type: item.type
             });
 
             if (isCancelled) break;
@@ -2376,6 +2378,56 @@
 
     await new Promise(r => setTimeout(r, 350));
 
+    // Thống kê chi tiết số lượng file theo từng thể loại
+    let imageCount = 0;
+    let videoCount = 0;
+    let storyCount = 0;
+    let highlightCount = 0;
+
+    for (const f of filesToZip) {
+      if (f.category === 'story' || f.name.startsWith('stories/')) {
+        storyCount++;
+      } else if (f.category === 'highlight' || f.name.startsWith('highlights/')) {
+        highlightCount++;
+      } else if (f.type === 'video' || f.name.endsWith('.mp4') || f.name.startsWith('videos/')) {
+        videoCount++;
+      } else {
+        imageCount++;
+      }
+    }
+
+    const statsSegments = [];
+    if (selectedMode === 'all') {
+      statsSegments.push(`<span>🖼️ <strong>${imageCount}</strong> ảnh</span>`);
+      statsSegments.push(`<span>•</span>`);
+      statsSegments.push(`<span>🎬 <strong>${videoCount}</strong> video</span>`);
+      statsSegments.push(`<span>•</span>`);
+      statsSegments.push(`<span>⏱️ <strong>${storyCount}</strong> story</span>`);
+      statsSegments.push(`<span>•</span>`);
+      statsSegments.push(`<span>✨ <strong>${highlightCount}</strong> highlight</span>`);
+      statsSegments.push(`<span>•</span>`);
+    } else {
+      if (imageCount > 0 || selectedMode === 'photos') {
+        statsSegments.push(`<span>🖼️ <strong>${imageCount}</strong> ảnh</span>`);
+        statsSegments.push(`<span>•</span>`);
+      }
+      if (videoCount > 0 || selectedMode === 'videos') {
+        statsSegments.push(`<span>🎬 <strong>${videoCount}</strong> video</span>`);
+        statsSegments.push(`<span>•</span>`);
+      }
+      if (storyCount > 0 || selectedMode === 'stories') {
+        statsSegments.push(`<span>⏱️ <strong>${storyCount}</strong> story</span>`);
+        statsSegments.push(`<span>•</span>`);
+      }
+      if (highlightCount > 0 || selectedMode === 'stories') {
+        statsSegments.push(`<span>✨ <strong>${highlightCount}</strong> highlight</span>`);
+        statsSegments.push(`<span>•</span>`);
+      }
+    }
+    statsSegments.push(`<span>💾 <strong>${totalZipSizeMB} MB</strong></span>`);
+
+    const typeSuccessTitle = `${modeLabels[selectedMode] || 'Tải xuống'} thành công!`;
+
     // MÀN HÌNH CHÚC MỪNG THÀNH CÔNG (CELEBRATION VIEW)
     modal.innerHTML = `
       <div class="ig-profile-success-view">
@@ -2384,16 +2436,12 @@
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
         </div>
-        <div class="ig-success-title">Tải xuống & Đóng gói thành công!</div>
+        <div class="ig-success-title">${typeSuccessTitle}</div>
         <div class="ig-success-desc">
-          Toàn bộ dữ liệu của <strong>@${username}</strong> đã được nén an toàn và lưu về máy tính của bạn.
+          <strong>@${username}</strong> đã được tải thành công.
         </div>
         <div class="ig-success-stats-pill">
-          <span>📁 <strong>${filesToZip.length}</strong> file</span>
-          <span>•</span>
-          <span>💾 <strong>${totalZipSizeMB} MB</strong></span>
-          <span>•</span>
-          <span>📦 <strong>${modeLabels[selectedMode] || selectedMode}</strong></span>
+          ${statsSegments.join('\n          ')}
         </div>
         <div style="font-size:11.5px;color:rgba(255,255,255,0.5);word-break:break-all;margin-top:2px;">
           Tên tệp: ${zipFilename}

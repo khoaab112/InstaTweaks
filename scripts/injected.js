@@ -19,6 +19,7 @@
   const postMediaMap = new Map();
   const storyMediaMap = new Map();
   const reelMediaMap = new Map();
+  const cachedHighlights = new Map();
   const capturedVideoUrls = [];
   const activeStoryVideos = [];
   let lastKnownPostDocId = localStorage.getItem('__ig_post_doc_id__') || '8845758582119845';
@@ -325,63 +326,61 @@
 
     const getBestImgUrl = (candidates) => {
       if (!Array.isArray(candidates) || candidates.length === 0) return null;
-      const sorted = [...candidates].sort((a, b) => ((b.width || 0) * (b.height || 0)) - ((a.width || 0) * (a.height || 0)));
+      const sorted = [...candidates].sort((a, b) => (((b.width || b.config_width || 0) * (b.height || b.config_height || 0)) - ((a.width || a.config_width || 0) * (a.height || a.config_height || 0))));
       return sorted[0]?.url || sorted[0]?.src || null;
     };
 
     const getBestVidUrl = (versions) => {
       if (!Array.isArray(versions) || versions.length === 0) return null;
-      const valid = versions.filter(v => (v.width || 0) > 0 && (v.height || 0) > 0);
+      const valid = versions.filter(v => ((v.width || v.config_width || 0) > 0) && ((v.height || v.config_height || 0) > 0));
       const list = valid.length > 0 ? valid : versions;
-      const sorted = [...list].sort((a, b) => ((b.width || 0) * (b.height || 0)) - ((a.width || 0) * (a.height || 0)));
+      const sorted = [...list].sort((a, b) => (((b.width || b.config_width || 0) * (b.height || b.config_height || 0)) - ((a.width || a.config_width || 0) * (a.height || a.config_height || 0))));
       return sorted[0]?.url || sorted[0]?.src || null;
     };
 
     // 1. Carousel media (REST items / v1 API)
     if (Array.isArray(post.carousel_media) && post.carousel_media.length > 0) {
       for (const item of post.carousel_media) {
-        const isVid = item.media_type === 2 || item.is_video === true;
+        const isVid = item.media_type === 2 || item.is_video === true || Boolean(item.video_versions?.length || item.video_url || item.video_resources?.length);
         if (isVid) {
-          const vidUrl = getBestVidUrl(item.video_versions) || item.video_url;
-          if (vidUrl) items.push({ type: 'video', url: vidUrl });
-        } else {
-          const imgUrl = getBestImgUrl(item.image_versions2?.candidates) || item.display_url;
-          if (imgUrl) items.push({ type: 'image', url: imgUrl });
+          const vidUrl = getBestVidUrl(item.video_versions) || getBestVidUrl(item.video_resources) || item.video_url;
+          if (vidUrl) {
+            items.push({ type: 'video', url: vidUrl });
+            continue;
+          }
         }
+        const imgUrl = getBestImgUrl(item.image_versions2?.candidates) || getBestImgUrl(item.display_resources) || item.display_url;
+        if (imgUrl) items.push({ type: 'image', url: imgUrl });
       }
     }
     // 2. Carousel media (GraphQL edge_sidecar_to_children)
     else if (Array.isArray(post.edge_sidecar_to_children?.edges) && post.edge_sidecar_to_children.edges.length > 0) {
       for (const edge of post.edge_sidecar_to_children.edges) {
-        const node = edge.node;
+        const node = edge?.node;
         if (!node) continue;
-        if (node.is_video && node.video_url) {
-          items.push({ type: 'video', url: node.video_url });
-        } else {
-          const imgUrl = getBestImgUrl(node.display_resources) || node.display_url;
-          if (imgUrl) items.push({ type: 'image', url: imgUrl });
+        const isVid = node.is_video || Boolean(node.video_url || node.video_resources?.length || node.video_versions?.length);
+        if (isVid) {
+          const vidUrl = getBestVidUrl(node.video_versions) || getBestVidUrl(node.video_resources) || node.video_url;
+          if (vidUrl) {
+            items.push({ type: 'video', url: vidUrl });
+            continue;
+          }
         }
+        const imgUrl = getBestImgUrl(node.display_resources) || getBestImgUrl(node.image_versions2?.candidates) || node.display_url;
+        if (imgUrl) items.push({ type: 'image', url: imgUrl });
       }
     }
-    // 3. Bài viết đơn lẻ (Single Post):
+    // 3. Bài viết đơn lẻ (Single Post / Reel):
     else {
-      // Phân biệt chính xác giữa Ảnh và Video bằng media_type và is_video:
-      // Lưu ý: Bài viết dạng Ảnh có gắn nhạc sticker thường có video_versions để phát nhạc ngầm,
-      // nhưng media_type === 1 hoặc is_video === false -> 100% PHẢI LÀ ẢNH!
-      const isExplicitImage = post.media_type === 1 || post.is_video === false || post.__typename === 'GraphImage';
-      const isExplicitVideo = (post.media_type === 2 || post.is_video === true || post.__typename === 'GraphVideo') && !isExplicitImage;
+      const hasVid = post.media_type === 2 || post.is_video === true || post.__typename === 'GraphVideo' || Boolean(post.video_versions?.length || post.video_url || post.video_resources?.length);
+      const vidUrl = getBestVidUrl(post.video_versions) || getBestVidUrl(post.video_resources) || post.video_url;
+      const isExplicitImageOnly = (post.media_type === 1 || post.is_video === false || post.__typename === 'GraphImage') && !post.product_type?.includes('clips') && !post.product_type?.includes('reel');
 
-      if (isExplicitImage) {
-        const imgUrl = getBestImgUrl(post.image_versions2?.candidates) || getBestImgUrl(post.display_resources) || post.display_url;
-        if (imgUrl) items.push({ type: 'image', url: imgUrl });
-      } else if (isExplicitVideo) {
-        const vidUrl = getBestVidUrl(post.video_versions) || post.video_url;
-        if (vidUrl) items.push({ type: 'video', url: vidUrl });
+      if (hasVid && vidUrl && !isExplicitImageOnly) {
+        items.push({ type: 'video', url: vidUrl });
       } else {
-        // Dự phòng: Nếu có ảnh
-        const imgUrl = getBestImgUrl(post.image_versions2?.candidates) || post.display_url;
-        const vidUrl = getBestVidUrl(post.video_versions) || post.video_url;
-        if (imgUrl && !post.is_video) {
+        const imgUrl = getBestImgUrl(post.image_versions2?.candidates) || getBestImgUrl(post.display_resources) || post.display_url;
+        if (imgUrl) {
           items.push({ type: 'image', url: imgUrl });
         } else if (vidUrl) {
           items.push({ type: 'video', url: vidUrl });
@@ -664,6 +663,56 @@
     }
   }
 
+  function extractHighlightsFromPayload(obj, visited = new WeakSet(), depth = 0) {
+    if (!obj || typeof obj !== 'object' || depth > 12) return;
+    if (visited.has(obj)) return;
+    visited.add(obj);
+
+    function recordHighlight(id, title) {
+      if (!id) return;
+      const clean = String(id).replace(/^highlight:/, '').trim();
+      if (!clean) return;
+      cachedHighlights.set(clean, {
+        id: clean,
+        title: sanitizePathTitle(title || 'Highlight')
+      });
+    }
+
+    if (obj.edge_highlight_reels && Array.isArray(obj.edge_highlight_reels.edges)) {
+      for (const edge of obj.edge_highlight_reels.edges) {
+        const node = edge?.node;
+        if (node && (node.id || node.pk)) {
+          recordHighlight(node.id || node.pk, node.title);
+        }
+      }
+    }
+
+    const tray = obj.highlight_reels || obj.highlights || obj.highlight_tray || obj.reels_tray;
+    if (Array.isArray(tray)) {
+      for (const t of tray) {
+        if (t && (t.id || t.pk)) {
+          recordHighlight(t.id || t.pk, t.title);
+        }
+      }
+    }
+
+    if ((obj.__typename === 'GraphHighlightReel' || String(obj.id || '').startsWith('highlight:')) && (obj.id || obj.pk)) {
+      recordHighlight(obj.id || obj.pk, obj.title);
+    }
+
+    if (Array.isArray(obj)) {
+      for (let i = 0; i < obj.length; i++) extractHighlightsFromPayload(obj[i], visited, depth + 1);
+    } else {
+      const keys = Object.keys(obj);
+      for (let i = 0; i < keys.length; i++) {
+        const val = obj[keys[i]];
+        if (val && typeof val === 'object') {
+          extractHighlightsFromPayload(val, visited, depth + 1);
+        }
+      }
+    }
+  }
+
   function processPayload(json, fallbackCode = null) {
     if (!json) return;
     try {
@@ -673,6 +722,7 @@
       }
       extractMediaCollections(json, fallbackCode);
       extractStoryItems(json);
+      extractHighlightsFromPayload(json);
     } catch (_) {}
   }
 
@@ -1481,8 +1531,16 @@
 
   // Lấy User ID dạng số (numeric) từ cookie hoặc cây Fiber hoặc DOM
   function findNumericUserId(username) {
-    const isOwn = Boolean(document.querySelector('header a[href*="/accounts/edit/"], header a[href*="/archive/"]'));
+    const clean = String(username || '').toLowerCase().replace(/^@/, '').trim();
     const dsId = document.cookie.match(/(?:^|;\s*)ds_user_id=([^;]+)/)?.[1];
+
+    const isOwn = Boolean(
+      (dsId && document.body.textContent.includes('Edit profile')) ||
+      (dsId && document.body.textContent.includes('Chỉnh sửa trang cá nhân')) ||
+      (dsId && document.body.textContent.includes('View archive')) ||
+      (dsId && document.body.textContent.includes('Xem kho lưu trữ')) ||
+      document.querySelector('header a[href*="/accounts/edit/"], header button, header [role="button"]')
+    );
     if (isOwn && dsId && dsId.match(/^\d+$/)) {
       return dsId;
     }
@@ -1494,7 +1552,7 @@
         if (!fiberKey) continue;
         const queue = [el[fiberKey]];
         let visited = 0;
-        while (queue.length > 0 && visited < 350) {
+        while (queue.length > 0 && visited < 450) {
           const cur = queue.shift();
           visited++;
           if (!cur) continue;
@@ -1504,7 +1562,7 @@
               if (u && (u.id || u.pk)) {
                 const uid = String(u.id || u.pk);
                 if (uid.match(/^\d+$/)) {
-                  if (!username || String(u.username || '').toLowerCase() === username.toLowerCase()) {
+                  if (!clean || String(u.username || '').toLowerCase() === clean) {
                     return uid;
                   }
                 }
@@ -1521,7 +1579,7 @@
       const scripts = document.querySelectorAll('script[type="application/json"], script[data-sjs]');
       for (const s of scripts) {
         const txt = s.textContent || '';
-        if (txt.includes('edge_owner_to_timeline_media') || txt.includes('profile_pic_url')) {
+        if (txt.includes('edge_owner_to_timeline_media') || txt.includes(clean)) {
           const m = txt.match(/"id":\s*"(\d{6,})"/);
           if (m) return m[1];
           const mPk = txt.match(/"pk":\s*"?(\d{6,})"?/);
@@ -1531,6 +1589,119 @@
     } catch (_) {}
 
     return (dsId && dsId.match(/^\d+$/)) ? dsId : null;
+  }
+
+  function searchObjForHighlights(obj, addHighlight, visited = new WeakSet(), depth = 0) {
+    if (!obj || typeof obj !== 'object' || depth > 12) return;
+    if (visited.has(obj)) return;
+    visited.add(obj);
+
+    if (obj.edge_highlight_reels && Array.isArray(obj.edge_highlight_reels.edges)) {
+      for (const edge of obj.edge_highlight_reels.edges) {
+        const node = edge?.node;
+        if (node && (node.id || node.pk)) {
+          addHighlight(node.id || node.pk, node.title);
+        }
+      }
+    }
+
+    const tray = obj.highlight_reels || obj.highlights || obj.highlight_tray || obj.reels_tray || (Array.isArray(obj.tray) ? obj.tray : null);
+    if (Array.isArray(tray)) {
+      for (const t of tray) {
+        if (t && (t.id || t.pk)) {
+          addHighlight(t.id || t.pk, t.title);
+        }
+      }
+    }
+
+    if ((obj.__typename === 'GraphHighlightReel' || String(obj.id || '').startsWith('highlight:')) && (obj.id || obj.pk)) {
+      addHighlight(obj.id || obj.pk, obj.title);
+    }
+
+    if (Array.isArray(obj)) {
+      for (let i = 0; i < obj.length; i++) searchObjForHighlights(obj[i], addHighlight, visited, depth + 1);
+    } else {
+      const keys = Object.keys(obj);
+      for (let i = 0; i < keys.length; i++) {
+        const val = obj[keys[i]];
+        if (val && typeof val === 'object') {
+          searchObjForHighlights(val, addHighlight, visited, depth + 1);
+        }
+      }
+    }
+  }
+
+  function findAllHighlights(username) {
+    const highlights = [];
+    const seenIds = new Set();
+
+    function addHighlight(id, title) {
+      if (!id) return;
+      const cleanId = String(id).replace(/^highlight:/, '').trim();
+      if (!cleanId || seenIds.has(cleanId)) return;
+      seenIds.add(cleanId);
+      highlights.push({
+        id: cleanId,
+        title: sanitizePathTitle(title || 'Highlight')
+      });
+    }
+
+    for (const [id, hl] of cachedHighlights.entries()) {
+      addHighlight(id, hl.title);
+    }
+
+    try {
+      const scripts = document.querySelectorAll('script[type="application/json"], script[data-sjs], script:not([src])');
+      for (const s of scripts) {
+        const txt = s.textContent || '';
+        if (!txt.includes('highlight') && !txt.includes('edge_highlight_reels')) continue;
+        try {
+          const json = JSON.parse(txt);
+          searchObjForHighlights(json, addHighlight);
+        } catch (_) {
+          const matches = txt.matchAll(/"(?:id|pk)":\s*"?(?:highlight:)?(\d{10,})"?,\s*"title":\s*"([^"]+)"/g);
+          for (const m of matches) addHighlight(m[1], m[2]);
+          const matches2 = txt.matchAll(/"title":\s*"([^"]+)",\s*"(?:id|pk)":\s*"?(?:highlight:)?(\d{10,})"?/g);
+          for (const m of matches2) addHighlight(m[2], m[1]);
+        }
+      }
+    } catch (_) {}
+
+    try {
+      const targets = Array.from(document.querySelectorAll('header, main, section, ul, li, div[role="button"], div[role="menu"]'));
+      for (const el of targets) {
+        const fiberKey = Object.keys(el).find(k => k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$'));
+        if (!fiberKey) continue;
+        const queue = [el[fiberKey]];
+        let visited = 0;
+        while (queue.length > 0 && visited < 450) {
+          const cur = queue.shift();
+          visited++;
+          if (!cur) continue;
+          for (const cand of [cur.memoizedProps, cur.memoizedState]) {
+            if (cand && typeof cand === 'object') {
+              searchObjForHighlights(cand, addHighlight);
+            }
+          }
+          if (cur.child) queue.push(cur.child);
+          if (cur.sibling) queue.push(cur.sibling);
+        }
+      }
+    } catch (_) {}
+
+    try {
+      const links = document.querySelectorAll('a[href*="/highlights/"], a[href*="/stories/highlights/"]');
+      for (const a of links) {
+        const href = a.getAttribute('href') || '';
+        const m = href.match(/\/highlights\/([A-Za-z0-9_-]+)/);
+        if (m) {
+          const title = a.querySelector('span, div')?.textContent || a.textContent || 'Highlight';
+          addHighlight(m[1], title);
+        }
+      }
+    } catch (_) {}
+
+    return highlights;
   }
 
   // Lấy chi tiết toàn bộ media của một bài viết (trích xuất đầy đủ tất cả ảnh carousel và video .mp4)
@@ -1723,10 +1894,12 @@
                   if (type === 'photos' && m.type !== 'image') continue;
                   if (type === 'videos' && m.type !== 'video') continue;
 
-                  const ext = m.type === 'video' ? 'mp4' : 'jpg';
-                  const folder = type === 'photos' ? 'photos' : (type === 'videos' ? 'videos' : 'posts');
+                  const isVideo = (m.type === 'video');
+                  const ext = isVideo ? 'mp4' : 'jpg';
+                  // Phân chia thư mục rõ ràng theo loại: photos hoặc videos
+                  const folder = isVideo ? 'videos' : 'photos';
                   const suffix = fullItems.length > 1 ? `_${mIdx + 1}` : '';
-                  const prefix = m.type === 'video' ? 'video' : 'post';
+                  const prefix = isVideo ? 'video' : 'photo';
 
                   addMediaItem({
                     type: m.type,
@@ -1739,8 +1912,23 @@
                   });
                 }
               } else {
-                // Fallback nếu bài viết không fetch được API: lấy ảnh từ thẻ img nếu là mode photos/all
-                if (type !== 'videos') {
+                // Fallback nếu bài viết không fetch được API
+                const isReel = item.el.getAttribute('href')?.includes('/reel/');
+                if (isReel && type !== 'photos') {
+                  const img = item.el.querySelector('img');
+                  let imgUrl = img?.currentSrc || img?.src;
+                  if (imgUrl) {
+                    addMediaItem({
+                      type: 'video',
+                      url: imgUrl,
+                      category: 'videos',
+                      shortcode: sc,
+                      id: sc,
+                      filename: `videos/video_${sc}.mp4`,
+                      timestamp: Math.floor(Date.now() / 1000)
+                    });
+                  }
+                } else if (type !== 'videos') {
                   const img = item.el.querySelector('img');
                   let imgUrl = img?.currentSrc || img?.src;
                   if (img?.srcset) {
@@ -1755,7 +1943,7 @@
                       category: 'photos',
                       shortcode: sc,
                       id: sc,
-                      filename: `photos/post_${sc}.jpg`,
+                      filename: `photos/photo_${sc}.jpg`,
                       timestamp: Math.floor(Date.now() / 1000)
                     });
                   }
@@ -1782,10 +1970,10 @@
           currentCount: collectedMedia.length
         });
 
-        const highlightTrays = [];
-        const seenReelIds = new Set();
+        const highlightList = findAllHighlights(cleanUser);
+        const seenReelIds = new Set(highlightList.map(h => h.id));
 
-        // 1. Quét từ API nếu có numericUserId
+        // Thử thêm API REST highlights_tray nếu có numericUserId
         if (numericUserId) {
           try {
             const trayRes = await originalFetch(`/api/v1/highlights/${encodeURIComponent(numericUserId)}/highlights_tray/`, {
@@ -1799,8 +1987,8 @@
                   const clean = String(t.id).replace(/^highlight:/, '');
                   if (!seenReelIds.has(clean)) {
                     seenReelIds.add(clean);
-                    highlightTrays.push({
-                      id: `highlight:${clean}`,
+                    highlightList.push({
+                      id: clean,
                       title: sanitizePathTitle(t.title || 'Highlight')
                     });
                   }
@@ -1810,79 +1998,89 @@
           } catch (_) {}
         }
 
-        // 2. Quét từ DOM trên trang cá nhân (100% bao quát các highlight đang hiển thị)
-        const domHighlightLinks = Array.from(document.querySelectorAll('a[href*="/stories/highlights/"]'));
-        for (const a of domHighlightLinks) {
-          const href = a.getAttribute('href') || '';
-          const m = href.match(/\/stories\/highlights\/([0-9]+)/);
-          if (m && !seenReelIds.has(m[1])) {
-            seenReelIds.add(m[1]);
-            const titleEl = a.querySelector('span, div') || a;
-            const title = sanitizePathTitle(titleEl.textContent || 'Highlight');
-            highlightTrays.push({
-              id: `highlight:${m[1]}`,
-              title: title
-            });
-          }
-        }
-
-        if (highlightTrays.length > 0) {
-          sendProgress('scanning_highlights', `Tìm thấy ${highlightTrays.length} album Tin nổi bật. Đang trích xuất toàn bộ slide...`, {
+        if (highlightList.length > 0) {
+          sendProgress('scanning_highlights', `Tìm thấy ${highlightList.length} album Tin nổi bật. Đang trích xuất toàn bộ slide...`, {
             currentCount: collectedMedia.length
           });
 
-          const chunkSize = 5;
-          for (let c = 0; c < highlightTrays.length; c += chunkSize) {
-            const chunk = highlightTrays.slice(c, c + chunkSize);
-            const queryParams = chunk.map(t => `reel_ids=${encodeURIComponent(t.id)}`).join('&');
+          for (let hIdx = 0; hIdx < highlightList.length; hIdx++) {
+            const hl = highlightList[hIdx];
+            const cleanId = hl.id;
+            const albumTitle = hl.title;
 
+            sendProgress('scanning_highlights', `Đang tải album Tin nổi bật (${hIdx + 1}/${highlightList.length}): "${albumTitle}"...`, {
+              currentCount: collectedMedia.length
+            });
+
+            // 1. Kiểm tra cache đã có trong reelMediaMap
+            const cachedReel = reelMediaMap.get(cleanId) || reelMediaMap.get(`highlight:${cleanId}`);
+            if (Array.isArray(cachedReel) && cachedReel.length > 0) {
+              for (let i = 0; i < cachedReel.length; i++) {
+                const it = cachedReel[i];
+                const isVid = it.type === 'video' || it.isVideo;
+                const ext = isVid ? 'mp4' : 'jpg';
+                addMediaItem({
+                  type: isVid ? 'video' : 'image',
+                  url: it.url,
+                  category: 'highlight',
+                  albumTitle: albumTitle,
+                  id: it.id || `highlight_${i + 1}`,
+                  filename: `highlights/${albumTitle}/slide_${i + 1}_${it.id || Date.now()}.${ext}`,
+                  timestamp: Math.floor(Date.now() / 1000)
+                });
+              }
+              continue;
+            }
+
+            // 2. Fetch qua endpoint reels_media
             try {
-              const res = await originalFetch(`/api/v1/feed/reels_media/?${queryParams}`, {
+              let res = await originalFetch(`/api/v1/feed/reels_media/?reel_ids=highlight%3A${encodeURIComponent(cleanId)}`, {
                 headers,
                 credentials: 'include'
               });
+              if (!res.ok) {
+                res = await originalFetch(`/api/v1/feed/reels_media/?reel_ids=${encodeURIComponent(cleanId)}`, {
+                  headers,
+                  credentials: 'include'
+                });
+              }
+
               if (res.ok) {
                 const reelsJson = await res.json();
                 const reels = reelsJson.reels || {};
+                const rObj = reels[`highlight:${cleanId}`] || reels[cleanId] || Object.values(reels)[0];
+                const rItems = rObj?.items || [];
 
-                for (const reelKey of Object.keys(reels)) {
-                  const rObj = reels[reelKey];
-                  const cleanReelId = String(rObj?.id || reelKey).replace(/^highlight:/, '');
-                  const trayInfo = highlightTrays.find(t => t.id.includes(cleanReelId));
-                  const albumTitle = sanitizePathTitle(trayInfo?.title || rObj?.title || 'Highlight');
-                  const rItems = rObj?.items || [];
+                for (let i = 0; i < rItems.length; i++) {
+                  const hItem = rItems[i];
+                  const isVid = hItem.media_type === 2 || hItem.is_video === true;
+                  let bestUrl = null;
 
-                  for (let i = 0; i < rItems.length; i++) {
-                    const hItem = rItems[i];
-                    const isVid = hItem.media_type === 2 || hItem.is_video === true;
-                    let bestUrl = null;
+                  if (isVid && Array.isArray(hItem.video_versions) && hItem.video_versions.length > 0) {
+                    bestUrl = hItem.video_versions.sort((a, b) => (((b.width || 0) * (b.height || 0)) - ((a.width || 0) * (a.height || 0))))[0]?.url;
+                  }
+                  if (!bestUrl && Array.isArray(hItem.image_versions2?.candidates) && hItem.image_versions2.candidates.length > 0) {
+                    bestUrl = hItem.image_versions2.candidates.sort((a, b) => (((b.width || 0) * (b.height || 0)) - ((a.width || 0) * (a.height || 0))))[0]?.url;
+                  }
 
-                    if (isVid && Array.isArray(hItem.video_versions) && hItem.video_versions.length > 0) {
-                      bestUrl = hItem.video_versions.sort((a, b) => (b.width * b.height) - (a.width * a.height))[0]?.url;
-                    }
-                    if (!bestUrl && Array.isArray(hItem.image_versions2?.candidates) && hItem.image_versions2.candidates.length > 0) {
-                      bestUrl = hItem.image_versions2.candidates.sort((a, b) => (b.width * b.height) - (a.width * a.height))[0]?.url;
-                    }
+                  if (bestUrl) {
+                    const finalType = isVid ? 'video' : 'image';
+                    const ext = finalType === 'video' ? 'mp4' : 'jpg';
 
-                    if (bestUrl) {
-                      const finalType = isVid ? 'video' : 'image';
-                      const ext = finalType === 'video' ? 'mp4' : 'jpg';
-
-                      addMediaItem({
-                        type: finalType,
-                        url: bestUrl,
-                        category: 'highlight',
-                        albumTitle: albumTitle,
-                        id: hItem.id || `highlight_${i + 1}`,
-                        filename: `highlights/${albumTitle}/slide_${i + 1}_${hItem.id || Date.now()}.${ext}`,
-                        timestamp: hItem.taken_at || Math.floor(Date.now() / 1000)
-                      });
-                    }
+                    addMediaItem({
+                      type: finalType,
+                      url: bestUrl,
+                      category: 'highlight',
+                      albumTitle: albumTitle,
+                      id: hItem.id || `highlight_${i + 1}`,
+                      filename: `highlights/${albumTitle}/slide_${i + 1}_${hItem.id || Date.now()}.${ext}`,
+                      timestamp: hItem.taken_at || Math.floor(Date.now() / 1000)
+                    });
                   }
                 }
               }
             } catch (err) {
-              console.warn('[Profile Downloader] fetch highlight chunk error:', err);
+              console.warn('[Profile Downloader] fetch highlight error:', cleanId, err);
             }
           }
         }
@@ -1899,14 +2097,21 @@
         const targetStoryIds = [numericUserId, cleanUser].filter(Boolean);
         for (const tid of targetStoryIds) {
           try {
-            const userStoryRes = await originalFetch(`/api/v1/feed/reels_media/?reel_ids=${encodeURIComponent(tid)}`, {
+            let userStoryRes = await originalFetch(`/api/v1/feed/reels_media/?reel_ids=${encodeURIComponent(tid)}`, {
               headers,
               credentials: 'include'
             });
+            if (!userStoryRes.ok && tid === numericUserId) {
+              userStoryRes = await originalFetch(`/api/v1/feed/user/${encodeURIComponent(tid)}/story/`, {
+                headers,
+                credentials: 'include'
+              });
+            }
+
             if (userStoryRes.ok) {
               const storyJson = await userStoryRes.json();
               const reels = storyJson?.reels || {};
-              const reel = reels[tid] || Object.values(reels)[0];
+              const reel = reels[tid] || Object.values(reels)[0] || (storyJson?.items ? storyJson : null);
               const storyItems = reel?.items || [];
 
               for (let sIdx = 0; sIdx < storyItems.length; sIdx++) {
@@ -1915,10 +2120,10 @@
                 let bestUrl = null;
 
                 if (isVid && Array.isArray(sit.video_versions) && sit.video_versions.length > 0) {
-                  bestUrl = sit.video_versions.sort((a, b) => (b.width * b.height) - (a.width * a.height))[0]?.url;
+                  bestUrl = sit.video_versions.sort((a, b) => (((b.width || 0) * (b.height || 0)) - ((a.width || 0) * (a.height || 0))))[0]?.url;
                 }
                 if (!bestUrl && Array.isArray(sit.image_versions2?.candidates) && sit.image_versions2.candidates.length > 0) {
-                  bestUrl = sit.image_versions2.candidates.sort((a, b) => (b.width * b.height) - (a.width * a.height))[0]?.url;
+                  bestUrl = sit.image_versions2.candidates.sort((a, b) => (((b.width || 0) * (b.height || 0)) - ((a.width || 0) * (a.height || 0))))[0]?.url;
                 }
 
                 if (bestUrl) {
