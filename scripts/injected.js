@@ -225,7 +225,10 @@
 
     let code = currentCode;
     if (!code) {
-      const urlMatch = window.location.pathname.match(/\/(?:p|reel|reels)\/([A-Za-z0-9_-]+)/);
+      if (window.location.pathname.includes('/reels') || window.location.pathname.includes('/reel')) {
+        return null;
+      }
+      const urlMatch = window.location.pathname.match(/\/p\/([A-Za-z0-9_-]+)/);
       if (urlMatch && !['audio', 'videos', 'reels', 'comments', 'explore', 'stories'].includes(urlMatch[1].toLowerCase())) {
         code = urlMatch[1];
       }
@@ -246,6 +249,12 @@
 
   function extractAudioTracks(obj, found = new Map(), inheritedCode = null, inheritedId = null) {
     if (!obj || typeof obj !== 'object') return found;
+
+    // BỎ QUA HOÀN TOÀN BÀI VIẾT LÀ VIDEO / REELS:
+    // Video và Reels tự phát âm thanh gốc của chính nó, không trích xuất track rời để tiết kiệm băng thông và tránh phát đè
+    if (obj.is_video === true || obj.media_type === 2 || obj.product_type === 'clips' || (Array.isArray(obj.video_versions) && obj.video_versions.length > 0)) {
+      return found;
+    }
 
     const currentCode = obj.code || obj.shortcode || inheritedCode;
     const currentId = obj.id || obj.pk || inheritedId;
@@ -807,9 +816,11 @@
   function processPayload(json, fallbackCode = null) {
     if (!json) return;
     try {
-      const found = extractAudioTracks(json, new Map(), fallbackCode);
-      for (const track of found.values()) {
-        dispatchTrack(track);
+      if (!window.location.pathname.includes('/reels') && !window.location.pathname.includes('/reel')) {
+        const found = extractAudioTracks(json, new Map(), fallbackCode);
+        for (const track of found.values()) {
+          dispatchTrack(track);
+        }
       }
       extractMediaCollections(json, fallbackCode);
       extractStoryItems(json);
@@ -1083,6 +1094,7 @@
   // --- 6. CHỦ ĐỘNG TRUY VẤN MEDIA KHI MỞ TRỰC TIẾP QUA URL HOẶC VIEWPORT ---
   async function fetchDirectPostMusic(shortcode) {
     if (!shortcode) return;
+    if (window.location.pathname.includes('/reels') || window.location.pathname.includes('/reel')) return;
 
     if (discoveredTracks.has(shortcode) || discoveredTracks.has(`code_${shortcode}`)) {
       const track = discoveredTracks.get(shortcode) || discoveredTracks.get(`code_${shortcode}`);
@@ -1186,6 +1198,7 @@
   window.addEventListener('__IG_REQUEST_INSPECT_POST__', (e) => {
     const { shortcode } = e.detail || {};
     if (!shortcode) return;
+    if (window.location.pathname.includes('/reels') || window.location.pathname.includes('/reel')) return;
 
     if (noAudioSet.has(shortcode)) {
       dispatchNoAudio(shortcode);
@@ -2954,7 +2967,8 @@
   }
 
   function checkCurrentUrlPost() {
-    const match = window.location.pathname.match(/\/(?:p|reel|reels)\/([A-Za-z0-9_-]+)/);
+    if (window.location.pathname.includes('/reels') || window.location.pathname.includes('/reel')) return;
+    const match = window.location.pathname.match(/\/p\/([A-Za-z0-9_-]+)/);
     const sc = (match && !['audio', 'videos', 'reels', 'comments', 'explore', 'stories'].includes(match[1].toLowerCase())) ? match[1] : null;
     if (!sc) return;
 

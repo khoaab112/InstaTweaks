@@ -941,9 +941,14 @@
 
   function isPostViewingContext() {
     const path = window.location.pathname;
+    // Bỏ hoàn toàn tính năng phát nhạc ở tab Reels (/reels/ và /reel/) để tối ưu băng thông
+    if (path.includes('/reels') || path.includes('/reel')) return false;
     if (path === '/') return true;
-    if (path.includes('/p/') || path.includes('/reel/')) return true;
-    if (getActivePostDialog()) return true;
+    if (path.includes('/p/')) return true;
+    if (getActivePostDialog()) {
+      if (path.includes('/reels') || path.includes('/reel')) return false;
+      return true;
+    }
     return false;
   }
 
@@ -952,31 +957,22 @@
     const video = postElement.querySelector('video');
     if (!video) return false;
 
-    // BẮT BUỘC: video phải có kích thước khung hình thật (không phải audio player của ảnh có nhạc)
-    if (video.videoWidth === 0 && video.videoHeight === 0) return false;
-
-    // Nếu bài viết có ảnh lớn (naturalWidth > 150), đây là BÀI VIẾT ẢNH CÓ NHẠC, không phải single video!
-    const largeImg = postElement.querySelector('article img, div[role="button"] img, img[src*="cdninstagram"], img[src*="fbcdn"]');
-    if (largeImg && largeImg.naturalWidth > 150 && largeImg.offsetWidth > 160) {
-      return false;
-    }
-
+    // Nếu bài viết có thanh điều hướng carousel nhiều slide ảnh/video
     const hasCarouselNav = Boolean(
       postElement.querySelector(
         'button[aria-label*="Next"], button[aria-label*="Go back"], button[aria-label*="Tiếp"], button[aria-label*="Quay lại"]'
       )
     );
     const carouselDots = postElement.querySelectorAll('div[role="tablist"] [role="tab"], .coreSpriteMediaNavigationDot');
-    const carouselSlides = postElement.querySelectorAll('ul li img, ul li video');
 
-    if (hasCarouselNav || carouselDots.length > 1 || carouselSlides.length > 1) {
+    if (hasCarouselNav || carouselDots.length > 1) {
       return false;
     }
     return true;
   }
 
   function cleanupIfPostClosed() {
-    if (!isPostViewingContext()) {
+    if (!isPostViewingContext() || window.location.pathname.includes('/reels') || window.location.pathname.includes('/reel')) {
       pauseCurrentAudio();
       document.querySelectorAll('.ig-music-controls-container, .ig-music-feed-bar').forEach(el => el.remove());
       return;
@@ -998,6 +994,7 @@
   // --- 4. HÀNG ĐỢI TRUY VẤN THEO MÀN HÌNH (Viewport Priority) ---
   function queuePostInspection(shortcode) {
     if (!shortcode || tracksByCode.has(shortcode) || noAudioSet.has(shortcode)) return;
+    if (window.location.pathname.includes('/reels') || window.location.pathname.includes('/reel')) return;
     if (activeInspections.has(shortcode) || inspectQueue.has(shortcode)) return;
 
     inspectQueue.add(shortcode);
@@ -1522,14 +1519,16 @@
   function getValidPostArticles() {
     if (!isPostViewingContext()) return [];
 
+    const path = window.location.pathname;
+    if (path.includes('/reels') || path.includes('/reel')) return [];
+
     const activeDialog = getActivePostDialog();
     if (activeDialog) {
       const art = activeDialog.querySelector('article');
       return art ? [art] : [activeDialog];
     }
 
-    const path = window.location.pathname;
-    if (path.includes('/p/') || path.includes('/reel/')) {
+    if (path.includes('/p/')) {
       const art = document.querySelector('main article, article');
       if (art) return [art];
       const main = document.querySelector('main');
@@ -4377,7 +4376,13 @@
   });
 
   function handleFeedPostInViewport(post) {
-    if (isSingleVideoPost(post)) {
+    // Nếu trang hiện tại là Reels hoặc bài viết chứa video:
+    // Tuyệt đối không chèn thanh phát nhạc để tránh phát đè và tiết kiệm băng thông
+    if (window.location.pathname.includes('/reels') || 
+        window.location.pathname.includes('/reel') || 
+        isSingleVideoPost(post) || 
+        post.querySelector('video')) {
+      post.querySelectorAll('.ig-music-controls-container, .ig-music-feed-bar').forEach(el => el.remove());
       attachFloatingDownloadButton(post);
       return;
     }
@@ -4437,7 +4442,10 @@
     }
 
     posts.forEach((post) => {
-      if (isSingleVideoPost(post)) {
+      if (window.location.pathname.includes('/reels') || 
+          window.location.pathname.includes('/reel') || 
+          isSingleVideoPost(post) || 
+          post.querySelector('video')) {
         if (currentActive?.wrapper && post.contains(currentActive.wrapper)) {
           pauseCurrentAudio();
         }
@@ -4486,8 +4494,8 @@
       }
 
       if (activePost) {
-        // Nếu bài viết này là 1 Video duy nhất: Nhường âm thanh cho video gốc
-        if (isSingleVideoPost(activePost)) {
+        // Nếu bài viết này là Video hoặc Reels: Nhường âm thanh cho video gốc
+        if (isSingleVideoPost(activePost) || activePost.querySelector('video')) {
           pauseCurrentAudio();
           return;
         }
