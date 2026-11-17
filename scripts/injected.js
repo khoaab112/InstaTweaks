@@ -1153,7 +1153,7 @@
       return;
     }
 
-    scanReactFibers();
+    scanReactFibers(shortcode);
     scanScriptTags();
 
     if (postMediaMap.has(shortcode)) {
@@ -1163,7 +1163,13 @@
       return;
     }
 
-    await fetchDirectPostMusic(shortcode);
+    const fullItems = await fetchPostFullMedia(shortcode);
+    if (Array.isArray(fullItems) && fullItems.length > 0) {
+      window.dispatchEvent(new CustomEvent('__IG_POST_MEDIA_FOUND__', {
+        detail: { shortcode, items: fullItems }
+      }));
+      return;
+    }
 
     if (postMediaMap.has(shortcode)) {
       window.dispatchEvent(new CustomEvent('__IG_POST_MEDIA_FOUND__', {
@@ -1174,6 +1180,108 @@
         detail: { shortcode }
       }));
     }
+  });
+
+  // Lấy media trực tiếp từ React Fiber của video đang xem (Hoạt động trên Reels / Feed / Explore / Dialog)
+  function findActiveVideoMedia() {
+    const targetVid = document.querySelector('video[data-ig-target-video="true"]') ||
+      Array.from(document.querySelectorAll('video')).find(v => {
+        const r = v.getBoundingClientRect();
+        return r.width > 120 && r.height > 120 && r.top < window.innerHeight && r.bottom > 0;
+      });
+
+    if (!targetVid) return null;
+
+    let cur = targetVid;
+    let depth = 0;
+    while (cur && depth < 25) {
+      const fiberKey = Object.keys(cur).find(k => k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$'));
+      if (fiberKey) {
+        let fiber = cur[fiberKey];
+        let fDepth = 0;
+        while (fiber && fDepth < 60) {
+          fDepth++;
+          const props = fiber.memoizedProps;
+          if (props && typeof props === 'object') {
+            const candidates = [
+              props.item,
+              props.media,
+              props.post,
+              props.clip,
+              props.videoData,
+              props.playbackSource,
+              props.feedItem,
+              props.reelItem,
+              props.video
+            ];
+            for (const c of candidates) {
+              if (c && typeof c === 'object') {
+                const items = extractMediaFromPostNode(c);
+                if (items && items.length > 0) {
+                  const vidItem = items.find(it => it.type === 'video');
+                  if (vidItem?.url) {
+                    if (c.code) postMediaMap.set(c.code, items);
+                    return {
+                      url: vidItem.url,
+                      shortcode: c.code || c.shortcode || null,
+                      items
+                    };
+                  }
+                }
+                const url = findVideoUrlInObject(c);
+                if (url) {
+                  return {
+                    url,
+                    shortcode: c.code || c.shortcode || null
+                  };
+                }
+              }
+            }
+            const fallbackUrl = findVideoUrlInObject(props);
+            if (fallbackUrl) {
+              return { url: fallbackUrl, shortcode: null };
+            }
+          }
+          fiber = fiber.return;
+        }
+      }
+      cur = cur.parentElement;
+      depth++;
+    }
+
+    return null;
+  }
+
+  window.addEventListener('__IG_REQUEST_ACTIVE_VIDEO_URL__', async (e) => {
+    const { shortcode } = e.detail || {};
+    let result = findActiveVideoMedia();
+    if (result && result.url) {
+      window.dispatchEvent(new CustomEvent('__IG_ACTIVE_VIDEO_URL_RESULT__', { detail: result }));
+      return;
+    }
+
+    if (shortcode) {
+      if (postMediaMap.has(shortcode)) {
+        const items = postMediaMap.get(shortcode);
+        const vid = items?.find(it => it.type === 'video');
+        if (vid?.url) {
+          window.dispatchEvent(new CustomEvent('__IG_ACTIVE_VIDEO_URL_RESULT__', {
+            detail: { url: vid.url, shortcode, items }
+          }));
+          return;
+        }
+      }
+      const fetched = await fetchPostFullMedia(shortcode);
+      const vid = fetched?.find(it => it.type === 'video');
+      if (vid?.url) {
+        window.dispatchEvent(new CustomEvent('__IG_ACTIVE_VIDEO_URL_RESULT__', {
+          detail: { url: vid.url, shortcode, items: fetched }
+        }));
+        return;
+      }
+    }
+
+    window.dispatchEvent(new CustomEvent('__IG_ACTIVE_VIDEO_URL_RESULT__', { detail: null }));
   });
 
   function findStoryMediaFromFiber(targetEl = null, preferredSlideIndex = -1) {

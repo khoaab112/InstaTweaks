@@ -2017,36 +2017,69 @@ div:has(> [data-ig-vctl-container="true"]) > div > [role="button"]:not(.ig-vctl-
   pointer-events: none !important;
 }
 
-/* Thanh tiến trình custom ở sát mép trên đỉnh của Story, tách biệt khỏi vạch gốc */
+/* Ẩn triệt để nút Loa mặc định trong Header Story (đã có tính năng auto phát âm thanh) */
+div[role="dialog"] header button:not(.ig-vctl-btn):not(.ig-story-download-btn)[aria-label*="tiếng" i],
+div[role="dialog"] header button:not(.ig-vctl-btn):not(.ig-story-download-btn)[aria-label*="âm thanh" i],
+div[role="dialog"] header button:not(.ig-vctl-btn):not(.ig-story-download-btn)[aria-label*="mute" i],
+div[role="dialog"] header button:not(.ig-vctl-btn):not(.ig-story-download-btn)[aria-label*="sound" i],
+div[role="dialog"] header button:not(.ig-vctl-btn):not(.ig-story-download-btn)[aria-label*="audio" i],
+section header button:not(.ig-vctl-btn):not(.ig-story-download-btn)[aria-label*="tiếng" i],
+section header button:not(.ig-vctl-btn):not(.ig-story-download-btn)[aria-label*="âm thanh" i],
+section header button:not(.ig-vctl-btn):not(.ig-story-download-btn)[aria-label*="mute" i],
+section header button:not(.ig-vctl-btn):not(.ig-story-download-btn)[aria-label*="sound" i],
+section header button:not(.ig-vctl-btn):not(.ig-story-download-btn)[aria-label*="audio" i],
+[data-ig-story-speaker-hidden="true"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Thanh tiến trình custom nằm sát viền mép trên cùng của Story (top: 0) */
 .ig-story-top-progress-bar {
-  position: relative !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
   width: 100% !important;
-  height: 8px !important;
+  height: 4px !important;
   padding: 0 !important;
   margin: 0 !important;
   box-sizing: border-box !important;
-  z-index: 10020 !important;
+  z-index: 10050 !important;
   display: flex !important;
   align-items: center !important;
   cursor: pointer !important;
   touch-action: none !important;
   user-select: none !important;
+  border-top-left-radius: inherit !important;
+  border-top-right-radius: inherit !important;
+  overflow: visible !important;
+  transition: height 0.15s ease !important;
 }
 
 .ig-story-top-track {
-  position: relative !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
   width: 100% !important;
   height: 3.5px !important;
-  background: rgba(255, 255, 255, 0.22) !important;
-  border-radius: 2px !important;
-  overflow: visible !important;
-  transition: height 0.12s ease !important;
+  background: rgba(255, 255, 255, 0.28) !important;
+  border-top-left-radius: inherit !important;
+  border-top-right-radius: inherit !important;
+  overflow: hidden !important;
+  transition: height 0.15s ease !important;
+}
+
+.ig-story-top-progress-bar:hover,
+.ig-story-top-progress-bar.is-dragging {
+  height: 6px !important;
 }
 
 .ig-story-top-progress-bar:hover .ig-story-top-track,
 .ig-story-top-progress-bar.is-dragging .ig-story-top-track {
-  height: 5.5px !important;
-  border-radius: 3px !important;
+  height: 6px !important;
 }
 
 .ig-story-top-hover {
