@@ -2233,16 +2233,18 @@
   let activeStoryScrubber = null;
 
   function scanAndAttachStoryScrubber() {
-    // 1. Dọn dẹp triệt để bất kỳ thanh đáy cũ nào nếu còn sót lại
+    // 1. Dọn dẹp triệt để bất kỳ thanh đáy cũ và badge cũ nếu còn sót lại
     const oldBar = document.querySelector('.ig-story-scrubber-bar');
     if (oldBar) oldBar.remove();
+    const oldTopTime = document.querySelector('.ig-story-top-time');
+    if (oldTopTime) oldTopTime.remove();
 
     if (!window.location.pathname.includes('/stories/')) {
       if (activeStoryScrubber) {
         if (activeStoryScrubber.cleanup) activeStoryScrubber.cleanup();
         activeStoryScrubber = null;
       }
-      const t = document.querySelector('.ig-story-top-time');
+      const t = document.querySelector('.ig-story-header-time');
       if (t) t.remove();
       const th = document.querySelector('.ig-story-top-thumb');
       if (th) th.remove();
@@ -2253,7 +2255,7 @@
 
     const storyVideo = getActiveStoryVideo();
     if (!storyVideo) {
-      const t = document.querySelector('.ig-story-top-time');
+      const t = document.querySelector('.ig-story-header-time');
       if (t) t.style.display = 'none';
       const th = document.querySelector('.ig-story-top-thumb');
       if (th) th.style.opacity = '0';
@@ -2265,8 +2267,13 @@
     const progressContainer = findStoryProgressBarContainer();
     if (!progressContainer) return;
 
-    // Nếu đã gắn đúng video và progress container này thì chỉ cập nhật vị trí & thời gian
-    if (activeStoryScrubber && activeStoryScrubber.video === storyVideo && activeStoryScrubber.container === progressContainer) {
+    const currentSlideIndex = getActiveStorySlideIndex();
+
+    // Nếu đã gắn đúng video, progress container và slide index này thì chỉ cập nhật UI
+    if (activeStoryScrubber &&
+        activeStoryScrubber.video === storyVideo &&
+        activeStoryScrubber.container === progressContainer &&
+        activeStoryScrubber.slideIndex === currentSlideIndex) {
       if (activeStoryScrubber.updateUI) activeStoryScrubber.updateUI();
       return;
     }
@@ -2276,20 +2283,44 @@
       activeStoryScrubber.cleanup();
     }
 
-    // 2. Custom style cho thanh tiến trình đỉnh của Instagram
+    // 2. Custom style cho thanh tiến trình đỉnh của Instagram (Full width 100%)
     progressContainer.classList.add('ig-story-custom-progress');
-    progressContainer.style.setProperty('width', 'calc(100% - 80px)', 'important');
+    progressContainer.style.setProperty('width', '100%', 'important');
     progressContainer.style.setProperty('box-sizing', 'border-box', 'important');
 
-    // 3. Tạo Badge hiển thị thời gian ở bên phải thanh tiến trình đỉnh
-    let timeBadge = document.querySelector('.ig-story-top-time');
-    if (!timeBadge) {
-      timeBadge = document.createElement('div');
-      timeBadge.className = 'ig-story-top-time';
-      timeBadge.innerHTML = `<span class="ig-story-sc-cur">0:00</span><span class="ig-story-sc-sep">/</span><span class="ig-story-sc-dur">0:00</span>`;
-      document.body.appendChild(timeBadge);
-    }
-    timeBadge.style.display = 'flex';
+    // 3. Hiển thị thời gian trực tiếp trong hàng Action Header Story (gọn, không tạo card)
+    const attachHeaderTime = () => {
+      const controls = findStoryControlsContainer();
+      if (!controls || !controls.parent) return null;
+
+      let timeEl = controls.parent.querySelector('.ig-story-header-time');
+      if (!timeEl) {
+        timeEl = document.createElement('div');
+        timeEl.className = 'ig-story-header-time';
+        timeEl.innerHTML = `<span class="ig-story-sc-cur">0:00</span><span class="ig-story-sc-sep">/</span><span class="ig-story-sc-dur">0:00</span>`;
+      }
+
+      // Đưa time vào trước icon loa (hoặc trước nút pause/options nếu không có loa)
+      const anchor = (controls.speakerBtn && controls.speakerBtn.parentElement === controls.parent) ? controls.speakerBtn :
+                     (controls.pauseBtn && controls.pauseBtn.parentElement === controls.parent) ? controls.pauseBtn :
+                     (controls.optionsBtn && controls.optionsBtn.parentElement === controls.parent) ? controls.optionsBtn :
+                     controls.parent.firstElementChild;
+
+      if (anchor && anchor !== timeEl) {
+        if (timeEl.nextSibling !== anchor) {
+          controls.parent.insertBefore(timeEl, anchor);
+        }
+      } else if (timeEl.parentElement !== controls.parent) {
+        controls.parent.prepend(timeEl);
+      }
+
+      timeEl.style.display = 'inline-flex';
+      return timeEl;
+    };
+
+    const timeBadge = attachHeaderTime();
+    const curEl = timeBadge?.querySelector('.ig-story-sc-cur');
+    const durEl = timeBadge?.querySelector('.ig-story-sc-dur');
 
     // 4. Tạo chấm Thumb tròn định vị
     let thumbEl = document.querySelector('.ig-story-top-thumb');
@@ -2308,36 +2339,75 @@
       document.body.appendChild(tooltipEl);
     }
 
-    const curEl = timeBadge.querySelector('.ig-story-sc-cur');
-    const durEl = timeBadge.querySelector('.ig-story-sc-dur');
+    // 6. XỬ LÝ CHIA ĐỘC LẬP TỪNG TIẾN TRÌNH:
+    // Nếu có nhiều Story trong 1 group (- - - -), vạch nào thì chỉ chạy độc lập trong vạch đó,
+    // click/kéo ở vạch khác tuyệt đối KHÔNG làm chuyển hay tác động đến story khác!
+    const segments = Array.from(progressContainer.children).filter(el => !el.classList.contains('ig-story-top-time'));
+    const activeIdx = Math.max(0, Math.min(segments.length - 1, currentSlideIndex));
+    const activeSeg = segments[activeIdx] || progressContainer;
 
-    const updateTopTimePos = () => {
-      if (!progressContainer.isConnected || !timeBadge.isConnected) return;
-      const pRect = progressContainer.getBoundingClientRect();
-      if (pRect.width <= 0) return;
-      timeBadge.style.top = `${pRect.top + pRect.height / 2}px`;
-      timeBadge.style.left = `${pRect.right + 8}px`;
-      timeBadge.style.transform = 'translateY(-50%)';
+    // Phân loại trực quan: segment active vs inactive
+    segments.forEach((seg, idx) => {
+      if (idx === activeIdx) {
+        seg.classList.add('ig-story-active-segment');
+        seg.classList.remove('ig-story-inactive-segment');
+      } else {
+        seg.classList.add('ig-story-inactive-segment');
+        seg.classList.remove('ig-story-active-segment');
+      }
+    });
+
+    // Chặn tuyệt đối mọi sự kiện click/pointer/touch trên các segment inactive để ngăn IG nhảy Story
+    const blockInactiveEvent = (e) => {
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      e.preventDefault();
     };
+
+    const inactiveBlockedSegments = [];
+    segments.forEach((seg, idx) => {
+      if (idx !== activeIdx) {
+        const events = ['click', 'pointerdown', 'mousedown', 'mouseup', 'pointerup', 'touchstart', 'touchend'];
+        events.forEach(evtName => {
+          seg.addEventListener(evtName, blockInactiveEvent, true);
+        });
+        inactiveBlockedSegments.push({ seg, events });
+      }
+    });
+
+    // Chặn click vào vùng container nằm ngoài activeSeg
+    const onContainerClickCapture = (e) => {
+      if (!activeSeg.contains(e.target)) {
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        e.preventDefault();
+      }
+    };
+    progressContainer.addEventListener('click', onContainerClickCapture, true);
+    progressContainer.addEventListener('pointerdown', onContainerClickCapture, true);
+    progressContainer.addEventListener('mousedown', onContainerClickCapture, true);
 
     let isDraggingStory = false;
 
-    const getActiveSegment = () => {
-      const segments = Array.from(progressContainer.children).filter(el => !el.classList.contains('ig-story-top-time'));
-      if (segments.length <= 1) return segments[0] || progressContainer;
-      const activeIdx = getActiveStorySlideIndex() || 0;
-      return segments[activeIdx] || segments[0] || progressContainer;
-    };
-
     const updateStoryUI = () => {
+      // Nếu slide index thay đổi trong khi đang phát -> rebind ngay sang active segment mới
+      const latestSlideIdx = getActiveStorySlideIndex();
+      if (latestSlideIdx !== currentSlideIndex) {
+        scanAndAttachStoryScrubber();
+        return;
+      }
+
       if (isDraggingStory) return;
       const cur = storyVideo.currentTime || 0;
       const dur = storyVideo.duration || 0;
-      if (curEl) curEl.textContent = formatTime(cur);
-      if (durEl && dur > 0) durEl.textContent = formatTime(dur);
-      updateTopTimePos();
 
-      const activeSeg = getActiveSegment();
+      const badge = attachHeaderTime();
+      const currentCurEl = badge?.querySelector('.ig-story-sc-cur') || curEl;
+      const currentDurEl = badge?.querySelector('.ig-story-sc-dur') || durEl;
+
+      if (currentCurEl) currentCurEl.textContent = formatTime(cur);
+      if (currentDurEl && dur > 0) currentDurEl.textContent = formatTime(dur);
+
       if (activeSeg && dur > 0) {
         const segRect = activeSeg.getBoundingClientRect();
         const pct = Math.min(1, Math.max(0, cur / dur));
@@ -2348,40 +2418,41 @@
       }
     };
 
-    // 6. Xử lý thao tác kéo hoặc bấm để tua trực tiếp trên thanh đỉnh
-    const onProgressPointerDown = (e) => {
+    // 7. Thao tác tua CHỈ áp dụng độc lập cho activeSeg của Story hiện tại
+    const applyScrub = (clientX) => {
+      const segRect = activeSeg.getBoundingClientRect();
+      if (segRect.width <= 0) return;
+      const rawPct = (clientX - segRect.left) / segRect.width;
+      // Khống chế pct nghiêm ngặt trong [0, 0.995] để tránh video kết thúc đột ngột gây auto-skip
+      const pct = Math.max(0, Math.min(0.995, rawPct));
+      const dur = storyVideo.duration || 0;
+      if (dur > 0) {
+        storyVideo.currentTime = pct * dur;
+      }
+      const badge = attachHeaderTime();
+      const currentCurEl = badge?.querySelector('.ig-story-sc-cur') || curEl;
+      if (currentCurEl) currentCurEl.textContent = formatTime(pct * dur);
+      if (thumbEl) {
+        thumbEl.style.left = `${segRect.left + pct * segRect.width}px`;
+        thumbEl.style.top = `${segRect.top + segRect.height / 2}px`;
+        thumbEl.style.opacity = '1';
+      }
+      if (tooltipEl) {
+        tooltipEl.textContent = formatTime(pct * dur);
+        tooltipEl.style.left = `${segRect.left + pct * segRect.width}px`;
+        tooltipEl.style.top = `${segRect.bottom + 8}px`;
+        tooltipEl.style.opacity = '1';
+      }
+    };
+
+    const onActivePointerDown = (e) => {
       if (e.button !== undefined && e.button !== 0) return;
       e.stopPropagation();
       e.stopImmediatePropagation();
       e.preventDefault();
 
-      const activeSeg = getActiveSegment();
-      const segRect = activeSeg.getBoundingClientRect();
-      if (segRect.width <= 0) return;
-
       isDraggingStory = true;
       progressContainer.classList.add('is-dragging');
-
-      const applyScrub = (clientX) => {
-        const pct = Math.max(0, Math.min(1, (clientX - segRect.left) / segRect.width));
-        const dur = storyVideo.duration || 0;
-        if (dur > 0) {
-          storyVideo.currentTime = pct * dur;
-        }
-        if (curEl) curEl.textContent = formatTime(pct * dur);
-        if (thumbEl) {
-          thumbEl.style.left = `${segRect.left + pct * segRect.width}px`;
-          thumbEl.style.top = `${segRect.top + segRect.height / 2}px`;
-          thumbEl.style.opacity = '1';
-        }
-        if (tooltipEl) {
-          tooltipEl.textContent = formatTime(pct * dur);
-          tooltipEl.style.left = `${segRect.left + pct * segRect.width}px`;
-          tooltipEl.style.top = `${segRect.bottom + 8}px`;
-          tooltipEl.style.opacity = '1';
-        }
-      };
-
       applyScrub(e.clientX);
 
       const onPointerMove = (moveEvt) => {
@@ -2412,32 +2483,29 @@
       window.addEventListener('blur', onPointerUp, true);
     };
 
-    const stopPropagationOnly = (e) => {
+    const onActiveClick = (e) => {
       e.stopPropagation();
       e.stopImmediatePropagation();
       e.preventDefault();
     };
 
-    progressContainer.addEventListener('click', stopPropagationOnly, true);
-    progressContainer.addEventListener('pointerdown', onProgressPointerDown, true);
-
-    const onPointerEnter = () => {
+    const onActivePointerEnter = () => {
       if (thumbEl) thumbEl.style.opacity = '1';
     };
 
-    const onPointerLeave = () => {
+    const onActivePointerLeave = () => {
       if (!isDraggingStory) {
         if (tooltipEl) tooltipEl.style.opacity = '0';
         if (thumbEl) thumbEl.style.opacity = '0';
       }
     };
 
-    const onPointerHoverMove = (e) => {
+    const onActivePointerHoverMove = (e) => {
       if (isDraggingStory) return;
-      const activeSeg = getActiveSegment();
       const segRect = activeSeg.getBoundingClientRect();
       if (segRect.width <= 0) return;
-      const pct = Math.max(0, Math.min(1, (e.clientX - segRect.left) / segRect.width));
+      const rawPct = (e.clientX - segRect.left) / segRect.width;
+      const pct = Math.max(0, Math.min(1, rawPct));
       const dur = storyVideo.duration || 0;
       if (tooltipEl) {
         tooltipEl.textContent = formatTime(pct * dur);
@@ -2452,37 +2520,55 @@
       }
     };
 
-    progressContainer.addEventListener('pointerenter', onPointerEnter);
-    progressContainer.addEventListener('pointerleave', onPointerLeave);
-    progressContainer.addEventListener('pointermove', onPointerHoverMove);
+    activeSeg.addEventListener('pointerdown', onActivePointerDown, true);
+    activeSeg.addEventListener('click', onActiveClick, true);
+    activeSeg.addEventListener('pointerenter', onActivePointerEnter);
+    activeSeg.addEventListener('pointerleave', onActivePointerLeave);
+    activeSeg.addEventListener('pointermove', onActivePointerHoverMove);
 
     storyVideo.addEventListener('timeupdate', updateStoryUI);
     storyVideo.addEventListener('loadedmetadata', updateStoryUI);
     storyVideo.addEventListener('durationchange', updateStoryUI);
-    window.addEventListener('resize', updateTopTimePos);
 
     activeStoryScrubber = {
       video: storyVideo,
       container: progressContainer,
+      slideIndex: currentSlideIndex,
       updateUI: updateStoryUI,
       cleanup: () => {
         storyVideo.removeEventListener('timeupdate', updateStoryUI);
         storyVideo.removeEventListener('loadedmetadata', updateStoryUI);
         storyVideo.removeEventListener('durationchange', updateStoryUI);
-        window.removeEventListener('resize', updateTopTimePos);
-        progressContainer.removeEventListener('click', stopPropagationOnly, true);
-        progressContainer.removeEventListener('pointerdown', onProgressPointerDown, true);
-        progressContainer.removeEventListener('pointerenter', onPointerEnter);
-        progressContainer.removeEventListener('pointerleave', onPointerLeave);
-        progressContainer.removeEventListener('pointermove', onPointerHoverMove);
-        if (timeBadge) timeBadge.style.display = 'none';
+
+        progressContainer.removeEventListener('click', onContainerClickCapture, true);
+        progressContainer.removeEventListener('pointerdown', onContainerClickCapture, true);
+        progressContainer.removeEventListener('mousedown', onContainerClickCapture, true);
+
+        activeSeg.removeEventListener('pointerdown', onActivePointerDown, true);
+        activeSeg.removeEventListener('click', onActiveClick, true);
+        activeSeg.removeEventListener('pointerenter', onActivePointerEnter);
+        activeSeg.removeEventListener('pointerleave', onActivePointerLeave);
+        activeSeg.removeEventListener('pointermove', onActivePointerHoverMove);
+
+        // Gỡ bỏ chặn trên các segment inactive
+        inactiveBlockedSegments.forEach(({ seg, events }) => {
+          events.forEach(evtName => {
+            seg.removeEventListener(evtName, blockInactiveEvent, true);
+          });
+        });
+
+        segments.forEach(seg => {
+          seg.classList.remove('ig-story-active-segment', 'ig-story-inactive-segment');
+        });
+
+        const timeElem = document.querySelector('.ig-story-header-time');
+        if (timeElem) timeElem.style.display = 'none';
         if (thumbEl) thumbEl.style.opacity = '0';
         if (tooltipEl) tooltipEl.style.opacity = '0';
       }
     };
 
     updateStoryUI();
-    updateTopTimePos();
   }
 
   // LẮNG NGHE SỰ KIỆN PHÁT CỦA MỌI VIDEO TRÊN TRANG ĐỂ TỰ ĐỘNG BẬT TIẾNG (Feed, Reels, Dialog, Stories)
@@ -3001,22 +3087,28 @@
       }
     }
 
-    // Ưu tiên 1: Đặt ngay SAU nút Pause (ở giữa nút Pause và Ba chấm như trong ảnh)
-    if (pauseBtn && pauseBtn.parentElement) {
-      return { insertAfter: pauseBtn, parent: pauseBtn.parentElement };
+    const parent = pauseBtn?.parentElement || speakerBtn?.parentElement || optionsBtn?.parentElement || null;
+    if (!parent) return null;
+
+    let insertAfter = null;
+    let insertBefore = null;
+
+    if (pauseBtn && pauseBtn.parentElement === parent) {
+      insertAfter = pauseBtn;
+    } else if (optionsBtn && optionsBtn.parentElement === parent) {
+      insertBefore = optionsBtn;
+    } else if (speakerBtn && speakerBtn.parentElement === parent) {
+      insertAfter = speakerBtn;
     }
 
-    // Ưu tiên 2: Đặt ngay TRƯỚC nút Ba chấm / Menu (...)
-    if (optionsBtn && optionsBtn.parentElement) {
-      return { insertBefore: optionsBtn, parent: optionsBtn.parentElement };
-    }
-
-    // Ưu tiên 3: Đặt ngay sau nút Loa nếu ở /stories/
-    if (speakerBtn && speakerBtn.parentElement && window.location.pathname.includes('/stories/')) {
-      return { insertAfter: speakerBtn, parent: speakerBtn.parentElement };
-    }
-
-    return null;
+    return {
+      parent,
+      speakerBtn,
+      pauseBtn,
+      optionsBtn,
+      insertAfter,
+      insertBefore
+    };
   }
 
   function scanAndAttachStoryDownload() {
