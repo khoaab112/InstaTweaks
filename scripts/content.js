@@ -54,14 +54,16 @@
 
   const config = {
     autoplay: true,
+    autoUnmute: true,
     volume: 0.8,
     loop: true,
     showBadge: true
   };
 
   if (chrome?.storage?.sync) {
-    chrome.storage.sync.get(['autoplay', 'volume', 'loop', 'showBadge'], (items) => {
+    chrome.storage.sync.get(['autoplay', 'autoUnmute', 'volume', 'loop', 'showBadge'], (items) => {
       if (items.autoplay !== undefined) config.autoplay = items.autoplay;
+      if (items.autoUnmute !== undefined) config.autoUnmute = items.autoUnmute;
       if (items.volume !== undefined) config.volume = items.volume;
       if (items.loop !== undefined) config.loop = items.loop;
       if (items.showBadge !== undefined) config.showBadge = items.showBadge;
@@ -69,6 +71,7 @@
 
     chrome.storage.onChanged.addListener((changes) => {
       if (changes.autoplay) config.autoplay = changes.autoplay.newValue;
+      if (changes.autoUnmute) config.autoUnmute = changes.autoUnmute.newValue;
       if (changes.volume) {
         config.volume = changes.volume.newValue;
         if (currentActive?.audio) currentActive.audio.volume = config.volume;
@@ -1455,8 +1458,32 @@
     if (existing) existing.remove();
   }
 
-  // --- 8. THANH ĐIỀU KHIỂN & THANH TRƯỢT MEDIA CHO VIDEO (v2.5.0 - Tối ưu RAM & Hiệu năng) ---
+  // --- 8. TỰ ĐỘNG BẬT TIẾNG & THANH ĐIỀU KHIỂN VIDEO (v2.5.0 - Tối ưu RAM & Hiệu năng) ---
   const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+
+  function ensureVideoUnmuted(video) {
+    if (config.autoUnmute === false) return;
+    if (!video || video._userMuted) return;
+
+    const targetVolume = (typeof config.volume === 'number' && config.volume > 0) ? config.volume : 0.8;
+
+    const applyUnmute = () => {
+      if (!video || video._userMuted) return;
+      try {
+        if (video.muted) {
+          video.muted = false;
+        }
+        if (video.volume === 0 || Math.abs(video.volume - targetVolume) > 0.3) {
+          video.volume = targetVolume;
+        }
+      } catch (_) {}
+    };
+
+    applyUnmute();
+    requestAnimationFrame(applyUnmute);
+    setTimeout(applyUnmute, 120);
+    setTimeout(applyUnmute, 350);
+  }
 
   function findVideoContainer(video) {
     if (!video) return null;
@@ -1849,9 +1876,11 @@
       e.preventDefault();
       e.stopPropagation();
       if (video.muted || video.volume === 0) {
+        video._userMuted = false;
         video.muted = false;
-        video.volume = savedVolume > 0 ? savedVolume : 0.8;
+        video.volume = savedVolume > 0 ? savedVolume : (config.volume || 0.8);
       } else {
+        video._userMuted = true;
         savedVolume = video.volume;
         video.muted = true;
       }
@@ -1865,8 +1894,10 @@
       video.volume = val;
       if (val === 0) {
         video.muted = true;
+        video._userMuted = true;
       } else {
         video.muted = false;
+        video._userMuted = false;
         savedVolume = val;
       }
       updateVolumeUI();
@@ -1931,6 +1962,7 @@
     const onPlay = () => {
       playBtn.innerHTML = SVG_PAUSE;
       controller.classList.remove('is-paused');
+      ensureVideoUnmuted(video);
       showControls();
       startTicker();
     };
@@ -1986,6 +2018,7 @@
       clearTimeout(hideTimer);
     };
 
+    ensureVideoUnmuted(video);
     if (!video.paused) {
       startTicker();
     } else {
@@ -2074,6 +2107,8 @@
       }
       return;
     }
+
+    ensureVideoUnmuted(storyVideo);
 
     // Nếu đã gắn đúng video này và bar đang tồn tại thì chỉ đảm bảo hiển thị
     if (activeStoryScrubber && activeStoryScrubber.video === storyVideo && activeStoryScrubber.bar.isConnected) {
@@ -2304,6 +2339,30 @@
     updateStoryUI();
     resetStoryIdleTimer();
   }
+
+  // LẮNG NGHE SỰ KIỆN PHÁT CỦA MỌI VIDEO TRÊN TRANG ĐỂ TỰ ĐỘNG BẬT TIẾNG (Feed, Reels, Dialog, Stories)
+  document.addEventListener('play', (e) => {
+    if (e.target && e.target.tagName === 'VIDEO') {
+      ensureVideoUnmuted(e.target);
+    }
+  }, { capture: true, passive: true });
+
+  document.addEventListener('playing', (e) => {
+    if (e.target && e.target.tagName === 'VIDEO') {
+      ensureVideoUnmuted(e.target);
+    }
+  }, { capture: true, passive: true });
+
+  // Đảm bảo kích hoạt âm thanh ngay khi người dùng tương tác lần đầu trên trang
+  const onFirstUserGesture = () => {
+    document.querySelectorAll('video').forEach(vid => {
+      if (!vid.paused && !vid._userMuted) {
+        ensureVideoUnmuted(vid);
+      }
+    });
+  };
+  window.addEventListener('pointerdown', onFirstUserGesture, { once: true, passive: true });
+  window.addEventListener('keydown', onFirstUserGesture, { once: true, passive: true });
 
   // --- 7.2. DOWNLOAD CHO INSTAGRAM STORIES ---
   function getBestImageUrl(img) {
@@ -4135,6 +4194,7 @@
         e.preventDefault();
         e.stopPropagation();
         hoveredVideo.muted = !hoveredVideo.muted;
+        hoveredVideo._userMuted = hoveredVideo.muted;
       }
     }
   });
