@@ -2253,9 +2253,10 @@
 
     ensureVideoUnmuted(storyVideo);
 
-    // Nếu đã gắn đúng video này và bar đang tồn tại thì chỉ đảm bảo hiển thị
+    // Nếu đã gắn đúng video này và bar đang tồn tại thì chỉ đảm bảo hiển thị & cập nhật vị trí
     if (activeStoryScrubber && activeStoryScrubber.video === storyVideo && activeStoryScrubber.bar.isConnected) {
       activeStoryScrubber.bar.style.display = 'flex';
+      if (activeStoryScrubber.updatePos) activeStoryScrubber.updatePos();
       return;
     }
 
@@ -2265,15 +2266,18 @@
     }
 
     let bar = document.querySelector('.ig-story-scrubber-bar');
+    // Nếu bar cũ còn chứa các nút thừa (rewind, forward, speed) thì gỡ đi để tạo giao diện 3 phần tối giản
+    if (bar && (bar.querySelector('.ig-story-sc-rewind') || bar.querySelector('.ig-story-sc-speed'))) {
+      bar.remove();
+      bar = null;
+    }
+
     if (!bar) {
       bar = document.createElement('div');
       bar.className = 'ig-story-scrubber-bar';
       bar.innerHTML = `
-        <button class="ig-story-sc-btn ig-story-sc-play" type="button" title="Phát / Tạm dừng">
-          ${SVG_PAUSE}
-        </button>
-        <button class="ig-story-sc-btn ig-story-sc-rewind" type="button" title="Tua lùi 5s">
-          ${SVG_REWIND_5}
+        <button class="ig-story-sc-btn ig-story-sc-play" type="button" title="Phát / Tạm dừng (Space)">
+          ${storyVideo.paused ? SVG_PLAY : SVG_PAUSE}
         </button>
         <div class="ig-story-sc-track-wrap" title="Kéo hoặc bấm để tua Story">
           <div class="ig-story-sc-track">
@@ -2282,25 +2286,20 @@
             <div class="ig-story-sc-tooltip">0:00</div>
           </div>
         </div>
-        <button class="ig-story-sc-btn ig-story-sc-forward" type="button" title="Tua tới 5s">
-          ${SVG_FORWARD_5}
-        </button>
         <div class="ig-story-sc-time">
           <span class="ig-story-sc-cur">0:00</span>
           <span class="ig-story-sc-sep">/</span>
           <span class="ig-story-sc-dur">0:00</span>
         </div>
-        <button class="ig-story-sc-btn ig-story-sc-speed" type="button" title="Tốc độ phát">
-          1x
-        </button>
       `;
 
-      const stopAll = (e) => { e.stopPropagation(); };
-      bar.addEventListener('click', stopAll);
-      bar.addEventListener('pointerdown', stopAll);
-      bar.addEventListener('pointerup', stopAll);
-      bar.addEventListener('mousedown', stopAll);
-      bar.addEventListener('mouseup', stopAll);
+      const stopBubble = (e) => {
+        if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'mouseup') return;
+        e.stopPropagation();
+      };
+      bar.addEventListener('click', stopBubble);
+      bar.addEventListener('pointerdown', stopBubble);
+      bar.addEventListener('mousedown', stopBubble);
 
       document.body.appendChild(bar);
     }
@@ -2308,8 +2307,6 @@
     bar.style.display = 'flex';
 
     const playBtn = bar.querySelector('.ig-story-sc-play');
-    const rewindBtn = bar.querySelector('.ig-story-sc-rewind');
-    const forwardBtn = bar.querySelector('.ig-story-sc-forward');
     const trackWrap = bar.querySelector('.ig-story-sc-track-wrap');
     const track = bar.querySelector('.ig-story-sc-track');
     const fill = bar.querySelector('.ig-story-sc-fill');
@@ -2317,11 +2314,8 @@
     const tooltip = bar.querySelector('.ig-story-sc-tooltip');
     const curTimeEl = bar.querySelector('.ig-story-sc-cur');
     const durTimeEl = bar.querySelector('.ig-story-sc-dur');
-    const speedBtn = bar.querySelector('.ig-story-sc-speed');
 
     let isDraggingStory = false;
-    let storySpeedIdx = 0;
-    const STORY_SPEEDS = [1, 1.5, 2, 0.75];
 
     const updateStoryUI = () => {
       if (isDraggingStory) return;
@@ -2350,30 +2344,6 @@
       e.preventDefault();
       if (storyVideo.paused) storyVideo.play().catch(() => { });
       else storyVideo.pause();
-    };
-
-    rewindBtn.onclick = (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-      storyVideo.currentTime = Math.max(0, (storyVideo.currentTime || 0) - 5);
-      updateStoryUI();
-    };
-
-    forwardBtn.onclick = (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-      const dur = storyVideo.duration || Infinity;
-      storyVideo.currentTime = Math.min(dur, (storyVideo.currentTime || 0) + 5);
-      updateStoryUI();
-    };
-
-    speedBtn.onclick = (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-      storySpeedIdx = (storySpeedIdx + 1) % STORY_SPEEDS.length;
-      const spd = STORY_SPEEDS[storySpeedIdx];
-      storyVideo.playbackRate = spd;
-      speedBtn.textContent = `${spd}x`;
     };
 
     const getStoryScrubPct = (e) => {
@@ -2447,8 +2417,29 @@
     trackWrap.onpointerup = onStoryScrubEnd;
     trackWrap.onpointercancel = onStoryScrubEnd;
 
-    const hasReplyInput = Boolean(document.querySelector('textarea, input[placeholder*="tin nhắn" i], input[placeholder*="message" i]'));
-    bar.style.bottom = hasReplyInput ? '84px' : '36px';
+    const updateStoryBarPosition = () => {
+      if (!storyVideo || !storyVideo.isConnected || !bar || !bar.isConnected) return;
+      const r = storyVideo.getBoundingClientRect();
+      if (r.width <= 0 || r.height <= 0) return;
+
+      const replyInput = document.querySelector('form textarea, form input, [role="region"] textarea, input[placeholder*="tin nhắn" i], input[placeholder*="message" i]');
+      let bottomOffset = 14;
+      if (replyInput) {
+        const inputRect = replyInput.getBoundingClientRect();
+        if (inputRect.top > 0 && inputRect.top < window.innerHeight && inputRect.height > 0) {
+          bottomOffset = Math.max(14, (window.innerHeight - inputRect.top) + 10);
+        }
+      } else {
+        bottomOffset = Math.max(14, (window.innerHeight - r.bottom) + 14);
+      }
+
+      bar.style.bottom = `${bottomOffset}px`;
+      bar.style.left = `${r.left + r.width / 2}px`;
+      bar.style.width = `${Math.min(r.width - 24, 480)}px`;
+    };
+
+    updateStoryBarPosition();
+    window.addEventListener('resize', updateStoryBarPosition);
 
     let storyHideTimer = null;
     const resetStoryIdleTimer = () => {
@@ -2477,6 +2468,7 @@
     activeStoryScrubber = {
       video: storyVideo,
       bar,
+      updatePos: updateStoryBarPosition,
       _resetTimerFn: resetStoryIdleTimer,
       cleanup: () => {
         storyVideo.removeEventListener('timeupdate', updateStoryUI);
@@ -2484,6 +2476,7 @@
         storyVideo.removeEventListener('durationchange', updateStoryUI);
         storyVideo.removeEventListener('play', onPlay);
         storyVideo.removeEventListener('pause', onPause);
+        window.removeEventListener('resize', updateStoryBarPosition);
         clearTimeout(storyHideTimer);
       }
     };

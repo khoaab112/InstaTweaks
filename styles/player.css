@@ -2010,26 +2010,27 @@ div:has(> [data-ig-vctl-container="true"]) > div > [role="button"]:not(.ig-vctl-
 
 .ig-story-scrubber-bar {
   position: fixed;
-  bottom: 84px;
+  bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 10005;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   padding: 6px 14px;
-  background: rgba(18, 18, 24, 0.88);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 9999px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 0 0 1px rgba(255, 255, 255, 0.2);
+  background: rgba(15, 15, 20, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 1px rgba(255, 255, 255, 0.2);
   color: #ffffff;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 12px;
   user-select: none;
-  transition: opacity 0.25s ease, transform 0.25s ease;
-  max-width: 440px;
+  -webkit-user-select: none;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+  max-width: 480px;
   width: calc(100vw - 32px);
   box-sizing: border-box;
   opacity: 0;
@@ -2045,35 +2046,42 @@ div:has(> [data-ig-vctl-container="true"]) > div > [role="button"]:not(.ig-vctl-
   transform: translateX(-50%) translateY(0);
 }
 
-.ig-story-sc-btn {
-  background: none;
+.ig-story-sc-play {
+  background: rgba(255, 255, 255, 0.12);
   border: none;
   color: #ffffff;
-  padding: 4px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   border-radius: 50%;
-  opacity: 0.9;
+  opacity: 0.95;
   transition: opacity 0.15s ease, transform 0.12s ease, background 0.15s ease;
   flex-shrink: 0;
 }
 
-.ig-story-sc-btn:hover {
+.ig-story-sc-play:hover {
   opacity: 1;
-  background: rgba(255, 255, 255, 0.18);
-  transform: scale(1.1);
+  background: rgba(255, 255, 255, 0.25);
+  transform: scale(1.08);
 }
 
-.ig-story-sc-btn:active {
+.ig-story-sc-play:active {
   transform: scale(0.92);
+}
+
+.ig-story-sc-play svg {
+  width: 14px;
+  height: 14px;
 }
 
 .ig-story-sc-track-wrap {
   flex: 1 1 auto;
   min-width: 80px;
-  height: 20px;
+  height: 24px;
   display: flex;
   align-items: center;
   position: relative;
@@ -2083,17 +2091,18 @@ div:has(> [data-ig-vctl-container="true"]) > div > [role="button"]:not(.ig-vctl-
 
 .ig-story-sc-track {
   width: 100%;
-  height: 5px;
-  background: rgba(255, 255, 255, 0.22);
-  border-radius: 2.5px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.28);
+  border-radius: 2px;
   position: relative;
-  transition: height 0.15s ease;
+  transition: height 0.12s ease;
+  pointer-events: none;
 }
 
 .ig-story-sc-track-wrap:hover .ig-story-sc-track,
 .ig-story-scrubber-bar.is-dragging .ig-story-sc-track {
-  height: 7px;
-  border-radius: 3.5px;
+  height: 6px;
+  border-radius: 3px;
 }
 
 .ig-story-sc-fill {
@@ -2102,7 +2111,7 @@ div:has(> [data-ig-vctl-container="true"]) > div > [role="button"]:not(.ig-vctl-
   left: 0;
   height: 100%;
   width: 0%;
-  background: linear-gradient(90deg, #fd1d1d, #fcb045);
+  background: linear-gradient(90deg, #ff8a00, #e52e71, #ff3366);
   border-radius: inherit;
   pointer-events: none;
 }
@@ -2115,7 +2124,7 @@ div:has(> [data-ig-vctl-container="true"]) > div > [role="button"]:not(.ig-vctl-
   height: 12px;
   border-radius: 50%;
   background: #ffffff;
-  box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.7);
   transform: translate(-50%, -50%) scale(0);
   transition: transform 0.12s ease;
   pointer-events: none;
@@ -2127,9 +2136,14 @@ div:has(> [data-ig-vctl-container="true"]) > div > [role="button"]:not(.ig-vctl-
   transform: translate(-50%, -50%) scale(1);
 }
 
+.ig-story-scrubber-bar.is-dragging .ig-story-sc-fill,
+.ig-story-scrubber-bar.is-dragging .ig-story-sc-thumb {
+  transition: none !important;
+}
+
 .ig-story-sc-tooltip {
   position: absolute;
-  bottom: 22px;
+  bottom: 24px;
   transform: translateX(-50%);
   background: rgba(15, 15, 20, 0.95);
   color: #ffffff;
@@ -2148,14 +2162,15 @@ div:has(> [data-ig-vctl-container="true"]) > div > [role="button"]:not(.ig-vctl-
 
 .ig-story-sc-time {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.9);
   display: flex;
   align-items: center;
   gap: 3px;
   flex-shrink: 0;
+  letter-spacing: 0.2px;
 }
 
 .ig-story-sc-cur {
@@ -2163,19 +2178,9 @@ div:has(> [data-ig-vctl-container="true"]) > div > [role="button"]:not(.ig-vctl-
 }
 
 .ig-story-sc-sep {
-  opacity: 0.4;
+  opacity: 0.5;
 }
 
-.ig-story-sc-speed {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  background: rgba(255, 255, 255, 0.14) !important;
-  padding: 2px 6px !important;
-  border-radius: 6px !important;
-  min-width: 28px;
-}
-
-.ig-story-sc-speed:hover {
-  background: rgba(255, 255, 255, 0.28) !important;
+.ig-story-sc-dur {
+  color: rgba(255, 255, 255, 0.75);
 }
