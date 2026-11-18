@@ -989,7 +989,9 @@
           profilePicUrl: user.profile_pic_url_hd || user.profile_pic_url || '',
           followersCount: user.edge_followed_by?.count ?? user.follower_count ?? 0,
           followingCount: user.edge_follow?.count ?? user.following_count ?? 0,
-          postsCount: user.edge_owner_to_timeline_media?.count ?? user.media_count ?? 0
+          postsCount: user.edge_owner_to_timeline_media?.count ?? user.media_count ?? 0,
+          followedByViewer: Boolean(user.followed_by_viewer),
+          followsViewer: Boolean(user.follows_viewer)
         };
         window.__igt_last_profile_info__ = profileData;
         window.dispatchEvent(new CustomEvent('__IGT_PROFILE_INFO__', { detail: profileData }));

@@ -11,6 +11,24 @@
 (function () {
   'use strict';
 
+  // --- 0. AN TOÀN EXTENSION CONTEXT (TRÁNH LỖI INVALIDATED KHI RELOAD EXTENSION) ---
+  function isExtensionValid() {
+    try {
+      return Boolean(typeof chrome !== 'undefined' && chrome.runtime && !!chrome.runtime.id);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function safeGetURL(path) {
+    try {
+      if (isExtensionValid() && typeof chrome.runtime.getURL === 'function') {
+        return chrome.runtime.getURL(path);
+      }
+    } catch (_) { }
+    return '';
+  }
+
   // --- 1. QUẢN LÝ CÀI ĐẶT (SETTINGS) ---
   const DEFAULT_SETTINGS = {
     ghostStory: true,
@@ -44,7 +62,7 @@
       if (key === 'adblock') localStorage.setItem('__igt_adblock__', String(v3Settings.adblock));
       if (key === 'videoSharpness') localStorage.setItem('__igt_video_sharpness__', String(v3Settings.videoSharpness));
 
-      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      if (isExtensionValid() && chrome.storage && chrome.storage.local) {
         chrome.storage.local.set({ igt_v3_settings: v3Settings }).catch(() => { });
       }
     } catch (_) { }
@@ -572,9 +590,7 @@
       return;
     }
 
-    const catIconUrl = (typeof chrome !== 'undefined' && chrome.runtime?.getURL)
-      ? chrome.runtime.getURL('icons/dm_cat.gif')
-      : '';
+    const catIconUrl = safeGetURL('icons/dm_cat.gif');
 
     if (!badge) {
       badge = document.createElement('div');
@@ -640,9 +656,7 @@
     // TRƯỜNG HỢP 1: TIN NHẮN TRỰC TIẾP (DIRECT MESSAGES - GHOST DM)
     // Đưa lên thanh tiêu đề Direct theo hướng mũi tên và dùng icon chú mèo GIF động
     if (isDM) {
-      const catIconUrl = (typeof chrome !== 'undefined' && chrome.runtime?.getURL)
-        ? chrome.runtime.getURL('icons/dm_cat.gif')
-        : '';
+      const catIconUrl = safeGetURL('icons/dm_cat.gif');
 
       badge.className = 'igt-v3-stealth-badge igt-v3-dm-header';
       badge.setAttribute('title', 'InstaTweaks: Chế độ Đọc tin nhắn Ẩn danh đang BẬT (Bấm để mở cài đặt)');
@@ -681,9 +695,7 @@
 
     // TRƯỜNG HỢP 2: GHOST STORY (XEM STORY ẨN DANH Ở VÙNG ĐỎ BÊN TRÁI DƯỚI LOGO INSTAGRAM)
     if (isStory) {
-      const storyCatUrl = (typeof chrome !== 'undefined' && chrome.runtime?.getURL)
-        ? chrome.runtime.getURL('icons/story_cat.gif')
-        : '';
+      const storyCatUrl = safeGetURL('icons/story_cat.gif');
 
       badge.className = 'igt-v3-stealth-badge igt-v3-story-badge';
       badge.setAttribute('title', 'InstaTweaks: Chế độ Xem Story Ẩn danh đang BẬT (Bấm để mở cài đặt)');
@@ -701,9 +713,7 @@
     }
 
     // TRƯỜNG HỢP 3: CÁC TRANG KHÁC (FALLBACK NẾU CÓ)
-    const stealthIconUrl = (typeof chrome !== 'undefined' && chrome.runtime?.getURL)
-      ? chrome.runtime.getURL('icons/stealth.png')
-      : '';
+    const stealthIconUrl = safeGetURL('icons/stealth.png');
 
     badge.className = 'igt-v3-stealth-badge';
     badge.setAttribute('title', 'InstaTweaks: Chế độ Ẩn danh đang BẬT');
@@ -830,7 +840,7 @@
             if (pj.user.following_count != null) myFlwingCount = pj.user.following_count;
           }
         }
-      } catch (_) {}
+      } catch (_) { }
     }
 
     return {
@@ -841,6 +851,104 @@
       followerCount: myFlwCount,
       followingCount: myFlwingCount
     };
+  }
+
+  // Lấy bối cảnh Snapshot của chủ tài khoản để đối soát mối quan hệ
+  async function getLoggedInUserContext() {
+    const myInfo = await getLoggedInUserInfo();
+    let myFollowersSnap = null;
+    let myFollowingSnap = null;
+
+    if (myInfo.userId) {
+      myFollowersSnap = await dbGetLatestSnapshot(myInfo.userId, 'followers');
+      myFollowingSnap = await dbGetLatestSnapshot(myInfo.userId, 'following');
+    }
+    if (!myFollowersSnap && myInfo.username) {
+      myFollowersSnap = await dbGetLatestSnapshot(myInfo.username, 'followers');
+    }
+    if (!myFollowingSnap && myInfo.username) {
+      myFollowingSnap = await dbGetLatestSnapshot(myInfo.username, 'following');
+    }
+
+    const myFollowingSet = new Set();
+    (myFollowingSnap?.items || []).forEach(u => {
+      if (u.username) myFollowingSet.add(u.username.toLowerCase());
+      if (u.id) myFollowingSet.add(String(u.id));
+    });
+
+    const myFollowersSet = new Set();
+    (myFollowersSnap?.items || []).forEach(u => {
+      if (u.username) myFollowersSet.add(u.username.toLowerCase());
+      if (u.id) myFollowersSet.add(String(u.id));
+    });
+
+    return {
+      myInfo,
+      hasMySnapshots: Boolean(myFollowersSnap || myFollowingSnap),
+      myFollowingSet,
+      myFollowersSet
+    };
+  }
+
+  // TÍNH TOÁN MỐI QUAN HỆ VỚI CHỦ TÀI KHOẢN (người lạ, bạn bè, Followers, following)
+  async function computeRelationshipWithViewer(item, myContext) {
+    if (!myContext || !myContext.myInfo) {
+      return { type: 'stranger', label: 'người lạ' };
+    }
+
+    const { myInfo, myFollowingSet, myFollowersSet } = myContext;
+    const targetUname = (item.username || '').toLowerCase();
+    const targetUid = String(item.userId || '');
+    const myUname = (myInfo.username || '').toLowerCase();
+    const myUid = String(myInfo.userId || '');
+
+    // 1. Nếu chính là chủ tài khoản
+    if ((myUname && myUname === targetUname) || (myUid && targetUid && myUid === targetUid)) {
+      return { type: 'self', label: 'Chủ acc' };
+    }
+
+    let isFollowing = false; // Chủ acc có theo dõi target không
+    let isFollower = false;  // Target có theo dõi chủ acc không
+
+    // 2. Kiểm tra từ snapshot của Chủ acc (nếu đã quét tôi)
+    if (myFollowingSet.size > 0) {
+      isFollowing = myFollowingSet.has(targetUname) || (targetUid && myFollowingSet.has(targetUid));
+    }
+    if (myFollowersSet.size > 0) {
+      isFollower = myFollowersSet.has(targetUname) || (targetUid && myFollowersSet.has(targetUid));
+    }
+
+    // 3. Nếu chưa xác định được từ snapshot chủ acc, kiểm tra ngược từ snapshot của chính target user
+    if (!isFollowing || !isFollower) {
+      if (!isFollowing) {
+        const targetFlwSnap = await dbGetLatestSnapshot(item.userId || item.username, 'followers');
+        if (targetFlwSnap?.items && myUname) {
+          isFollowing = targetFlwSnap.items.some(u => (u.username && u.username.toLowerCase() === myUname) || (myUid && String(u.id) === myUid));
+        }
+      }
+      if (!isFollower) {
+        const targetFlwingSnap = await dbGetLatestSnapshot(item.userId || item.username, 'following');
+        if (targetFlwingSnap?.items && myUname) {
+          isFollower = targetFlwingSnap.items.some(u => (u.username && u.username.toLowerCase() === myUname) || (myUid && String(u.id) === myUid));
+        }
+      }
+    }
+
+    // 4. Nếu vẫn chưa có snapshot, kiểm tra theo dữ liệu bắt từ Instagram (followedByViewer / followsViewer)
+    if (!isFollowing && item.followedByViewer) isFollowing = true;
+    if (!isFollower && item.followsViewer) isFollower = true;
+
+    // 5. Kết luận mối quan hệ
+    if (isFollowing && isFollower) {
+      return { type: 'friends', label: 'bạn bè' };
+    }
+    if (isFollowing && !isFollower) {
+      return { type: 'following', label: 'following' };
+    }
+    if (!isFollowing && isFollower) {
+      return { type: 'followers', label: 'Followers' };
+    }
+    return { type: 'stranger', label: 'người lạ' };
   }
 
   // --- CÁC HÀM TƯƠNG TÁC INDEXEDDB CHO WATCHLIST & SNAPSHOTS ---
@@ -1331,7 +1439,7 @@
           if (resData.userId) return resData;
         }
       }
-    } catch (_) {}
+    } catch (_) { }
 
     // 4. Fallback siêu mạnh mẽ: Gọi API Topsearch (API này không bao giờ bị chặn và luôn trả về user.pk chuẩn 100%)
     try {
@@ -1358,7 +1466,7 @@
           }
         }
       }
-    } catch (_) {}
+    } catch (_) { }
 
     return resData;
   }
@@ -1497,6 +1605,7 @@
   }
 
   function injectSidebarNavButton() {
+    if (!isExtensionValid()) return;
     let btn = document.getElementById('igt-v3-sidebar-nav-btn');
 
     // Nếu đang ở màn hình xem Story -> ẩn nút sidebar để tránh chèn đè lên header của Story
@@ -1507,9 +1616,7 @@
       if (btn) btn.style.display = '';
     }
 
-    const ghostIconUrl = (typeof chrome !== 'undefined' && chrome.runtime?.getURL)
-      ? chrome.runtime.getURL('icons/ghost.png')
-      : '';
+    const ghostIconUrl = safeGetURL('icons/ghost.png');
 
     if (!btn) {
       btn = document.createElement('div');
@@ -1597,14 +1704,14 @@
   function createDrawerDOM() {
     if (document.getElementById('igt-v3-drawer-panel')) return;
 
-    const ghostIconUrl = (typeof chrome !== 'undefined' && chrome.runtime?.getURL) ? chrome.runtime.getURL('icons/ghost.png') : '';
-    const icon1Stealth = (typeof chrome !== 'undefined' && chrome.runtime?.getURL) ? chrome.runtime.getURL('icons/v3_stealth.png') : '';
-    const icon2Display = (typeof chrome !== 'undefined' && chrome.runtime?.getURL) ? chrome.runtime.getURL('icons/v3_display.png') : '';
-    const icon3Advanced = (typeof chrome !== 'undefined' && chrome.runtime?.getURL) ? chrome.runtime.getURL('icons/v3_advanced.png') : '';
-    const icon4Search = (typeof chrome !== 'undefined' && chrome.runtime?.getURL) ? chrome.runtime.getURL('icons/v3_search.png') : '';
-    const icon5Backup = (typeof chrome !== 'undefined' && chrome.runtime?.getURL) ? chrome.runtime.getURL('icons/v3_backup_section.png') : '';
-    const icon6Export = (typeof chrome !== 'undefined' && chrome.runtime?.getURL) ? chrome.runtime.getURL('icons/v3_export_btn.png') : '';
-    const icon7Restore = (typeof chrome !== 'undefined' && chrome.runtime?.getURL) ? chrome.runtime.getURL('icons/v3_restore_btn.png') : '';
+    const ghostIconUrl = safeGetURL('icons/ghost.png');
+    const icon1Stealth = safeGetURL('icons/v3_stealth.png');
+    const icon2Display = safeGetURL('icons/v3_display.png');
+    const icon3Advanced = safeGetURL('icons/v3_advanced.png');
+    const icon4Search = safeGetURL('icons/v3_search.png');
+    const icon5Backup = safeGetURL('icons/v3_backup_section.png');
+    const icon6Export = safeGetURL('icons/v3_export_btn.png');
+    const icon7Restore = safeGetURL('icons/v3_restore_btn.png');
 
     // 1. Backdrop
     const backdrop = document.createElement('div');
@@ -2174,6 +2281,11 @@
     return userList.map(item => {
       const avatar = (item.avatarUrl && !item.avatarUrl.includes('<svg')) ? item.avatarUrl : DEFAULT_AVATAR;
       const lastScanned = item.lastScannedAt ? new Date(item.lastScannedAt).toLocaleDateString('vi-VN') : 'Chưa quét';
+      const rel = item.relationship || { type: 'stranger', label: 'người lạ' };
+      const hasCheckpoint = item.checkpoints?.followers?.cursor || item.checkpoints?.following?.cursor;
+      const scanStatusText = hasCheckpoint 
+        ? `${lastScanned} <span style="color: #38bdf8; font-weight: 700;" title="Đang có điểm dừng để cào tiếp tục an toàn">• Dở dang</span>` 
+        : lastScanned;
 
       return `
         <div class="igt-v3-wl-card" data-uid="${item.userId}" data-uname="${item.username}">
@@ -2188,6 +2300,9 @@
               </div>
             </div>
 
+            <!-- Tag mối quan hệ với chủ acc (người lạ, bạn bè, Followers, following) -->
+            <span class="igt-v3-rel-tag tag-${rel.type}">${rel.label}</span>
+
             <!-- Thông tin fl (Followers / Following) -->
             <div class="igt-v3-wl-stats">
               <span class="igt-v3-stat-chip igt-stat-flwer">${item.followerCount ? item.followerCount.toLocaleString() : '0'} flwer</span>
@@ -2196,7 +2311,7 @@
 
             <!-- Thời gian lần quét & nút xóa -->
             <div class="igt-v3-wl-right-meta">
-              <span class="igt-v3-wl-last-scanned">Lần quét: ${lastScanned}</span>
+              <span class="igt-v3-wl-last-scanned">Lần quét: ${scanStatusText}</span>
               <button class="igt-v3-wl-remove" data-action="remove" title="Xóa khỏi Watchlist">✕</button>
             </div>
           </div>
@@ -2269,7 +2384,7 @@
       const diffBtn = card.querySelector('[data-action="view-diff"]');
       if (diffBtn) {
         diffBtn.addEventListener('click', () => {
-          showSnapshotViewer(targetUser, 'diff');
+          showSnapshotViewer(targetUser, 'mutual');
         });
       }
     });
@@ -2289,8 +2404,8 @@
       panel.className = 'igt-v3-expanded-panel';
       document.body.appendChild(panel);
 
-      const searchIconUrl = (typeof chrome !== 'undefined' && chrome.runtime?.getURL) ? chrome.runtime.getURL('icons/v3_search.png') : '';
-      const advancedIconUrl = (typeof chrome !== 'undefined' && chrome.runtime?.getURL) ? chrome.runtime.getURL('icons/v3_advanced.png') : '';
+      const searchIconUrl = safeGetURL('icons/v3_search.png');
+      const advancedIconUrl = safeGetURL('icons/v3_advanced.png');
 
       panel.innerHTML = `
         <div class="igt-v3-expanded-header">
@@ -2372,6 +2487,11 @@
       return;
     }
 
+    const myContext = await getLoggedInUserContext();
+    for (const item of filtered) {
+      item.relationship = await computeRelationshipWithViewer(item, myContext);
+    }
+
     wrap.innerHTML = buildWatchlistCardsHtml(filtered);
     bindWatchlistCardEvents(wrap, list, filterText);
   }
@@ -2407,6 +2527,11 @@
       `;
       if (isExpandedWatchlistOpen) renderExpandedWatchlist(filterText);
       return;
+    }
+
+    const myContext = await getLoggedInUserContext();
+    for (const item of filtered) {
+      item.relationship = await computeRelationshipWithViewer(item, myContext);
     }
 
     container.innerHTML = buildWatchlistCardsHtml(filtered);
@@ -2465,10 +2590,10 @@
     });
   }
 
-  // --- SAFE SCANNER ENGINE (BỘ CÀO FOLLOWER/FOLLOWING AN TOÀN CHỐNG CHECKPOINT) ---
+  // --- SAFE SCANNER ENGINE (BỘ CÀO FOLLOWER/FOLLOWING AN TOÀN CHỐNG 429) ---
   let activeScanState = null;
 
-  async function runSafeScan(targetUser, type = 'all') {
+  async function runSafeScan(targetUser, type = 'all', options = {}) {
     if (!targetUser) return;
 
     let overlay = document.getElementById('igt-v3-scanner-overlay');
@@ -2526,8 +2651,8 @@
       ? 'Tất cả (Followers & Following)'
       : (type === 'followers' ? 'Followers (Người theo dõi)' : 'Following (Đang theo dõi)');
 
-    const playGifUrl = (typeof chrome !== 'undefined' && chrome.runtime?.getURL) ? chrome.runtime.getURL('icons/scan_play.gif') : '';
-    const loadingGifUrl = (typeof chrome !== 'undefined' && chrome.runtime?.getURL) ? chrome.runtime.getURL('icons/scan_stop.gif') : '';
+    const playGifUrl = safeGetURL('icons/scan_play.gif');
+    const loadingGifUrl = safeGetURL('icons/scan_stop.gif');
 
     overlay.innerHTML = `
       <div class="igt-v3-scan-header">
@@ -2553,6 +2678,7 @@
         </div>
       </div>
 
+      <!-- Khối tiến độ -->
       <div class="igt-v3-progress-box">
         <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; color: #fff;">
           <span id="igt-scan-count-text">Đang kết nối...</span>
@@ -2566,6 +2692,18 @@
         </div>
       </div>
 
+      <!-- Chọn giới hạn an toàn chống 429 (Safe Batch Limit) -->
+      <div class="igt-v3-scan-limit-box">
+        <span style="font-size: 11.5px; color: #a1a1aa; font-weight: 600;">Giới hạn đợt quét:</span>
+        <div class="igt-v3-scan-limit-pills" id="igt-scan-limit-pills">
+          <button type="button" class="igt-v3-limit-pill" data-limit="100">100</button>
+          <button type="button" class="igt-v3-limit-pill active" data-limit="250" title="Khuyên dùng: Tuyệt đối an toàn, tránh 429">250 ★</button>
+          <button type="button" class="igt-v3-limit-pill" data-limit="500">500</button>
+          <button type="button" class="igt-v3-limit-pill" data-limit="1000">1,000</button>
+          <button type="button" class="igt-v3-limit-pill" data-limit="0">Tất cả</button>
+        </div>
+      </div>
+
       <div class="igt-v3-scan-ctrls">
         <button id="igt-scan-pause-btn" class="igt-v3-action-btn" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
           <img class="igt-v3-scan-btn-icon" id="igt-scan-pause-icon" src="${playGifUrl}" style="display: none;" alt="" />
@@ -2574,7 +2712,7 @@
         </button>
         <button id="igt-scan-stop-btn" class="igt-v3-action-btn primary" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"></rect></svg>
-          <span>Dừng & Lưu dữ liệu</span>
+          <span>Dừng & Lưu checkpoint</span>
         </button>
       </div>
     `;
@@ -2582,10 +2720,30 @@
     const state = {
       isPaused: false,
       isStopped: false,
+      batchLimit: 250, // Mặc định 250 người/đợt để chống 429
       collected: [],
       currentScanType: typesToScan[0]
     };
     activeScanState = state;
+
+    // Gắn sự kiện chọn Batch Limit Pills
+    const limitContainer = document.getElementById('igt-scan-limit-pills');
+    if (limitContainer) {
+      limitContainer.querySelectorAll('.igt-v3-limit-pill').forEach(btn => {
+        btn.addEventListener('click', () => {
+          limitContainer.querySelectorAll('.igt-v3-limit-pill').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const lim = parseInt(btn.getAttribute('data-limit'), 10) || 0;
+          state.batchLimit = lim;
+          const statusText = document.getElementById('igt-scan-status-text');
+          if (statusText) {
+            statusText.innerText = lim > 0
+              ? `Đã đặt giới hạn đợt quét: ${lim.toLocaleString()} tài khoản (Tự lưu và tạo điểm dừng an toàn).`
+              : `Đã chọn: Quét toàn bộ (Không giới hạn).`;
+          }
+        });
+      });
+    }
 
     const pauseBtn = document.getElementById('igt-scan-pause-btn');
     const stopBtn = document.getElementById('igt-scan-stop-btn');
@@ -2636,7 +2794,7 @@
 
     stopBtn.onclick = () => {
       state.isStopped = true;
-      statusText.innerText = 'Đang dừng và đóng gói dữ liệu đã thu thập...';
+      statusText.innerText = 'Đang dừng và lưu dữ liệu + điểm dừng (Checkpoint)...';
     };
 
     const csrfToken = getCookie('csrftoken');
@@ -2669,15 +2827,41 @@
       const MAX_429_RETRIES = 2;
       const collectedCurrent = [];
 
+      // Kiểm tra xem tài khoản này có Checkpoint quét dở dang từ trước không
+      targetUser.checkpoints = targetUser.checkpoints || {};
+      const existingCp = targetUser.checkpoints[currentType];
+      if (existingCp && existingCp.cursor && Array.isArray(existingCp.collected) && existingCp.collected.length > 0) {
+        let wantResume = options.resume;
+        if (wantResume === undefined) {
+          wantResume = confirm(`Phát hiện tiến độ quét dở dang: Đang có sẵn ${existingCp.collected.length.toLocaleString()} ${typeDisplay} được lưu an toàn.\n\n• Nhấn OK để QUÉT TIẾP TỤC từ điểm dừng (Gom tiếp, an toàn không lo 429)\n• Nhấn Cancel để QUÉT LẠI TỪ ĐẦU`);
+        }
+        if (wantResume) {
+          cursor = existingCp.cursor;
+          collectedCurrent.push(...existingCp.collected);
+          statusText.innerText = `[Phục hồi] Đang có sẵn ${collectedCurrent.length} ${typeDisplay}. Chuẩn bị quét gói tiếp theo...`;
+        } else {
+          delete targetUser.checkpoints[currentType];
+          await dbSaveToWatchlist(targetUser);
+        }
+      }
+
       while (!state.isStopped) {
         while (state.isPaused && !state.isStopped) {
           await new Promise(r => setTimeout(r, 200));
         }
         if (state.isStopped) break;
 
+        // Kiểm tra đạt Giới hạn đợt an toàn (Batch Limit)
+        if (state.batchLimit > 0 && collectedCurrent.length >= state.batchLimit) {
+          statusText.innerText = `✓ Đã hoàn thành đợt quét an toàn (${collectedCurrent.length} tài khoản)! Đã lưu Checkpoint để bạn quét tiếp đợt sau.`;
+          break;
+        }
+
         pageCount++;
-        const queryUrl = `https://www.instagram.com/api/v1/friendships/${numericUserId}/${currentType}/?count=50${cursor ? '&max_id=' + encodeURIComponent(cursor) : ''}`;
-        statusText.innerText = `[${typeDisplay}] Đang tải gói ${pageCount} (50 tài khoản)...`;
+        // Giảm kích thước mỗi đợt gọi từ 50 xuống 35 để giảm điểm nghi vấn từ Instagram API
+        const batchQueryCount = 35;
+        const queryUrl = `https://www.instagram.com/api/v1/friendships/${numericUserId}/${currentType}/?count=${batchQueryCount}${cursor ? '&max_id=' + encodeURIComponent(cursor) : ''}`;
+        statusText.innerText = `[${typeDisplay}] Đang tải gói ${pageCount} (${batchQueryCount} tài khoản)...`;
 
         try {
           const res = await fetch(queryUrl, {
@@ -2692,15 +2876,26 @@
 
           if (res.status === 429) {
             consecutive429Retries++;
+            // Lưu ngay Checkpoint khẩn cấp để đảm bảo không mất 1 tài khoản nào
+            targetUser.checkpoints = targetUser.checkpoints || {};
+            if (cursor && collectedCurrent.length > 0) {
+              targetUser.checkpoints[currentType] = {
+                cursor: cursor,
+                collected: collectedCurrent,
+                updatedAt: Date.now()
+              };
+              await dbSaveToWatchlist(targetUser);
+            }
+
             if (consecutive429Retries <= MAX_429_RETRIES) {
               if (statusTag) {
                 statusTag.className = 'igt-v3-scan-status-tag paused';
                 statusTag.innerHTML = '<span>⏳ Đang làm mát (429)</span>';
               }
-              const coolSeconds = 50; // Giãn cách 50s để Instagram giải phóng Rate Limit bucket
+              const coolSeconds = 60; // Nghỉ hẳn 60s để giải phóng Rate Limit bucket
               for (let sec = coolSeconds; sec > 0; sec--) {
                 if (state.isStopped) break;
-                statusText.innerText = `⚠️ Instagram gửi cảnh báo tần suất (429). Đang tự động làm mát trong ${sec}s để bảo vệ an toàn tài khoản...`;
+                statusText.innerText = `⚠️ Instagram phản hồi tần suất (429). Đang tự động làm mát trong ${sec}s để bảo vệ tài khoản...`;
                 await new Promise(r => setTimeout(r, 1000));
               }
               if (state.isStopped) break;
@@ -2712,7 +2907,7 @@
               pageCount--; // Thử lại lượt tải này
               continue;
             } else {
-              alert(`Instagram đang tạm hạn chế tần suất (Rate Limit 429). Hệ thống đã tự động dừng lại và lưu toàn bộ ${collectedCurrent.length} tài khoản đã thu thập được để bảo vệ tài khoản bạn an toàn tuyệt đối!`);
+              alert(`Instagram tạm giới hạn tần suất (Rate Limit 429). Hệ thống đã LƯU AN TOÀN toàn bộ ${collectedCurrent.length} tài khoản và điểm dừng (Checkpoint).\n\nBạn có thể quay lại sau ít phút và bấm "Quét ${typeDisplay}" để cào tiếp mà không cần làm lại từ đầu!`);
               state.isStopped = true;
               break;
             }
@@ -2730,14 +2925,17 @@
           if (users.length === 0) break;
 
           for (const u of users) {
-            collectedCurrent.push({
-              id: String(u.pk || u.id),
-              username: u.username,
-              fullName: u.full_name || '',
-              avatarUrl: u.profile_pic_url || '',
-              isVerified: Boolean(u.is_verified),
-              isPrivate: Boolean(u.is_private)
-            });
+            const uidStr = String(u.pk || u.id);
+            if (!collectedCurrent.some(item => item.id === uidStr)) {
+              collectedCurrent.push({
+                id: uidStr,
+                username: u.username,
+                fullName: u.full_name || '',
+                avatarUrl: u.profile_pic_url || '',
+                isVerified: Boolean(u.is_verified),
+                isPrivate: Boolean(u.is_private)
+              });
+            }
           }
 
           if (totalExpected > 0) {
@@ -2757,16 +2955,20 @@
             fillBar.classList.remove('indeterminate');
             fillBar.style.width = '100%';
             percentText.innerText = '100%';
+            // Hoàn tất 100% -> Xóa checkpoint dở dang
+            if (targetUser.checkpoints) {
+              delete targetUser.checkpoints[currentType];
+            }
             break;
           }
           cursor = json.next_max_id;
 
-          // Giãn cách tiêu chuẩn an toàn theo tài liệu Instagram (2.8s - 4.5s)
-          let delayMs = Math.floor(2800 + Math.random() * 1700);
+          // Giãn cách an toàn ngẫu nhiên (3.2s - 5.5s) mô phỏng tốc độ cuộn người thật
+          let delayMs = Math.floor(3200 + Math.random() * 2300);
 
-          // Cứ sau 5 gói (~250 tài khoản), nghỉ thêm 4s làm mát bộ nhớ đệm
-          if (pageCount % 5 === 0) {
-            delayMs += Math.floor(3500 + Math.random() * 1500);
+          // Cứ sau 4 gói (~140 tài khoản), nghỉ thêm 4.5s làm mát
+          if (pageCount % 4 === 0) {
+            delayMs += Math.floor(4500 + Math.random() * 2000);
           }
 
           const startWait = Date.now();
@@ -2786,7 +2988,7 @@
         }
       }
 
-      // Lưu snapshot của lượt quét này
+      // Lưu snapshot của lượt quét này (dù hoàn thành hay dừng giữa chừng)
       if (collectedCurrent.length > 0) {
         const snap = {
           targetUserId: String(numericUserId),
@@ -2805,6 +3007,16 @@
         }
         if (currentType === 'following' && (!targetUser.followingCount || targetUser.followingCount < collectedCurrent.length)) {
           targetUser.followingCount = collectedCurrent.length;
+        }
+
+        // Nếu còn cursor dở dang (chưa quét hết toàn bộ) -> lưu checkpoint để cào tiếp nối
+        if (cursor) {
+          targetUser.checkpoints = targetUser.checkpoints || {};
+          targetUser.checkpoints[currentType] = {
+            cursor: cursor,
+            collected: collectedCurrent,
+            updatedAt: Date.now()
+          };
         }
         await dbSaveToWatchlist(targetUser);
         renderWatchlistInDrawer();
@@ -2893,10 +3105,10 @@
     const flwCount = followersSnap?.totalCount != null ? followersSnap.totalCount : (snapshotOrUser.followerCount || 0);
     const flwingCount = followingSnap?.totalCount != null ? followingSnap.totalCount : (snapshotOrUser.followingCount || 0);
 
-    const searchIconUrl = (typeof chrome !== 'undefined' && chrome.runtime?.getURL) ? chrome.runtime.getURL('icons/v3_search.png') : '';
-    const csvIconUrl = (typeof chrome !== 'undefined' && chrome.runtime?.getURL) ? chrome.runtime.getURL('icons/v3_csv.png') : '';
-    const jsonIconUrl = (typeof chrome !== 'undefined' && chrome.runtime?.getURL) ? chrome.runtime.getURL('icons/v3_json.png') : '';
-    const privateShieldUrl = (typeof chrome !== 'undefined' && chrome.runtime?.getURL) ? chrome.runtime.getURL('icons/v3_private_shield.png') : '';
+    const searchIconUrl = safeGetURL('icons/v3_search.png');
+    const csvIconUrl = safeGetURL('icons/v3_csv.png');
+    const jsonIconUrl = safeGetURL('icons/v3_json.png');
+    const privateShieldUrl = safeGetURL('icons/v3_private_shield.png');
 
     modal.innerHTML = `
       <!-- Header Row: Back button, Title, Close -->
@@ -2929,11 +3141,11 @@
           <span class="igt-v3-snap-tab-badge" id="igt-snap-tab-flwing-count">${flwingCount.toLocaleString()}</span>
         </button>
         <button class="igt-v3-snap-tab ${currentTab === 'diff' ? 'active' : ''}" id="igt-snap-tab-diff" data-tab="diff">
-          <span>Chuyên sâu</span>
+          <span>Biến động</span>
           <span class="igt-v3-snap-tab-badge igt-diff-badge" id="igt-snap-tab-diff-count">Diff</span>
         </button>
         <button class="igt-v3-snap-tab ${currentTab === 'mutual' ? 'active' : ''}" id="igt-snap-tab-mutual" data-tab="mutual">
-          <span>👥 Tương hỗ</span>
+          <span>Chuyên sâu</span>
           <span class="igt-v3-snap-tab-badge igt-mutual-badge">Phân tích</span>
         </button>
       </div>
@@ -3670,6 +3882,10 @@
   }
 
   function toggleV3Drawer() {
+    if (!isExtensionValid()) {
+      alert('Tiện ích InstaTweaks vừa được cập nhật lại trong Chrome.\nVui lòng nhấn F5 (Tải lại trang) để tiếp tục!');
+      return;
+    }
     createDrawerDOM();
     if (isDrawerOpen) {
       closeV3Drawer();
@@ -3679,6 +3895,10 @@
   }
 
   function openV3Drawer() {
+    if (!isExtensionValid()) {
+      alert('Tiện ích InstaTweaks vừa được cập nhật lại trong Chrome.\nVui lòng nhấn F5 (Tải lại trang) để tiếp tục!');
+      return;
+    }
     createDrawerDOM();
     updateScanMyselfButtonUI();
     const panel = document.getElementById('igt-v3-drawer-panel');
@@ -3749,6 +3969,10 @@
     let lastKnownPath = window.location.pathname;
 
     const observer = new MutationObserver((mutations) => {
+      if (!isExtensionValid()) {
+        try { observer.disconnect(); } catch (_) { }
+        return;
+      }
       let hasExternalChanges = false;
       for (let i = 0; i < mutations.length; i++) {
         const m = mutations[i];
@@ -3782,6 +4006,10 @@
       if (!domChangeThrottle) {
         domChangeThrottle = setTimeout(() => {
           domChangeThrottle = null;
+          if (!isExtensionValid()) {
+            try { observer.disconnect(); } catch (_) { }
+            return;
+          }
           applyVideoSharpness();
           cleanFeedAds();
           injectSidebarNavButton();
@@ -3798,7 +4026,9 @@
 
     // Lắng nghe chuyển trang SPA
     window.addEventListener('__IG_NAVIGATED__', () => {
+      if (!isExtensionValid()) return;
       setTimeout(() => {
+        if (!isExtensionValid()) return;
         injectSidebarNavButton();
         updateGhostStatusBadge();
         scanAndAttachWatchlistButton();
@@ -3808,7 +4038,9 @@
     });
 
     window.addEventListener('popstate', () => {
+      if (!isExtensionValid()) return;
       setTimeout(() => {
+        if (!isExtensionValid()) return;
         injectSidebarNavButton();
         updateGhostStatusBadge();
         scanAndAttachWatchlistButton();

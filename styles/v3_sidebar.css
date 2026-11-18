@@ -725,7 +725,7 @@
   display: flex !important;
   flex-direction: column !important;
   gap: 8px !important;
-  max-height: 280px !important;
+  max-height: 380px !important;
   overflow-y: auto !important;
   padding-right: 2px !important;
 }
@@ -821,6 +821,7 @@
     width: calc(100vw - 490px) !important;
   }
 }
+
 @media (max-width: 950px) {
   .igt-v3-expanded-panel {
     left: 20px !important;
@@ -833,10 +834,11 @@
   background: rgba(39, 39, 42, 0.45) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   border-radius: 10px !important;
-  padding: 10px 12px !important;
+  padding: 12px 14px 14px 14px !important;
   display: flex !important;
   flex-direction: column !important;
-  gap: 8px !important;
+  gap: 10px !important;
+  min-height: 96px !important;
   transition: all 0.2s ease !important;
   overflow: hidden !important;
   box-sizing: border-box !important;
@@ -900,6 +902,52 @@
   display: block !important;
 }
 
+/* Tag mối quan hệ với chủ acc (người lạ, bạn bè, Followers, following) */
+.igt-v3-rel-tag {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 2.5px 7px !important;
+  border-radius: 6px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  user-select: none !important;
+  letter-spacing: 0.2px !important;
+}
+
+.igt-v3-rel-tag.tag-friends {
+  background: rgba(168, 85, 247, 0.16) !important;
+  border: 1px solid rgba(168, 85, 247, 0.35) !important;
+  color: #c084fc !important;
+}
+
+.igt-v3-rel-tag.tag-following {
+  background: rgba(14, 165, 233, 0.16) !important;
+  border: 1px solid rgba(14, 165, 233, 0.35) !important;
+  color: #38bdf8 !important;
+}
+
+.igt-v3-rel-tag.tag-followers {
+  background: rgba(34, 197, 94, 0.16) !important;
+  border: 1px solid rgba(34, 197, 94, 0.35) !important;
+  color: #4ade80 !important;
+}
+
+.igt-v3-rel-tag.tag-stranger {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #94a3b8 !important;
+}
+
+.igt-v3-rel-tag.tag-self {
+  background: rgba(234, 179, 8, 0.16) !important;
+  border: 1px solid rgba(234, 179, 8, 0.35) !important;
+  color: #facc15 !important;
+}
+
 .igt-v3-wl-stats {
   display: inline-flex !important;
   align-items: center !important;
@@ -954,12 +1002,14 @@
 .igt-v3-wl-actions {
   display: flex !important;
   gap: 6px !important;
-  margin-top: 2px !important;
+  margin-top: 4px !important;
+  margin-bottom: 2px !important;
 }
 
 .igt-v3-scan-sub-btn {
   flex: 1 !important;
-  padding: 6px 8px !important;
+  padding: 7px 8px !important;
+  min-height: 31px !important;
   border-radius: 6px !important;
   font-size: 11px !important;
   font-weight: 600 !important;
@@ -972,6 +1022,7 @@
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
   color: #e4e4e7 !important;
   transition: all 0.15s ease !important;
+  box-sizing: border-box !important;
 }
 
 .igt-v3-scan-sub-btn:hover {
@@ -1127,6 +1178,47 @@
   font-size: 12px !important;
   color: #a1a1aa !important;
   line-height: 1.4 !important;
+}
+
+/* Limit selector box in Scanner */
+.igt-v3-scan-limit-box {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  border-radius: 8px !important;
+  padding: 8px 12px !important;
+  margin-top: 4px !important;
+}
+
+.igt-v3-scan-limit-pills {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.igt-v3-limit-pill {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #d4d4d8 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 4px 8px !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.igt-v3-limit-pill:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #fff !important;
+}
+
+.igt-v3-limit-pill.active {
+  background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%) !important;
+  border-color: rgba(168, 85, 247, 0.5) !important;
+  color: #fff !important;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.4) !important;
 }
 
 .igt-v3-scan-ctrls {
@@ -1318,6 +1410,7 @@
   border-color: rgba(34, 197, 94, 0.25) !important;
   background: rgba(34, 197, 94, 0.06) !important;
 }
+
 .igt-v3-diff-card.green.active {
   background: rgba(34, 197, 94, 0.15) !important;
   border-color: #22c55e !important;
@@ -1328,6 +1421,7 @@
   border-color: rgba(239, 68, 68, 0.25) !important;
   background: rgba(239, 68, 68, 0.06) !important;
 }
+
 .igt-v3-diff-card.red.active {
   background: rgba(239, 68, 68, 0.15) !important;
   border-color: #ef4444 !important;
@@ -1337,6 +1431,7 @@
 .igt-v3-diff-card.grey {
   border-color: rgba(148, 163, 184, 0.15) !important;
 }
+
 .igt-v3-diff-card.grey.active {
   background: rgba(148, 163, 184, 0.15) !important;
   border-color: #94a3b8 !important;
@@ -1348,9 +1443,18 @@
   font-weight: 800 !important;
   line-height: 1.2 !important;
 }
-.igt-v3-diff-card.green .igt-v3-diff-card-num { color: #4ade80 !important; }
-.igt-v3-diff-card.red .igt-v3-diff-card-num { color: #f87171 !important; }
-.igt-v3-diff-card.grey .igt-v3-diff-card-num { color: #94a3b8 !important; }
+
+.igt-v3-diff-card.green .igt-v3-diff-card-num {
+  color: #4ade80 !important;
+}
+
+.igt-v3-diff-card.red .igt-v3-diff-card-num {
+  color: #f87171 !important;
+}
+
+.igt-v3-diff-card.grey .igt-v3-diff-card-num {
+  color: #94a3b8 !important;
+}
 
 .igt-v3-diff-card-lbl {
   font-size: 10px !important;
