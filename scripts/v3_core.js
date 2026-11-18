@@ -2211,8 +2211,8 @@
             <button class="igt-v3-scan-sub-btn view-snap" data-action="view-snapshot" title="Xem lịch sử Snapshot đã lưu">
               Snapshot
             </button>
-            <button class="igt-v3-scan-sub-btn diff-btn" data-action="view-diff" title="So sánh biến động Follow / Unfollow">
-              ⚡ Biến động
+            <button class="igt-v3-scan-sub-btn diff-btn" data-action="view-diff" title="Phân tích Chuyên sâu (Biến động & Tương hỗ)">
+              Chuyên sâu
             </button>
           </div>
         </div>
@@ -2910,7 +2910,7 @@
             <span>Quay lại</span>
           </button>
           <div style="min-width: 0;">
-            <div style="font-size: 13.5px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" id="igt-snap-title">Snapshot & Biến động: @${targetUsername}</div>
+            <div style="font-size: 13.5px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" id="igt-snap-title">Snapshot & Chuyên sâu: @${targetUsername}</div>
             <div style="font-size: 11px; color: #a1a1aa; white-space: nowrap;" id="igt-snap-subtitle">Đang tải...</div>
           </div>
         </div>
@@ -2929,7 +2929,7 @@
           <span class="igt-v3-snap-tab-badge" id="igt-snap-tab-flwing-count">${flwingCount.toLocaleString()}</span>
         </button>
         <button class="igt-v3-snap-tab ${currentTab === 'diff' ? 'active' : ''}" id="igt-snap-tab-diff" data-tab="diff">
-          <span>⚡ Biến động</span>
+          <span>Chuyên sâu</span>
           <span class="igt-v3-snap-tab-badge igt-diff-badge" id="igt-snap-tab-diff-count">Diff</span>
         </button>
         <button class="igt-v3-snap-tab ${currentTab === 'mutual' ? 'active' : ''}" id="igt-snap-tab-mutual" data-tab="mutual">
