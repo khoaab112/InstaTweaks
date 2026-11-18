@@ -10,6 +10,76 @@
 (function () {
   'use strict';
 
+  // --- INSTATWEAKS v3.5: NOTIFICATION BLACKBOX RECORDER (BẮT TRỌN TIN NHẮN TỪ THÔNG BÁO) ---
+  try {
+    if (typeof window.Notification === 'function') {
+      const OriginalNotification = window.Notification;
+      window.Notification = function (title, options = {}) {
+        try {
+          const body = options.body || '';
+          const icon = options.icon || '';
+          const image = options.image || '';
+          const tag = options.tag || '';
+          
+          if (body || title) {
+            console.log('[InstaTweaks Notification Hook] Bắt được thông báo:', title, body);
+            window.dispatchEvent(new CustomEvent('__IGT_INCOMING_NOTIFICATION__', {
+              detail: {
+                title: String(title || ''),
+                body: String(body || ''),
+                icon: String(icon || ''),
+                image: String(image || ''),
+                tag: String(tag || ''),
+                timestamp: Date.now()
+              }
+            }));
+          }
+        } catch (_) {}
+        return new OriginalNotification(title, options);
+      };
+      // Sao chép các thuộc tính tĩnh của Notification (permission, requestPermission...)
+      Object.setPrototypeOf(window.Notification, OriginalNotification);
+      window.Notification.prototype = OriginalNotification.prototype;
+      if (OriginalNotification.permission) {
+        Object.defineProperty(window.Notification, 'permission', {
+          get: () => OriginalNotification.permission
+        });
+      }
+      if (typeof OriginalNotification.requestPermission === 'function') {
+        window.Notification.requestPermission = OriginalNotification.requestPermission.bind(OriginalNotification);
+      }
+    }
+
+    if (typeof ServiceWorkerRegistration !== 'undefined' && ServiceWorkerRegistration.prototype.showNotification) {
+      const origShowNotification = ServiceWorkerRegistration.prototype.showNotification;
+      ServiceWorkerRegistration.prototype.showNotification = function (title, options = {}) {
+        try {
+          const body = options.body || '';
+          const icon = options.icon || '';
+          const image = options.image || '';
+          const tag = options.tag || '';
+          
+          if (body || title) {
+            console.log('[InstaTweaks ServiceWorker Hook] Bắt được thông báo ServiceWorker:', title, body);
+            window.dispatchEvent(new CustomEvent('__IGT_INCOMING_NOTIFICATION__', {
+              detail: {
+                title: String(title || ''),
+                body: String(body || ''),
+                icon: String(icon || ''),
+                image: String(image || ''),
+                tag: String(tag || ''),
+                timestamp: Date.now()
+              }
+            }));
+          }
+        } catch (_) {}
+        return origShowNotification.apply(this, arguments);
+      };
+    }
+  } catch (_) {}
+
+
+
   const MAX_TRACKS_CACHE = 80;
   const MAX_NO_AUDIO_CACHE = 100;
 
@@ -33,7 +103,8 @@
     ghostStory: localStorage.getItem('__igt_ghost_story__') !== 'false',
     ghostDM: localStorage.getItem('__igt_ghost_dm__') !== 'false',
     adblock: localStorage.getItem('__igt_adblock__') !== 'false',
-    videoSharpness: localStorage.getItem('__igt_video_sharpness__') !== 'false'
+    videoSharpness: localStorage.getItem('__igt_video_sharpness__') !== 'false',
+        ghostViewOnce: localStorage.getItem('__igt_ghost_view_once__') !== 'false'
   };
 
   window.addEventListener('__IGT_SYNC_SETTINGS__', (e) => {
@@ -43,6 +114,7 @@
       if (e.detail.ghostDM !== undefined) localStorage.setItem('__igt_ghost_dm__', String(e.detail.ghostDM));
       if (e.detail.adblock !== undefined) localStorage.setItem('__igt_adblock__', String(e.detail.adblock));
       if (e.detail.videoSharpness !== undefined) localStorage.setItem('__igt_video_sharpness__', String(e.detail.videoSharpness));
+            if (e.detail.ghostViewOnce !== undefined) localStorage.setItem('__igt_ghost_view_once__', String(e.detail.ghostViewOnce));
     }
   });
 
@@ -140,6 +212,26 @@
     return false;
   }
 
+  function isGhostViewOnceRequest(url, bodyStr = '', friendlyName = '') {
+    if (!igtV3Settings.ghostViewOnce) return false;
+    const fullCheck = (typeof url === 'string' ? url : '') + ' ' + (typeof bodyStr === 'string' ? bodyStr : '') + ' ' + (typeof friendlyName === 'string' ? friendlyName : '');
+    
+    if (
+      fullCheck.includes('/visual_threads/') ||
+      fullCheck.includes('/visual_item_seen') ||
+      fullCheck.includes('/item_seen') ||
+      fullCheck.includes('VisualItemSeen') ||
+      fullCheck.includes('visual_thread_seen') ||
+      fullCheck.includes('PolarisDirectVisualItemSeen') ||
+      fullCheck.includes('useIGDVisualItemSeenMutation') ||
+      fullCheck.includes('mark_visual_item_seen') ||
+      (fullCheck.includes('/direct_v2/') && fullCheck.includes('seen') && fullCheck.includes('visual'))
+    ) {
+      return true;
+    }
+    return false;
+  }
+
   // --- HOOK NAVIGATOR.SENDBEACON (CHẶN STORY & DM SEEN BEACONS) ---
   if (navigator && typeof navigator.sendBeacon === 'function') {
     const originalSendBeacon = navigator.sendBeacon;
@@ -155,27 +247,272 @@
         console.log('[InstaTweaks 3.0] Ghost DM: Blocked sendBeacon ->', urlStr);
         return true;
       }
+      if (isGhostViewOnceRequest(urlStr, bodyStr)) {
+        console.log('[InstaTweaks 3.5] Ghost View Once: Blocked sendBeacon ->', urlStr);
+        return true;
+      }
       return originalSendBeacon.apply(navigator, [url, data]);
     };
   }
 
-  // --- HOOK WEBSOCKET (CHẶN REALTIME DM SEEN BEACONS) ---
+  // --- HOOK WEBSOCKET (CHẶN REALTIME DM SEEN & BẮT TIN NHẮN TỰ ĐỘNG) ---
   if (typeof WebSocket !== 'undefined') {
     const originalWsSend = WebSocket.prototype.send;
     WebSocket.prototype.send = function (data) {
-      if (igtV3Settings.ghostDM && typeof data === 'string') {
+      if ((igtV3Settings.ghostDM || igtV3Settings.ghostViewOnce) && typeof data === 'string') {
         if (
           data.includes('"mark_seen"') ||
           data.includes('"action":"seen"') ||
           data.includes('"item_type":"seen"') ||
-          data.includes('/seen')
+          data.includes('/seen') ||
+          data.includes('visual_item_seen') ||
+          data.includes('item_seen')
         ) {
-          console.log('[InstaTweaks 3.0] Ghost DM: Blocked WebSocket seen event!');
+          console.log('[InstaTweaks 3.5] Ghost DM / View Once: Blocked WebSocket seen event!');
           return;
         }
       }
       return originalWsSend.apply(this, arguments);
     };
+
+    function isInstagramAvatarUrl(src) {
+      if (!src || typeof src !== 'string') return false;
+      const lower = src.toLowerCase();
+      if (lower.includes('/t51.2885-19/') || lower.includes('-19/') || lower.includes('s150x150') || lower.includes('s320x320') || lower.includes('s50x50') || lower.includes('/profile_pic')) return true;
+      return false;
+    }
+
+    // Lắng nghe và trích xuất tin nhắn thời gian thực qua WebSocket (kể cả khi đang lướt Bảng tin / Feed)
+    function extractDmDirectlyFromWs(rawStr) {
+      if (!rawStr || typeof rawStr !== 'string') return;
+      try {
+        // 1. Quét các JSON Block hợp lệ bên trong chuỗi nhị phân MQTT
+        let depth = 0;
+        let start = -1;
+        let inStr = false;
+        let esc = false;
+        const jsonCandidates = [];
+
+        for (let i = 0; i < rawStr.length; i++) {
+          const c = rawStr[i];
+          if (esc) { esc = false; continue; }
+          if (c === '\\' && inStr) { esc = true; continue; }
+          if (c === '"') { inStr = !inStr; continue; }
+          if (!inStr) {
+            if (c === '{') {
+              if (depth === 0) start = i;
+              depth++;
+            } else if (c === '}') {
+              depth--;
+              if (depth === 0 && start !== -1) {
+                const sub = rawStr.substring(start, i + 1);
+                if (sub.includes('item_id') || sub.includes('deleted_item_id') || sub.includes('thread_id') || sub.includes('item_delete')) {
+                  try {
+                    const parsed = JSON.parse(sub);
+                    jsonCandidates.push(parsed);
+                  } catch (_) {}
+                }
+                start = -1;
+              } else if (depth < 0) {
+                depth = 0;
+                start = -1;
+              }
+            }
+          }
+        }
+
+        for (const cand of jsonCandidates) {
+          extractDirectMessagesFromPayload(cand);
+        }
+
+        // 2. BỘ TRÍCH XUẤT REGEX ĐỘC LẬP (Bảo vệ 100% khi MQTT bị nén/lồng ký tự nhị phân)
+        // A. Nhận diện sự kiện Thu hồi (Unsend Event)
+        const unsendRegex = /(?:"deleted_item_id"|"deleted_message_id"|"item_id"|"id")\s*:\s*"?([0-9a-zA-Z_$.-]{10,80})"?[^}]*?(?:"action"|"type"|"event")\s*:\s*"(?:item_delete|delete|item_deleted|unsend)"/i;
+        const unsendRegex2 = /(?:"action"|"type"|"event")\s*:\s*"(?:item_delete|delete|item_deleted|unsend)"[^}]*?(?:"deleted_item_id"|"deleted_message_id"|"item_id"|"id")\s*:\s*"?([0-9a-zA-Z_$.-]{10,80})"?/i;
+        const unsendMatch = rawStr.match(unsendRegex) || rawStr.match(unsendRegex2);
+        if (unsendMatch) {
+          const delId = unsendMatch[1];
+          console.log('[InstaTweaks WS] Bắt được tín hiệu thu hồi realtime qua WebSocket (Feed):', delId);
+          window.dispatchEvent(new CustomEvent('__IGT_DM_UNSEND_EVENT__', {
+            detail: { id: delId, threadId: '', timestamp: Date.now() }
+          }));
+        }
+
+        // B. Bắt tin nhắn văn bản / media mới đến realtime qua WebSocket khi đang lướt Feed
+        const itemIdMatch = rawStr.match(/(?:"item_id"|"id"|"mid"|"message_id")\s*:\s*"?([0-9a-zA-Z_$.-]{10,80})"?/);
+        const textMatch = rawStr.match(/(?:"text"|"text_body"|"igd_snippet")\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/);
+        if (itemIdMatch && (textMatch || rawStr.includes('cdninstagram') || rawStr.includes('fbcdn'))) {
+          const id = itemIdMatch[1];
+          let text = '';
+          if (textMatch) {
+            try { text = JSON.parse('"' + textMatch[1] + '"'); } catch (_) { text = textMatch[1]; }
+          }
+
+          const threadMatch = rawStr.match(/(?:"thread_id"|"thread_fbid")\s*:\s*"?([0-9]{10,25})"?/);
+          const userMatch = rawStr.match(/(?:"user_id"|"sender_fbid"|"sender_id")\s*:\s*"?([0-9]{10,25})"?/);
+          const tid = threadMatch ? threadMatch[1] : '';
+
+          let mediaUrl = '';
+          let mediaType = '';
+          const cdnMatch = rawStr.match(/"(?:url|uri|src)"\s*:\s*"(https?:[^"]+(?:cdninstagram|fbcdn)[^"]+)"/);
+          if (cdnMatch) {
+            mediaUrl = cdnMatch[1].replace(/\\\//g, '/');
+            if (isInstagramAvatarUrl(mediaUrl)) {
+              mediaUrl = '';
+            } else {
+              mediaType = (mediaUrl.includes('.mp4') || rawStr.includes('"video_versions"')) ? 'video' : 'image';
+            }
+          }
+
+          const isVisual = rawStr.includes('"visual_media"') || rawStr.includes('"view_mode":"once"');
+
+          console.log('[InstaTweaks WS] Ghi nhận tin nhắn Direct mới qua WebSocket (Feed):', id, text || mediaType);
+          window.dispatchEvent(new CustomEvent('__IGT_DM_ITEMS_STORE__', {
+            detail: {
+              items: [{
+                id: id,
+                threadId: tid,
+                userId: userMatch ? userMatch[1] : '',
+                timestamp: Date.now(),
+                itemType: isVisual ? 'visual_media' : (mediaUrl ? 'media' : 'text'),
+                text: text,
+                mediaUrl: mediaUrl,
+                mediaType: mediaType,
+                isVisual: isVisual,
+                viewMode: isVisual ? 'once' : '',
+                isUnsent: false
+              }],
+              threadId: tid,
+              activeIds: [id]
+            }
+          }));
+        }
+      } catch (_) {}
+    }
+
+    // Lắng nghe các gói tin nhắn realtime nhận về từ WebSocket (hỗ trợ cả chuỗi String và Binary ArrayBuffer/Blob của MQTT)
+    function inspectWsEventData(data) {
+      if (!data) return;
+      try {
+        if (typeof data === 'string') {
+          extractDmDirectlyFromWs(data);
+          if (data.includes('"item_id"') || data.includes('"thread_id"') || data.includes('"item_unsend"') || data.includes('"item_delete"') || data.includes('"deleted_item_id"') || data.includes('"placeholder"')) {
+            parseMetaResponseText(data);
+          }
+        } else if (data instanceof ArrayBuffer) {
+          const str = new TextDecoder('utf-8', { fatal: false }).decode(data);
+          if (str) {
+            extractDmDirectlyFromWs(str);
+            if (str.includes('"item_id"') || str.includes('"thread_id"') || str.includes('"item_unsend"') || str.includes('"item_delete"') || str.includes('"deleted_item_id"') || str.includes('"placeholder"')) {
+              parseMetaResponseText(str);
+            }
+          }
+        } else if (typeof Blob !== 'undefined' && data instanceof Blob) {
+          data.text().then(str => {
+            if (str) {
+              extractDmDirectlyFromWs(str);
+              if (str.includes('"item_id"') || str.includes('"thread_id"') || str.includes('"item_unsend"') || str.includes('"item_delete"') || str.includes('"deleted_item_id"') || str.includes('"placeholder"')) {
+                parseMetaResponseText(str);
+              }
+            }
+          }).catch(() => {});
+        }
+      } catch (_) {}
+    }
+
+    const originalWsAddEventListener = WebSocket.prototype.addEventListener;
+    WebSocket.prototype.addEventListener = function (type, listener, ...rest) {
+      if (type === 'message' && typeof listener === 'function') {
+        const wrapped = function (event) {
+          inspectWsEventData(event?.data);
+          return listener.apply(this, arguments);
+        };
+        return originalWsAddEventListener.apply(this, [type, wrapped, ...rest]);
+      }
+      return originalWsAddEventListener.apply(this, [type, listener, ...rest]);
+    };
+
+
+    // Lắng nghe ServiceWorker messages trên Home Feed
+    if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        try {
+          const data = event.data;
+          if (data) {
+            if (typeof data === 'string') {
+              parseMetaResponseText(data);
+            } else if (typeof data === 'object') {
+              processPayload(data);
+            }
+          }
+        } catch (_) {}
+      });
+    }
+
+    // Hook Web Notification constructor để bắt thông báo tin nhắn trên Windows/Chrome khi ở Feed
+    if (typeof window.Notification !== 'undefined') {
+      const RealNotification = window.Notification;
+      window.Notification = function (title, options) {
+        try {
+          const text = options?.body || '';
+          const sender = (title && title !== 'Instagram') ? title : '';
+          const icon = options?.icon || '';
+          const tag = options?.tag || '';
+          if (text) {
+            console.log('[InstaTweaks Notification Hook] Bắt được tin nhắn từ Web Notification:', sender, text);
+            window.dispatchEvent(new CustomEvent('__IGT_DM_ITEMS_STORE__', {
+              detail: {
+                items: [{
+                  id: tag || ('notif_' + Date.now().toString(36)),
+                  threadId: '',
+                  sender: sender,
+                  senderAvatar: icon,
+                  timestamp: Date.now(),
+                  itemType: 'text',
+                  text: text,
+                  mediaUrl: '',
+                  mediaType: '',
+                  isUnsent: false
+                }]
+              }
+            }));
+          }
+        } catch (_) {}
+        return new RealNotification(title, options);
+      };
+      try {
+        Object.setPrototypeOf(window.Notification, RealNotification);
+        Object.assign(window.Notification, RealNotification);
+      } catch (_) {}
+    }
+
+    // Hook thêm thuộc tính onmessage của WebSocket
+    let originalOnMessageDesc = Object.getOwnPropertyDescriptor(WebSocket.prototype, 'onmessage');
+    Object.defineProperty(WebSocket.prototype, 'onmessage', {
+      set(fn) {
+        if (typeof fn === 'function') {
+          const wrapped = function (event) {
+            inspectWsEventData(event?.data);
+            return fn.apply(this, arguments);
+          };
+          this._igt_wrapped_onmessage = wrapped;
+          if (originalOnMessageDesc && originalOnMessageDesc.set) {
+            originalOnMessageDesc.set.call(this, wrapped);
+          } else {
+            this.addEventListener('message', wrapped);
+          }
+        } else {
+          this._igt_wrapped_onmessage = null;
+          if (originalOnMessageDesc && originalOnMessageDesc.set) {
+            originalOnMessageDesc.set.call(this, fn);
+          }
+        }
+      },
+      get() {
+        return this._igt_wrapped_onmessage || (originalOnMessageDesc && originalOnMessageDesc.get ? originalOnMessageDesc.get.call(this) : null);
+      },
+      configurable: true
+    });
   }
 
   // HÀM QUẢN LÝ BỘ NHỚ AN TOÀN (CHỐNG TRÀN RAM - GIỚI HẠN KÍCH THƯỚC MAP & SET)
@@ -1042,11 +1379,255 @@
       extractStoryItems(json);
       extractHighlightsFromPayload(json);
       extractUserProfileInfo(json);
+      extractDirectMessagesFromPayload(json);
       if (igtV3Settings.videoSharpness) {
         forceHighestResolutionVideoVersions(json);
       }
     } catch (_) {}
   }
+
+  // --- INSTATWEAKS v3.5: PHÂN TÍCH & BẮT TRỌN TIN NHẮN DIRECT (ANTI-UNSEND & VIEW ONCE) ---
+  const IGT_SESSION_START_TIME = Date.now();
+  const fiberInitialThreadScanned = new Set();
+  function extractDirectMessagesFromPayload(json) {
+    if (!json || typeof json !== 'object') return;
+    try {
+      const parsedItems = [];
+      const visited = new WeakSet();
+
+      function parseSingleDmItem(item, threadId = '') {
+        const id = String(item.item_id || item.id || item.message_id || item.mid || '');
+        if (!id) return null;
+        const userId = String(item.user_id || item.sender_id || item.sender_fbid || item.author_id || '');
+        const timestamp = item.timestamp ? Number(String(item.timestamp).substring(0, 13)) : (item.timestamp_ms ? Number(item.timestamp_ms) : Date.now());
+        const itemType = item.item_type || item.content_type || (item.text || item.text_body ? 'text' : (item.visual_media ? 'visual_media' : 'media'));
+
+        let text = item.text || item.text_body || item.igd_snippet || item.snippet || item.message || '';
+        let mediaUrl = '';
+        let mediaType = '';
+        let isVisual = false;
+        let viewMode = '';
+
+        // 1. Visual Media (Xem 1 lần / tự hủy)
+        if (item.visual_media || item.raven_media || itemType === 'visual_media' || itemType === 'raven_media') {
+          isVisual = true;
+          const vm = item.visual_media || item.raven_media || {};
+          viewMode = vm.view_mode || 'once';
+          const media = vm.media || {};
+          if (media.video_versions && media.video_versions.length > 0) {
+            mediaUrl = media.video_versions[0].url || '';
+            mediaType = 'video';
+          } else if (media.image_versions2?.candidates?.length > 0) {
+            mediaUrl = media.image_versions2.candidates[0].url || '';
+            mediaType = 'image';
+          } else if (vm.url) {
+            mediaUrl = vm.url;
+            mediaType = 'image';
+          }
+        }
+        // 2. Regular Media (Ảnh / Video thường)
+        else if (item.media || itemType === 'media') {
+          const m = item.media || {};
+          if (m.video_versions && m.video_versions.length > 0) {
+            mediaUrl = m.video_versions[0].url || '';
+            mediaType = 'video';
+          } else if (m.image_versions2?.candidates?.length > 0) {
+            mediaUrl = m.image_versions2.candidates[0].url || '';
+            mediaType = 'image';
+          }
+        }
+        // 3. Voice Media (Ghi âm giọng nói)
+        else if (item.voice_media) {
+          mediaUrl = item.voice_media?.media?.audio?.audio_src || '';
+          mediaType = 'audio';
+        }
+        // 4. Animated Media (GIF)
+        else if (item.animated_media) {
+          mediaUrl = item.animated_media?.images?.fixed_height?.url || '';
+          mediaType = 'gif';
+        }
+        // 5. Clip / Shared Reel
+        else if (item.clip) {
+          mediaUrl = item.clip?.clip?.video_versions?.[0]?.url || '';
+          mediaType = 'video';
+        }
+
+        // LỌC TRIỆT ĐỂ: Nếu mediaUrl là ảnh đại diện (avatar) thì HỦY BỎ mediaUrl ngay lập tức!
+        if (typeof isInstagramAvatarUrl === 'function' && isInstagramAvatarUrl(mediaUrl)) {
+          mediaUrl = '';
+          mediaType = '';
+        }
+
+        const isUnsent = item.item_type === 'placeholder' ||
+                         item.content_type === 'PLACEHOLDER' ||
+                         item.__typename === 'SlideMessagePlaceholder' ||
+                         item.is_placeholder ||
+                         item.tombstone ||
+                         item.is_unsent ||
+                         Boolean(item.placeholder && item.placeholder.is_placeholder) ||
+                         false;
+
+        // CHỈ PHÁT SỰ KIỆN THU HỒI NẾU XẢY RA TRONG PHIÊN LÀM VIỆC HIỆN TẠI (BỎ QUA CÁC PLACEHOLDER CŨ TỪ LỊCH SỬ)
+        if (isUnsent && id && timestamp >= (IGT_SESSION_START_TIME - 30000)) {
+          window.dispatchEvent(new CustomEvent('__IGT_DM_UNSEND_EVENT__', {
+            detail: { id, threadId: String(threadId || item.thread_id || item.thread_fbid || ''), timestamp }
+          }));
+        }
+
+        return {
+          id,
+          threadId: String(threadId || item.thread_id || item.thread_fbid || ''),
+          userId,
+          timestamp,
+          itemType,
+          text,
+          mediaUrl,
+          mediaType,
+          isVisual,
+          viewMode,
+          isUnsent
+        };
+      }
+
+      function walkForMessages(obj, depth = 0, currentThreadId = '') {
+        if (!obj || typeof obj !== 'object' || depth > 10) return;
+        if (visited.has(obj)) return;
+        visited.add(obj);
+
+        let tid = currentThreadId;
+        if (obj.thread_id || obj.thread_v2_id || obj.threadId || obj.thread_fbid) {
+          tid = String(obj.thread_id || obj.thread_v2_id || obj.threadId || obj.thread_fbid);
+        }
+
+        // Bắt sự kiện thu hồi (unsend / delete event)
+        if (obj.deleted_item_id || obj.deleted_message_ids || obj.deleted_item_ids || (obj.action === 'delete' && obj.item_id) || (obj.action === 'item_delete' && obj.item_id) || (obj.type === 'item_deleted' && obj.item_id) || obj.__typename === 'SlideMessagePlaceholder' || obj.tombstone) {
+          const delId = String(obj.deleted_item_id || obj.deleted_message_ids || obj.deleted_item_ids || obj.item_id || obj.id || '');
+          if (delId) {
+            window.dispatchEvent(new CustomEvent('__IGT_DM_UNSEND_EVENT__', {
+              detail: { id: delId, threadId: tid, timestamp: Date.now() }
+            }));
+          }
+        }
+
+        if (obj.item_id || obj.id || obj.mid || obj.message_id) {
+          if (obj.text !== undefined || obj.text_body || obj.igd_snippet || obj.item_type || obj.content_type || obj.visual_media || obj.media) {
+            const item = parseSingleDmItem(obj, tid);
+            if (item) parsedItems.push(item);
+          }
+        }
+
+        if (Array.isArray(obj)) {
+          for (let i = 0; i < obj.length; i++) {
+            walkForMessages(obj[i], depth + 1, tid);
+          }
+        } else {
+          const keys = Object.keys(obj);
+          for (let i = 0; i < keys.length; i++) {
+            const val = obj[keys[i]];
+            if (val && typeof val === 'object') {
+              walkForMessages(val, depth + 1, tid);
+            }
+          }
+        }
+      }
+
+      walkForMessages(json);
+
+      if (parsedItems.length > 0) {
+        const primaryThreadId = parsedItems.find(p => p.threadId)?.threadId || '';
+        window.dispatchEvent(new CustomEvent('__IGT_DM_ITEMS_STORE__', {
+          detail: {
+            items: parsedItems,
+            threadId: primaryThreadId,
+            activeIds: parsedItems.map(p => p.id)
+          }
+        }));
+      }
+    } catch (_) {}
+  }
+
+  
+  // --- INSTATWEAKS v3.5 (CÁCH B): REACT FIBER DIRECT MESSAGE GUARDIAN ---
+  // Trích xuất tin nhắn trực tiếp từ RAM nội bộ của React (memoizedProps)
+  const trackedFiberMessageIdsByThread = new Map(); // threadId -> Set(itemId)
+  const fiberMessageCache = new Map(); // itemId -> msgObj
+
+  function inspectReactFiberDirectMessages() {
+    try {
+      const messageNodes = document.querySelectorAll('[aria-roledescription="message"], [roledescription="message"]');
+      if (messageNodes.length === 0) return;
+
+      const pathMatch = window.location.pathname.match(/\/direct\/t\/([^\/]+)/);
+      const currentThreadId = pathMatch ? pathMatch[1] : 'current_chat';
+
+      if (!trackedFiberMessageIdsByThread.has(currentThreadId)) {
+        trackedFiberMessageIdsByThread.set(currentThreadId, new Set());
+      }
+      const knownIds = trackedFiberMessageIdsByThread.get(currentThreadId);
+      const currentSeenIds = new Set();
+      const parsedItems = [];
+
+      messageNodes.forEach(node => {
+        const fiberKey = Object.keys(node).find(k => k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$'));
+        if (!fiberKey) return;
+
+        let fiber = node[fiberKey];
+        let depth = 0;
+        let foundCandidate = null;
+
+        while (fiber && depth < 12) {
+          const p = fiber.memoizedProps;
+          if (p) {
+            // Các thuộc tính component chứa dữ liệu tin nhắn trong React của Instagram
+            const cand = p.message || p.item || p.entry || (p.item_id ? p : null);
+            if (cand && (cand.item_id || cand.id)) {
+              foundCandidate = cand;
+              break;
+            }
+          }
+          fiber = fiber.return;
+          depth++;
+        }
+
+        if (foundCandidate) {
+          const parsed = parseSingleDmItem(foundCandidate, foundCandidate.thread_id || currentThreadId);
+          if (parsed && parsed.id) {
+            currentSeenIds.add(parsed.id);
+            knownIds.add(parsed.id);
+            fiberMessageCache.set(parsed.id, parsed);
+
+            // Đóng dấu ID thật của Meta lên thẻ DOM để v3_core.js nhận diện 100% chuẩn xác
+            node.setAttribute('data-igt-real-id', parsed.id);
+            const group = node.closest('div[role="group"]');
+            if (group) group.setAttribute('data-igt-real-id', parsed.id);
+
+            parsedItems.push(parsed);
+          }
+        }
+      });
+
+      if (parsedItems.length > 0) {
+        window.dispatchEvent(new CustomEvent('__IGT_DM_ITEMS_STORE__', {
+          detail: {
+            items: parsedItems,
+            threadId: currentThreadId,
+            activeIds: Array.from(currentSeenIds)
+          }
+        }));
+      }
+
+      // PHÁT HIỆN THU HỒI TỪ REACT FIBER:
+      // Tuyệt đối không kiểm tra !currentSeenIds.has(id) vì React ảo hóa (virtualization) khi cuộn sẽ unmount phần tử
+      // Chỉ phát hiện thu hồi khi Fiber node chuyển trạng thái thành placeholder
+    } catch (_) {}
+  }
+
+  // Chạy quét Fiber định kỳ mỗi 400ms khi đang ở trong Direct Chat
+  setInterval(() => {
+    if (igtV3Settings.ghostViewOnce) {
+      inspectReactFiberDirectMessages();
+    }
+  }, 400);
 
   function parseMetaResponseText(text, fallbackCode = null) {
     if (!text || typeof text !== 'string' || text.length > 2500000) return;
@@ -1097,7 +1678,7 @@
     if (/\.(mp4|m4v|m4a|webm|mp3|ogg|wav|jpg|jpeg|png|webp|gif|svg|woff2?|css|ico)(\?|$)/i.test(url)) return false;
 
     // CHỈ CHẤP NHẬN các API endpoint thực sự trả về dữ liệu bài viết / media JSON:
-    if (url.includes('/graphql') || url.includes('/api/v1/') || url.includes('/api/v2/') || url.includes('/api/')) return true;
+    if (url.includes('/graphql') || url.includes('/api/v1/') || url.includes('/api/v2/') || url.includes('/api/') || url.includes('/sync/')) return true;
     return false;
   }
 
@@ -1160,6 +1741,18 @@
         console.log('[InstaTweaks 3.0] Ghost DM: Blocked fetch seen beacon ->', url, friendlyName);
         return new Response(JSON.stringify({
           data: { direct_thread_seen: { status: 'ok' } },
+          status: 'ok'
+        }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }
+
+      // INSTATWEAKS v3.5: CHẶN GHOST VIEW ONCE (MỞ ẢNH/VIDEO TỰ HỦY KHÔNG BÁO SEEN)
+      if (isGhostViewOnceRequest(url, bodyStr, friendlyName)) {
+        console.log('[InstaTweaks 3.5] Ghost View Once: Blocked visual media seen beacon ->', url, friendlyName);
+        return new Response(JSON.stringify({
+          data: { visual_item_seen: { status: 'ok' } },
           status: 'ok'
         }), {
           status: 200,
@@ -1276,6 +1869,29 @@
         });
         Object.defineProperty(this, 'response', {
           value: '{"data":{"direct_thread_seen":{"status":"ok"}},"status":"ok"}',
+          configurable: true
+        });
+        setTimeout(() => {
+          if (typeof this.onreadystatechange === 'function') this.onreadystatechange();
+          if (typeof this.onload === 'function') this.onload();
+        }, 10);
+      } catch (_) {}
+      return;
+    }
+
+    // INSTATWEAKS v3.5: CHẶN GHOST VIEW ONCE VỚI XHR
+    if (isGhostViewOnceRequest(this._ig_url, bodyStr, this._friendlyName)) {
+      console.log('[InstaTweaks 3.5] Ghost View Once: Blocked XHR seen ->', this._ig_url);
+      try {
+        Object.defineProperty(this, 'readyState', { value: 4, configurable: true });
+        Object.defineProperty(this, 'status', { value: 200, configurable: true });
+        Object.defineProperty(this, 'statusText', { value: 'OK', configurable: true });
+        Object.defineProperty(this, 'responseText', {
+          value: '{"data":{"visual_item_seen":{"status":"ok"}},"status":"ok"}',
+          configurable: true
+        });
+        Object.defineProperty(this, 'response', {
+          value: '{"data":{"visual_item_seen":{"status":"ok"}},"status":"ok"}',
           configurable: true
         });
         setTimeout(() => {

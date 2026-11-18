@@ -89,6 +89,21 @@ flowchart TD
 
 ---
 
+### 🛡️ PHASE 3.5: BẢN v3.2.5 - STEALTH DM PRO (ĐÃ TRIỂN KHAI ✅)
+- [x] **1. Mở khóa Tin nhắn / Ảnh / Video tự hủy (Ghost View-Once & Disappearing Media) - HOÀN THIỆN 100%**:
+  - Bóc tách direct CDN link phân giải cao từ payload `raven_media` / `visual_media`.
+  - **Chặn toàn diện tín hiệu Seen**: Chặn triệt để request báo "Đã mở (Opened)" qua REST, GraphQL, XHR, sendBeacon và WebSocket. Người gửi không bao giờ biết bạn đã xem.
+  - **Xem lại không giới hạn & Tải về**: Nút `👁️ Mở ảnh/video tự hủy (InstaTweaks)` tích hợp trực tiếp trên bong bóng chat + Modal Lightbox xem sắc nét và nút `⬇️ Tải về máy`.
+- [~] **2. Chống Thu hồi Tin nhắn (Anti-Unsend Engine) - ĐÃ HỦY THEO ĐÁNH GIÁ KỸ THUẬT**:
+  - *Lý do kỹ thuật*: Trên Instagram Web, Meta chỉ truyền tải nội dung tin nhắn khi người dùng đang mở trực tiếp cuộc trò chuyện (`/direct/t/...`). Khi ở ngoài Bảng tin Feed hoặc đang chat với người khác, server Meta chỉ gửi tín hiệu đếm thông báo nhị phân qua WebSocket (không chứa nội dung, không chứa ID tin nhắn). Khi tin nhắn bị thu hồi từ phía người gửi, server Meta xóa dữ liệu vĩnh viễn trên cloud. Việc cố gắng bắt qua DOM hoặc WebSocket ở background tiêu tốn tài nguyên và dễ sinh dương tính giả (false-positive).
+  - *Quyết định*: Đã gỡ bỏ tính năng này khỏi dự án để đảm bảo extension chạy nhẹ, ổn định 100%, không xung đột và không hao tốn tài nguyên vô ích.
+- [x] **3. Tích hợp UI Điều khiển trong Sidebar Drawer**:
+  - Công tắc gạt độc lập trong `CHẾ ĐỘ ẨN DANH`:
+    - `Xem 1 lần (Ghost)`: Bật/tắt mở khóa ảnh/video tự hủy không giới hạn số lần.
+
+
+---
+
 ### 📊 PHASE 4: BẢN v3.3.0
 - Nhật ký thay đổi User (Audit Log): Đổi avatar, username, tên hiển thị, bio.
 - Phát hiện nick bị đổi tên, khóa tài khoản hoặc xóa khỏi danh sách follow.

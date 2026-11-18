@@ -742,6 +742,15 @@
 }
 
 /* Nút Mở rộng trên thanh tiêu đề Watchlist (Ảnh 1) */
+/* TẠM ẨN CHẾ ĐỘ XEM NÂNG CAO (WATCHLIST) THEO YÊU CẦU */
+.igt-v3-watchlist-section,
+.igt-v3-watchlist-list,
+.igt-v3-expanded-panel,
+#igt-v3-expanded-panel,
+#igt-v3-profile-watchlist-btn {
+  display: none !important;
+}
+
 .igt-v3-wl-expand-btn {
   display: inline-flex !important;
   align-items: center !important;
@@ -1851,12 +1860,13 @@
   font-weight: 600 !important;
 }
 
-/* --- 12. VIDEO SHARPNESS FILTER STYLE (LÀM NÉT RÕ RỆT) --- */
+/* --- 12. VIDEO SHARPNESS FILTER STYLE (CHUẨN HD SẮC NÉT & MỊN MƯỢT, KHÔNG VỠ HẠT) --- */
 video.igt-sharp-video {
-  filter: contrast(124%) saturate(128%) brightness(103%) drop-shadow(0 0 1px rgba(0, 0, 0, 0.6)) !important;
+  filter: contrast(105%) saturate(103%) brightness(101%) !important;
   image-rendering: -webkit-optimize-contrast !important;
-  image-rendering: crisp-edges !important;
+  image-rendering: auto !important;
   transform: translateZ(0) !important;
+  backface-visibility: hidden !important;
 }
 
 /* BADGE HD PRO TRÊN VIDEO (ĐÃ ẨN HOÀN TOÀN THEO YÊU CẦU) */
@@ -2124,4 +2134,848 @@ body[class*="theme-dark"] .igt-v3-dm-cat-img {
   opacity: 0 !important;
   overflow: hidden !important;
   pointer-events: none !important;
+}
+
+/* ==========================================================================
+   14. STEALTH DM PRO: ANTI-UNSEND & GHOST VIEW ONCE (PHASE 3.5)
+   ========================================================================== */
+
+/* Live Preserved Unsent Message */
+.igt-unsend-preserved {
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  transition: all 0.25s ease !important;
+  animation: igtUnsendFlash 0.5s ease-out !important;
+}
+
+@keyframes igtUnsendFlash {
+  0% { transform: scale(1.02); box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
+  100% { transform: scale(1); box-shadow: none; }
+}
+
+.igt-v3-unsend-live-tag {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #f87171 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  margin-bottom: 5px !important;
+  background: rgba(239, 68, 68, 0.15) !important;
+  padding: 3px 8px !important;
+  border-radius: 6px !important;
+  width: fit-content !important;
+}
+
+.igt-v3-recovered-box {
+  background: rgba(24, 24, 27, 0.9) !important;
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
+  border-radius: 8px !important;
+  padding: 8px 10px !important;
+  margin-top: 6px !important;
+  text-align: left !important;
+}
+
+.igt-v3-download-link {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  margin-top: 4px !important;
+  padding: 4px 10px !important;
+  background: rgba(56, 189, 248, 0.15) !important;
+  border: 1px solid rgba(56, 189, 248, 0.35) !important;
+  border-radius: 6px !important;
+  color: #38bdf8 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
+  transition: all 0.2s ease !important;
+}
+
+.igt-v3-download-link:hover {
+  background: rgba(56, 189, 248, 0.3) !important;
+  color: #fff !important;
+}
+
+/* View Once Pill Button */
+.igt-v3-view-once-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%) !important;
+  border: 1px solid rgba(168, 85, 247, 0.4) !important;
+  color: #fff !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  padding: 6px 12px !important;
+  border-radius: 20px !important;
+  cursor: pointer !important;
+  margin: 6px 0 !important;
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.4) !important;
+  transition: all 0.2s ease !important;
+}
+
+.igt-v3-view-once-pill:hover {
+  transform: translateY(-1px) scale(1.02) !important;
+  box-shadow: 0 4px 16px rgba(168, 85, 247, 0.6) !important;
+}
+
+/* View Once Lightbox Modal */
+.igt-v3-view-once-modal {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9999999 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 20px !important;
+  box-sizing: border-box !important;
+  animation: igtFadeIn 0.2s ease !important;
+}
+
+.igt-v3-view-once-modal.igt-hidden {
+  display: none !important;
+}
+
+.igt-v3-vo-backdrop {
+  position: absolute !important;
+  inset: 0 !important;
+  background: rgba(0, 0, 0, 0.85) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+.igt-v3-vo-dialog {
+  position: relative !important;
+  background: #121217 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 16px !important;
+  max-width: 650px !important;
+  width: 100% !important;
+  max-height: 90vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7) !important;
+  z-index: 10 !important;
+}
+
+.igt-v3-vo-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 12px 16px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.igt-v3-vo-badge {
+  background: rgba(34, 197, 94, 0.15) !important;
+  border: 1px solid rgba(34, 197, 94, 0.4) !important;
+  color: #4ade80 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  padding: 3px 8px !important;
+  border-radius: 6px !important;
+}
+
+.igt-v3-vo-body {
+  padding: 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: auto !important;
+  max-height: 65vh !important;
+  background: #09090b !important;
+}
+
+.igt-v3-vo-media {
+  max-width: 100% !important;
+  max-height: 60vh !important;
+  border-radius: 10px !important;
+  object-fit: contain !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
+}
+
+.igt-v3-vo-footer {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 12px 16px !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  gap: 12px !important;
+  background: #121217 !important;
+}
+
+.igt-v3-vo-hint {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-size: 11px !important;
+  color: #94a3b8 !important;
+  line-height: 1.3 !important;
+}
+
+/* ==========================================================================
+   TOP FLOATING UNSEND ALERT BANNER (PHASE 3.5 - REDESIGN THEO MẪU MỚI)
+   ========================================================================== */
+.igt-v3-unsend-banner {
+  position: fixed !important;
+  top: 18px !important;
+  right: 24px !important;
+  max-width: 440px !important;
+  width: calc(100vw - 48px) !important;
+  z-index: 2147483647 !important;
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 14px 34px -4px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+  padding: 14px 16px 14px 20px !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+  animation: igtSlideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  transition: all 0.25s ease !important;
+  overflow: hidden !important;
+}
+
+.igt-v3-unsend-banner::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  bottom: 0 !important;
+  width: 6px !important;
+  background: linear-gradient(180deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%) !important;
+  border-radius: 16px 0 0 16px !important;
+}
+
+@keyframes igtSlideDown {
+  from { opacity: 0; transform: translateY(-16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.igt-v3-unsend-banner-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+}
+
+.igt-v3-unsend-banner-header-left {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.igt-v3-ig-logo-badge {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 8px !important;
+  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  box-shadow: 0 2px 6px rgba(220, 39, 67, 0.3) !important;
+}
+
+.igt-v3-unsend-banner-title {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  letter-spacing: -0.2px !important;
+  white-space: nowrap !important;
+}
+
+.igt-v3-unsend-status-pill {
+  background: #e6f9ed !important;
+  color: #16a34a !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  padding: 2.5px 9px !important;
+  border-radius: 999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  white-space: nowrap !important;
+}
+
+.igt-v3-unsend-status-dot {
+  width: 6px !important;
+  height: 6px !important;
+  border-radius: 50% !important;
+  background: #22c55e !important;
+  display: inline-block !important;
+}
+
+.igt-v3-unsend-close-btn {
+  background: transparent !important;
+  border: none !important;
+  color: #94a3b8 !important;
+  font-size: 18px !important;
+  cursor: pointer !important;
+  padding: 4px 6px !important;
+  border-radius: 6px !important;
+  line-height: 1 !important;
+  transition: all 0.15s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.igt-v3-unsend-close-btn:hover {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+/* User Capsule Card */
+.igt-v3-unsend-user-card {
+  margin-top: 10px !important;
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  padding: 10px 12px !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 11px !important;
+  transition: all 0.2s ease !important;
+}
+
+.igt-v3-unsend-user-avatar {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  flex-shrink: 0 !important;
+  background: #e2e8f0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+}
+
+.igt-v3-unsend-user-avatar img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+.igt-v3-unsend-user-details {
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.igt-v3-unsend-username-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+}
+
+.igt-v3-unsend-username {
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.igt-v3-unsend-time-badge {
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  color: #94a3b8 !important;
+}
+
+.igt-v3-unsend-msg-preview {
+  font-size: 13px !important;
+  color: #334155 !important;
+  font-weight: 500 !important;
+  margin-top: 3px !important;
+  line-height: 1.4 !important;
+  word-break: break-word !important;
+}
+
+.igt-v3-unsend-vault-action {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: #6366f1 !important;
+  background: rgba(99, 102, 241, 0.08) !important;
+  border: 1px solid rgba(99, 102, 241, 0.2) !important;
+  border-radius: 6px !important;
+  padding: 3px 8px !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  align-self: center !important;
+  transition: all 0.15s ease !important;
+}
+
+.igt-v3-unsend-vault-action:hover {
+  background: #6366f1 !important;
+  color: #ffffff !important;
+}
+
+.igt-v3-unsend-media-preview {
+  margin-top: 8px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+
+.igt-v3-unsend-thumb {
+  max-width: 100% !important;
+  max-height: 160px !important;
+  border-radius: 8px !important;
+  object-fit: contain !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+/* Dark mode Instagram support */
+html[class*="theme-dark"] .igt-v3-unsend-banner,
+body[class*="theme-dark"] .igt-v3-unsend-banner {
+  background: #18181b !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.6) !important;
+}
+html[class*="theme-dark"] .igt-v3-unsend-banner-title {
+  color: #f8fafc !important;
+}
+html[class*="theme-dark"] .igt-v3-unsend-user-card {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+html[class*="theme-dark"] .igt-v3-unsend-username {
+  color: #f8fafc !important;
+}
+html[class*="theme-dark"] .igt-v3-unsend-msg-preview {
+  color: #cbd5e1 !important;
+}
+html[class*="theme-dark"] .igt-v3-unsend-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+/* ==========================================================================
+   UNSEND HISTORY MODAL (LỊCH SỬ TIN NHẮN THU HỒI)
+   ========================================================================== */
+.igt-v3-unsend-modal {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483647 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+}
+
+.igt-v3-unsend-modal.igt-hidden {
+  display: none !important;
+}
+
+.igt-v3-unsend-backdrop {
+  position: absolute !important;
+  inset: 0 !important;
+  background: rgba(0, 0, 0, 0.75) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+.igt-v3-unsend-dialog {
+  position: relative !important;
+  width: 540px !important;
+  max-width: 92vw !important;
+  max-height: 85vh !important;
+  background: #121217 !important;
+  border: 1px solid rgba(239, 68, 68, 0.4) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  animation: igtScaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.igt-v3-unsend-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 14px 18px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: #18181f !important;
+}
+
+.igt-v3-unsend-body {
+  padding: 16px 18px !important;
+  overflow-y: auto !important;
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+}
+
+.igt-v3-unsend-item-card {
+  background: rgba(24, 24, 30, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-left: 3px solid #ef4444 !important;
+  border-radius: 10px !important;
+  padding: 12px 14px !important;
+  transition: all 0.2s ease !important;
+}
+
+.igt-v3-unsend-item-card:hover {
+  background: rgba(30, 30, 38, 0.9) !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+.igt-v3-unsend-item-meta {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 6px !important;
+  font-size: 11px !important;
+  color: #94a3b8 !important;
+}
+
+.igt-v3-unsend-item-text {
+  font-size: 13px !important;
+  line-height: 1.45 !important;
+  color: #f1f5f9 !important;
+  word-break: break-word !important;
+}
+
+.igt-v3-unsend-vault-btn {
+  margin-top: 8px !important;
+  width: 100% !important;
+  padding: 7px 10px !important;
+  background: rgba(239, 68, 68, 0.12) !important;
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
+  border-radius: 8px !important;
+  color: #fca5a5 !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  transition: all 0.2s ease !important;
+}
+
+.igt-v3-unsend-vault-btn:hover {
+  background: rgba(239, 68, 68, 0.25) !important;
+  color: #fff !important;
+  border-color: rgba(239, 68, 68, 0.5) !important;
+}
+
+/* ==========================================================================
+   INLINE UNSENT MESSAGE CARD (PHUONG AN ANH 3 - VUNG DO GIU CHO TIN NHAN THU HOI)
+   ========================================================================== */
+.igt-v3-unsend-inline-wrapper {
+  display: flex !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  clear: both !important;
+  flex-shrink: 0 !important;
+  writing-mode: horizontal-tb !important;
+  margin: 6px 0 !important;
+  box-sizing: border-box !important;
+  justify-content: flex-start !important;
+  animation: igtFadeIn 0.3s ease !important;
+}
+
+.igt-v3-unsend-inline-wrapper.is-self {
+  justify-content: flex-end !important;
+}
+
+.igt-v3-unsend-inline-card {
+  display: inline-block !important;
+  max-width: 82% !important;
+  min-width: 180px !important;
+  writing-mode: horizontal-tb !important;
+  white-space: normal !important;
+  flex-shrink: 0 !important;
+  padding: 8px 14px !important;
+  background: rgba(239, 68, 68, 0.14) !important;
+  border: 1.5px dashed rgba(239, 68, 68, 0.6) !important;
+  border-radius: 14px !important;
+  color: #fff !important;
+  font-size: 13px !important;
+  line-height: 1.45 !important;
+  box-shadow: 0 3px 12px rgba(239, 68, 68, 0.18) !important;
+  word-break: break-word !important;
+  box-sizing: border-box !important;
+}
+
+.igt-v3-unsend-inline-header {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  margin-bottom: 5px !important;
+}
+
+.igt-v3-unsend-inline-badge {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #f87171 !important;
+  letter-spacing: 0.2px !important;
+}
+
+.igt-v3-unsend-inline-text {
+  font-weight: 500 !important;
+  color: #f1f5f9 !important;
+  font-size: 13px !important;
+}
+
+.igt-v3-unsend-inline-media {
+  margin-top: 6px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+
+.igt-v3-unsend-inline-thumb {
+  max-width: 100% !important;
+  max-height: 180px !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  object-fit: contain !important;
+}
+
+html[class*="theme-dark"] .igt-v3-unsend-time-centered,
+body[class*="theme-dark"] .igt-v3-unsend-time-centered {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #cbd5e1 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+html[class*="theme-dark"] .igt-v3-unsend-msg-preview {
+  background: rgba(0, 0, 0, 0.3) !important;
+  color: #f1f5f9 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* ==========================================================================
+   HD AVATAR VIEWER MODAL STYLES (v3.2.7 - WHITE THEME & IG BRAND BLUE)
+   ========================================================================== */
+.igt-hd-avatar-modal {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9999999 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  animation: igtFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.igt-hd-avatar-modal.igt-hidden {
+  display: none !important;
+}
+
+.igt-hd-avatar-backdrop {
+  position: absolute !important;
+  inset: 0 !important;
+  background: rgba(0, 0, 0, 0.65) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+.igt-hd-avatar-dialog {
+  position: relative !important;
+  z-index: 10 !important;
+  width: 440px !important;
+  max-width: 92vw !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35) !important;
+  overflow: hidden !important;
+  animation: igtDialogPop 0.24s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  color: #262626 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+}
+
+@keyframes igtDialogPop {
+  from { opacity: 0; transform: scale(0.92) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.igt-hd-avatar-header {
+  padding: 14px 18px !important;
+  border-bottom: 1px solid #efefef !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  background: #ffffff !important;
+}
+
+.igt-hd-avatar-user-info {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.igt-hd-avatar-thumb-mini {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  border: 1.5px solid #efefef !important;
+}
+
+.igt-hd-avatar-names {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.igt-hd-avatar-title-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+}
+
+.igt-hd-modal-fullname {
+  font-weight: 700 !important;
+  font-size: 15px !important;
+  color: #262626 !important;
+  letter-spacing: -0.2px !important;
+}
+
+.igt-hd-modal-username {
+  font-size: 13px !important;
+  color: #737373 !important;
+  font-weight: 500 !important;
+}
+
+.igt-hd-verified-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+.igt-hd-close-btn {
+  background: #f4f4f5 !important;
+  border: none !important;
+  color: #71717a !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 50% !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  transition: all 0.2s !important;
+}
+
+.igt-hd-close-btn:hover {
+  background: #fee2e2 !important;
+  color: #ef4444 !important;
+}
+
+.igt-hd-avatar-body {
+  padding: 24px 20px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: #ffffff !important;
+}
+
+.igt-hd-avatar-img-wrap {
+  position: relative !important;
+  width: 330px !important;
+  height: 330px !important;
+  max-width: 80vw !important;
+  max-height: 50vh !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  user-select: none !important;
+}
+
+.igt-hd-center-spinner {
+  position: absolute !important;
+  width: 36px !important;
+  height: 36px !important;
+  border: 3px solid rgba(0, 149, 246, 0.2) !important;
+  border-top-color: #0095f6 !important;
+  border-radius: 50% !important;
+  animation: igtSpin 0.8s linear infinite !important;
+  z-index: 2 !important;
+}
+
+.igt-hd-modal-img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 50% !important;
+  border: 3px solid #f0f0f0 !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12) !important;
+  position: relative !important;
+  z-index: 3 !important;
+  transition: filter 0.3s ease !important;
+}
+
+.igt-hd-avatar-footer {
+  padding: 14px 18px !important;
+  border-top: 1px solid #efefef !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: #ffffff !important;
+}
+
+.igt-hd-action-btn.primary {
+  background: #0095f6 !important;
+  color: #ffffff !important;
+  width: 100% !important;
+  justify-content: center !important;
+  padding: 10px 20px !important;
+  border-radius: 10px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  border: none !important;
+  cursor: pointer !important;
+  box-shadow: 0 2px 8px rgba(0, 149, 246, 0.3) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+}
+
+.igt-hd-action-btn.primary:hover {
+  background: #1877f2 !important;
+  box-shadow: 0 4px 14px rgba(0, 149, 246, 0.45) !important;
+  transform: translateY(-1px) !important;
+}
+
+.igt-hd-action-btn.primary:active {
+  transform: scale(0.98) !important;
+}
+
+/* --- POPOVER NỔI KHI HOVER VÀO AVATAR --- */
+.igt-avatar-hover-popover {
+  position: fixed !important;
+  z-index: 999999 !important;
+  background: #0095f6 !important;
+  color: #ffffff !important;
+  padding: 5px 12px !important;
+  border-radius: 20px !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  cursor: pointer !important;
+  box-shadow: 0 4px 15px rgba(0, 149, 246, 0.45) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  pointer-events: auto !important;
+  animation: igtPopIn 0.16s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  transition: transform 0.15s, background 0.15s !important;
+  white-space: nowrap !important;
+  user-select: none !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+}
+
+.igt-avatar-hover-popover:hover {
+  background: #1877f2 !important;
+  transform: scale(1.06) !important;
 }

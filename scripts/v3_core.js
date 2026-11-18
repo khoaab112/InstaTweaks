@@ -34,7 +34,9 @@
     ghostStory: true,
     ghostDM: true,
     adblock: true,
-    videoSharpness: true
+    videoSharpness: true,
+    ghostViewOnce: true,
+    hdAvatar: true
   };
 
   let v3Settings = { ...DEFAULT_SETTINGS };
@@ -45,11 +47,15 @@
       const gdm = localStorage.getItem('__igt_ghost_dm__');
       const ab = localStorage.getItem('__igt_adblock__');
       const vs = localStorage.getItem('__igt_video_sharpness__');
+      const ha = localStorage.getItem('__igt_hd_avatar__');
+      const gvo = localStorage.getItem('__igt_ghost_view_once__');
 
       if (gs !== null) v3Settings.ghostStory = gs !== 'false';
       if (gdm !== null) v3Settings.ghostDM = gdm !== 'false';
       if (ab !== null) v3Settings.adblock = ab !== 'false';
       if (vs !== null) v3Settings.videoSharpness = vs !== 'false';
+      if (ha !== null) v3Settings.hdAvatar = ha !== 'false';
+      if (gvo !== null) v3Settings.ghostViewOnce = gvo !== 'false';
     } catch (_) { }
     syncSettingsToInjected();
   }
@@ -61,6 +67,8 @@
       if (key === 'ghostDM') localStorage.setItem('__igt_ghost_dm__', String(v3Settings.ghostDM));
       if (key === 'adblock') localStorage.setItem('__igt_adblock__', String(v3Settings.adblock));
       if (key === 'videoSharpness') localStorage.setItem('__igt_video_sharpness__', String(v3Settings.videoSharpness));
+      if (key === 'hdAvatar') localStorage.setItem('__igt_hd_avatar__', String(v3Settings.hdAvatar));
+      if (key === 'ghostViewOnce') localStorage.setItem('__igt_ghost_view_once__', String(v3Settings.ghostViewOnce));
 
       if (isExtensionValid() && chrome.storage && chrome.storage.local) {
         chrome.storage.local.set({ igt_v3_settings: v3Settings }).catch(() => { });
@@ -77,11 +85,34 @@
 
   // --- 2. CƠ SỞ DỮ LIỆU INDEXEDDB (INSTATWEAKS DB) ---
   const DB_NAME = 'InstaTweaksDB';
-  const DB_VERSION = 1;
+  const DB_VERSION = 4; // Bump v4 để khởi tạo bảng dm_vault
   let dbInstance = null;
+  let dbInitPromise = null;
+
+  async function cleanupOldInvalidMessagesInVault() {
+    try {
+      const db = await ensureDb();
+      if (!db || !db.objectStoreNames.contains('dm_vault')) return;
+      const tx = db.transaction('dm_vault', 'readwrite');
+      const store = tx.objectStore('dm_vault');
+      const req = store.openCursor();
+      req.onsuccess = (e) => {
+        const cursor = e.target.result;
+        if (cursor) {
+          const val = cursor.value;
+          // Tự động dọn dẹp các tin nhắn cũ trước phiên hoặc tin nhắn không bị thu hồi
+          if (val.isPreExisting || !val.isUnsent || (!val.unsentAt && val.timestamp < (EXTENSION_BOOT_TIME - 120000))) {
+            cursor.delete();
+          }
+          cursor.continue();
+        }
+      };
+    } catch (_) { }
+  }
 
   function initIndexedDB() {
-    return new Promise((resolve) => {
+    if (dbInitPromise) return dbInitPromise;
+    dbInitPromise = new Promise((resolve) => {
       if (!window.indexedDB) return resolve(null);
       const request = indexedDB.open(DB_NAME, DB_VERSION);
       request.onupgradeneeded = (e) => {
@@ -98,12 +129,128 @@
         if (!db.objectStoreNames.contains('settings')) {
           db.createObjectStore('settings', { keyPath: 'key' });
         }
+        if (!db.objectStoreNames.contains('dm_vault')) {
+          const dmStore = db.createObjectStore('dm_vault', { keyPath: 'id' });
+          dmStore.createIndex('threadId', 'threadId', { unique: false });
+          dmStore.createIndex('timestamp', 'timestamp', { unique: false });
+        }
       };
       request.onsuccess = (e) => {
         dbInstance = e.target.result;
         resolve(dbInstance);
       };
       request.onerror = () => resolve(null);
+    });
+    return dbInitPromise;
+  }
+
+  async function ensureDb() {
+    if (dbInstance) return dbInstance;
+    return await initIndexedDB();
+    cleanupOldInvalidMessagesInVault();
+  }
+
+  async function dbSaveDmMessages(messages) {
+    const db = await ensureDb();
+    return new Promise((resolve) => {
+      if (!db || !Array.isArray(messages) || messages.length === 0) return resolve(false);
+      try {
+        if (!db.objectStoreNames.contains('dm_vault')) return resolve(false);
+        const tx = db.transaction('dm_vault', 'readwrite');
+        const store = tx.objectStore('dm_vault');
+        messages.forEach(msg => {
+          if (msg && msg.id) {
+            // Loại bỏ các tham chiếu DOM node trước khi lưu vào IndexedDB tránh DataCloneError
+            const clean = {
+              id: String(msg.id),
+              threadId: String(msg.threadId || ''),
+              text: msg.text || '',
+              mediaUrl: msg.mediaUrl || '',
+              mediaType: msg.mediaType || '',
+              sender: msg.sender || '',
+              isSelf: Boolean(msg.isSelf),
+              timestamp: msg.timestamp || Date.now(),
+              isUnsent: Boolean(msg.isUnsent),
+              unsentAt: msg.unsentAt || null
+            };
+            store.put(clean);
+          }
+        });
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => resolve(false);
+      } catch (_) { resolve(false); }
+    });
+  }
+
+  async function dbGetDmMessagesByThread(threadId) {
+    const db = await ensureDb();
+    return new Promise((resolve) => {
+      if (!db || !threadId) return resolve([]);
+      try {
+        if (!db.objectStoreNames.contains('dm_vault')) return resolve([]);
+        const tx = db.transaction('dm_vault', 'readonly');
+        const store = tx.objectStore('dm_vault');
+        const index = store.index('threadId');
+        const req = index.getAll(IDBKeyRange.only(String(threadId)));
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => resolve([]);
+      } catch (_) { resolve([]); }
+    });
+  }
+
+  async function dbGetUnsentMessages(threadId = null) {
+    const db = await ensureDb();
+    return new Promise((resolve) => {
+      if (!db) return resolve([]);
+      try {
+        if (!db.objectStoreNames.contains('dm_vault')) return resolve([]);
+        const tx = db.transaction('dm_vault', 'readonly');
+        const store = tx.objectStore('dm_vault');
+        const req = store.getAll();
+        req.onsuccess = () => {
+          // CHỈ LẤY CÁC TIN NHẮN THỰC SỰ BỊ THU HỒI
+          let list = (req.result || []).filter(m => m.isUnsent && m.unsentAt > 0);
+          if (threadId) list = list.filter(m => String(m.threadId) === String(threadId));
+          list.forEach(m => {
+            if (m.mediaUrl && isInstagramAvatarUrl(m.mediaUrl)) {
+              m.mediaUrl = '';
+              m.mediaType = '';
+            }
+          });
+          list.sort((a, b) => (b.unsentAt || b.timestamp || 0) - (a.unsentAt || a.timestamp || 0));
+          resolve(list);
+        };
+        req.onerror = () => resolve([]);
+      } catch (_) { resolve([]); }
+    });
+  }
+
+  async function dbClearUnsentMessages(threadId = null) {
+    const db = await ensureDb();
+    return new Promise((resolve) => {
+      if (!db) return resolve(false);
+      try {
+        if (!db.objectStoreNames.contains('dm_vault')) return resolve(false);
+        const tx = db.transaction('dm_vault', 'readwrite');
+        const store = tx.objectStore('dm_vault');
+        if (!threadId) {
+          store.clear();
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => resolve(false);
+        } else {
+          const index = store.index('threadId');
+          const req = index.openCursor(IDBKeyRange.only(String(threadId)));
+          req.onsuccess = (e) => {
+            const cursor = e.target.result;
+            if (cursor) {
+              if (cursor.value.isUnsent) cursor.delete();
+              cursor.continue();
+            }
+          };
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => resolve(false);
+        }
+      } catch (_) { resolve(false); }
     });
   }
 
@@ -768,6 +915,812 @@
     }
   }, true);
 
+  // =========================================================================
+  // --- 4.3. CHẾ ĐỘ TIN NHẮN TỐI THƯỢNG (PHASE 3.5 - ANTI-UNSEND & GHOST VIEW ONCE) ---
+  // =========================================================================
+
+  let activeDmItemsMap = new Map(); // id -> item data
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // Lắng nghe sự kiện đồng bộ từ injected.js khi tải tin nhắn qua API / Network
+
+  // Helper: Lấy thông tin đối phương trong khung chat
+  function getRealChatPartnerInfo() {
+    let name = '';
+    let avatar = '';
+
+    // 1. Kiểm tra trong floating chat popup
+    const floatingBox = document.querySelector('div[aria-label*="Chat"], div[aria-label*="Trò chuyện"]');
+    if (floatingBox) {
+      const imgs = Array.from(floatingBox.querySelectorAll('header img, div[role="button"] img'));
+      if (imgs.length > 0) {
+        avatar = imgs[0].currentSrc || imgs[0].src;
+      }
+      const titleCandidates = floatingBox.querySelectorAll('h2, span[dir="auto"], div[dir="auto"]');
+      if (titleCandidates.length > 0) {
+        name = titleCandidates[0].innerText.trim();
+      }
+    }
+
+    // 2. Kiểm tra trong trang Direct chính (/direct/t/...)
+    if (!name || !avatar) {
+      const mainChat = document.querySelector('div[role="main"], main');
+      if (mainChat) {
+        const header = mainChat.querySelector('header') || mainChat.querySelector('div[style*="border-bottom"]');
+        if (header) {
+          const hImgs = Array.from(header.querySelectorAll('img')).filter(img => {
+            const src = img.currentSrc || img.src || '';
+            return src && !src.includes('emoji.php') && !src.includes('/rsrc.php/');
+          });
+          if (hImgs.length > 0 && !avatar) {
+            avatar = hImgs[0].currentSrc || hImgs[0].src;
+            const alt = hImgs[0].getAttribute('alt') || '';
+            if (alt && !alt.toLowerCase().includes('profile') && !alt.toLowerCase().includes('avatar')) {
+              name = alt;
+            }
+          }
+          if (!name) {
+            const hTitles = header.querySelectorAll('h1, h2, h3, span[dir="auto"]');
+            for (const el of hTitles) {
+              const t = (el.innerText || '').trim();
+              if (t && t !== 'Messages' && t !== 'Tin nhắn' && !t.includes('Active') && !t.includes('Hoạt động') && t.length < 50) {
+                name = t;
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // 3. Tra cứu từ thanh danh sách chat (active thread item)
+    if (!name || !avatar) {
+      const activeThread = document.querySelector('a[href*="/direct/t/"][aria-current="page"], [role="listitem"] [aria-selected="true"], [role="navigation"] a[href*="/direct/t/"]');
+      if (activeThread) {
+        const img = activeThread.querySelector('img');
+        if (img && !avatar) avatar = img.currentSrc || img.src;
+        const span = activeThread.querySelector('span[dir="auto"]');
+        if (span && !name) name = span.innerText.trim();
+      }
+    }
+
+    return { name, avatar };
+  }
+
+  function showUnsendAlertBanner(item) {
+    // Deprecated / Cancelled
+  }
+
+  function renderInlineUnsendCard(item, containerEl, parentContainer, nextSiblingNode) {
+    // Deprecated / Cancelled
+  }
+
+  async function showUnsendHistoryModal(threadId = null) {
+    // Deprecated / Cancelled
+  }
+
+  // MODAL XEM ẢNH/VIDEO TỰ HỦY (VIEW ONCE)
+  function showViewOnceModal(mediaItem) {
+    if (!mediaItem || !mediaItem.mediaUrl) return;
+
+    let modal = document.getElementById('igt-view-once-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'igt-view-once-modal';
+      modal.className = 'igt-v3-vo-modal';
+      document.body.appendChild(modal);
+    }
+    modal.classList.remove('igt-hidden');
+    modal.style.display = 'flex';
+
+    modal.innerHTML = `
+      <div class="igt-v3-vo-backdrop"></div>
+      <div class="igt-v3-vo-dialog">
+        <div class="igt-v3-vo-header">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <span style="font-weight: 700; font-size: 15px; color: #fff;">Phương tiện Xem 1 Lần (Khôi phục bởi InstaTweaks)</span>
+          </div>
+          <button id="igt-vo-close-btn" class="igt-v3-unsend-close-btn" title="Đóng">✕</button>
+        </div>
+        <div class="igt-v3-vo-body" style="padding: 18px; text-align: center;">
+          ${mediaItem.mediaType === 'video' ? `
+            <video src="${mediaItem.mediaUrl}" controls autoplay style="max-width: 100%; max-height: 70vh; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.6);"></video>
+            <div style="margin-top: 14px;"><a href="${mediaItem.mediaUrl}" target="_blank" download="view_once_video.mp4" class="igt-v3-download-link" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-weight: 600;">⬇️ Tải video gốc</a></div>
+          ` : `
+            <img src="${mediaItem.mediaUrl}" style="max-width: 100%; max-height: 70vh; border-radius: 12px; object-fit: contain; box-shadow: 0 8px 30px rgba(0,0,0,0.6);" alt="Ảnh tự hủy" />
+            <div style="margin-top: 14px;"><a href="${mediaItem.mediaUrl}" target="_blank" download="view_once_photo.jpg" class="igt-v3-download-link" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-weight: 600;">⬇️ Tải ảnh gốc</a></div>
+          `}
+        </div>
+      </div>
+    `;
+
+    const closeBtn = modal.querySelector('#igt-vo-close-btn');
+    const backdrop = modal.querySelector('.igt-v3-vo-backdrop');
+    const closeModal = () => {
+      modal.classList.add('igt-hidden');
+      modal.style.display = 'none';
+    };
+    if (closeBtn) closeBtn.onclick = closeModal;
+    if (backdrop) backdrop.onclick = closeModal;
+  }
+
+  // --- 4.4. QUÉT NÚT XEM ẢNH/VIDEO TỰ HỦY TRONG CHAT (VIEW ONCE PILL) ---
+  function scanAndAttachViewOnceButtons() {
+    const containers = getActiveChatContainers();
+    if (containers.length === 0) return;
+
+    if (v3Settings.ghostViewOnce) {
+      containers.forEach(c => {
+        const visualCandidates = Array.from(c.root.querySelectorAll('[aria-roledescription="message"], [roledescription="message"]'))
+          .filter(el => !el.closest('nav, [role="navigation"], aside'));
+
+        visualCandidates.forEach(async row => {
+          if (row.getAttribute('data-igt-vo-checked')) return;
+          const text = (row.innerText || '').toLowerCase();
+          const isExpiringMedia = text.includes('phát lại') || text.includes('1 lần') || text.includes('2 lần') ||
+            text.includes('ứng dụng di động') || text.includes('mobile app') ||
+            text.includes('xem ảnh') || text.includes('xem video') ||
+            text.includes('photo') || text.includes('video') ||
+            text.includes('view photo') || text.includes('view video') ||
+            text.includes('ảnh xem 1 lần') || text.includes('opened') || text.includes('đã mở');
+
+          if (isExpiringMedia) {
+            let matchedItem = null;
+            for (const item of activeDmItemsMap.values()) {
+              if (item.isVisual && item.mediaUrl) {
+                matchedItem = item;
+                break;
+              }
+            }
+            if (!matchedItem && c.id) {
+              const cached = await dbGetDmMessagesByThread(c.id);
+              matchedItem = cached.find(it => it.isVisual && it.mediaUrl);
+            }
+
+            if (matchedItem && matchedItem.mediaUrl) {
+              row.setAttribute('data-igt-vo-checked', '1');
+              const btn = document.createElement('button');
+              btn.type = 'button';
+              btn.className = 'igt-v3-view-once-pill';
+              btn.innerHTML = `<span>👁️ Mở ${matchedItem.mediaType === 'video' ? 'video' : 'ảnh'} tự hủy (InstaTweaks)</span>`;
+              btn.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                showViewOnceModal(matchedItem);
+              };
+              row.appendChild(btn);
+            }
+          }
+        });
+      });
+    }
+  }
+
+  // --- BỘ QUAN SÁT & BẮT TIN NHẮN THU HỒI TOÀN DIỆN (FULL DIRECT & FLOATING POPUP) ---
+  function getActiveChatContainers() {
+    const list = [];
+
+    // 1. Direct page chính quy (/direct/): Luôn lấy main hoặc div[role="main"] để bao trọn 100% khung tin nhắn
+    if (window.location.pathname.includes('/direct/')) {
+      const match = window.location.pathname.match(/\/direct\/t\/([^\/]+)/);
+      const mainChat = document.querySelector('div[role="main"], main');
+      if (mainChat) {
+        list.push({
+          id: match ? match[1] : 'direct_page',
+          root: mainChat,
+          isFloating: false
+        });
+      }
+    }
+
+    // 2. Floating Popup Chat (ngoài trang chủ hoặc bất kỳ trang nào)
+    const floatingBox = findFloatingChatBox();
+    if (floatingBox) {
+      const userEl = floatingBox.querySelector('h1, h2, h3, span[dir="auto"], div[dir="auto"]');
+      const title = (userEl?.innerText || 'popup_chat').trim();
+      list.push({
+        id: 'floating_' + title,
+        root: floatingBox,
+        isFloating: true
+      });
+    }
+    return list;
+  }
+
+  // Trích xuất Media thật trong tin nhắn, TUYỆT ĐỐI LOẠI TRỪ ẢNH ĐẠI DIỆN (AVATAR)
+  function isInstagramAvatarUrl(src) {
+    if (!src || typeof src !== 'string') return false;
+    const lower = src.toLowerCase();
+    if (lower.includes('/t51.2885-19/') || lower.includes('-19/') || lower.includes('s150x150') || lower.includes('s320x320') || lower.includes('s50x50') || lower.includes('/profile_pic')) return true;
+    return false;
+  }
+
+  function extractRealMessageMedia(node) {
+    if (!node) return { mediaUrl: '', mediaType: '' };
+    const video = node.querySelector('video');
+    if (video && video.src && !video.src.startsWith('blob:')) {
+      return { mediaUrl: video.src, mediaType: 'video' };
+    }
+    const audio = node.querySelector('audio');
+    if (audio && audio.src) {
+      return { mediaUrl: audio.src, mediaType: 'audio' };
+    }
+
+    // Lọc ảnh: TUYỆT ĐỐI LOẠI BỎ AVATAR
+    const imgs = Array.from(node.querySelectorAll('img')).filter(img => {
+      const src = img.currentSrc || img.src || '';
+      if (!src) return false;
+      if (isInstagramAvatarUrl(src)) return false;
+      if (img.closest('a[href*="/"]') && !img.closest('[aria-roledescription="message"], [roledescription="message"]')) return false;
+      const alt = (img.getAttribute('alt') || '').toLowerCase();
+      if (alt.includes('profile picture') || alt.includes('ảnh đại diện') || alt.includes('avatar')) return false;
+      if (src.includes('emoji.php') || src.includes('/rsrc.php/')) return false;
+      const w = img.naturalWidth || img.clientWidth || img.width || 0;
+      const h = img.naturalHeight || img.clientHeight || img.height || 0;
+      if ((w > 0 && w <= 50) || (h > 0 && h <= 50)) return false;
+      return true;
+    });
+
+    if (imgs.length > 0 && imgs[0].src && !isInstagramAvatarUrl(imgs[0].src)) {
+      return { mediaUrl: imgs[0].currentSrc || imgs[0].src, mediaType: 'image' };
+    }
+    return { mediaUrl: '', mediaType: '' };
+  }
+
+  // Bộ theo dõi trạng thái các tin nhắn đang hiển thị theo từng cuộc trò chuyện
+  const EXTENSION_BOOT_TIME = Date.now();
+  const threadInitialScanDone = new Set();
+  let lastChatScrollTime = 0;
+
+  // containerId -> Map(msgId -> msgData)
+  const trackedMessagesByContainer = new Map();
+  let currentActiveThreadId = '';
+
+  function monitorLiveChatMessages() {
+    // Deprecated / Cancelled
+  }
+
+  // Anti-Unsend task cancelled / deprecated
+
+  // =========================================================================
+  // --- 4.5. BỘ XEM & TẢI ẢNH ĐẠI DIỆN FULL HD 1080P & ẢNH BÌA HIGHLIGHT ---
+  // =========================================================================
+
+  const hdAvatarCache = new Map(); // username/highlightId -> result
+  let activeHoverPopover = null;
+  let popoverHideTimer = null;
+  let currentTargetInfo = null;
+
+  // Kiểm tra xem trang hiện tại có phải trang Profile người dùng hay không (ví dụ: instagram.com/nguy_er/)
+  function isUserProfilePage() {
+    const path = window.location.pathname;
+    const parts = path.split('/').filter(Boolean);
+    if (parts.length === 0) return null; // Trang chủ feed /
+
+    // Các đường dẫn hệ thống tuyệt đối không phải profile cá nhân
+    const systemRoutes = [
+      'explore', 'direct', 'reels', 'stories', 'accounts', 'p', 'reel', 'tv',
+      'home', 'settings', 'legal', 'your_activity', 'archive', 'emails', 'developer',
+      'about', 'privacy', 'terms', 'directory'
+    ];
+
+    // Nếu URL đang xem story, reel, post, tin nhắn -> Tuyệt đối không thực thi
+    if (path.includes('/stories/') || path.includes('/p/') || path.includes('/reel/') || path.includes('/direct/')) {
+      return null;
+    }
+
+    const first = parts[0].toLowerCase();
+    if (systemRoutes.includes(first)) return null;
+
+    // Profile page chỉ có 1 cấp /username/ hoặc tối đa 2 cấp /username/saved/ hoặc /username/tagged/
+    if (parts.length > 2) return null;
+    if (parts.length === 2 && !['saved', 'tagged'].includes(parts[1].toLowerCase())) {
+      return null;
+    }
+
+    return parts[0];
+  }
+
+  async function fetchHdHighlightCover(highlightId, fallbackUrl) {
+    if (!highlightId) return fallbackUrl;
+    if (hdAvatarCache.has('hl_' + highlightId)) {
+      return hdAvatarCache.get('hl_' + highlightId);
+    }
+
+    let hdUrl = fallbackUrl;
+    try {
+      const csrf = getCookie('csrftoken') || '';
+      const res = await fetch(`https://www.instagram.com/api/v1/feed/reels_media/?reel_ids=highlight%3A${encodeURIComponent(highlightId)}`, {
+        headers: {
+          'X-CSRFToken': csrf,
+          'X-IG-App-ID': '936619743392459',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-ASBD-ID': '129477'
+        },
+        credentials: 'include'
+      });
+
+      if (res.ok) {
+        const j = await res.json();
+        const reelKey = 'highlight:' + highlightId;
+        const reel = j.reels?.[reelKey] || (j.reels ? Object.values(j.reels)[0] : null);
+        if (reel && reel.cover_media) {
+          const cover = reel.cover_media.cropped_image_version?.url || reel.cover_media.image_versions2?.candidates?.[0]?.url;
+          if (cover) hdUrl = cover;
+        }
+      }
+    } catch (_) {}
+
+    hdAvatarCache.set('hl_' + highlightId, hdUrl);
+    return hdUrl;
+  }
+
+  async function fetchHdAvatarInfo(username, fallbackUrl) {
+    if (!username) {
+      return {
+        username: '',
+        fullName: 'Ảnh đại diện',
+        hdUrl: fallbackUrl || '',
+        isVerified: false
+      };
+    }
+
+    const cleanUname = username.replace(/^@|\/$/g, '').trim();
+    if (hdAvatarCache.has(cleanUname)) {
+      return hdAvatarCache.get(cleanUname);
+    }
+
+    let hdUrl = fallbackUrl || '';
+    let fullName = cleanUname;
+    let isVerified = false;
+
+    try {
+      const csrf = getCookie('csrftoken') || '';
+      const res = await fetch(`https://www.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(cleanUname)}`, {
+        headers: {
+          'X-CSRFToken': csrf,
+          'X-IG-App-ID': '936619743392459',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-ASBD-ID': '129477'
+        },
+        credentials: 'include'
+      });
+
+      if (res.ok) {
+        const j = await res.json();
+        const u = j.data?.user || j.user;
+        if (u) {
+          hdUrl = u.profile_pic_url_hd || u.hd_profile_pic_url_info?.url || u.profile_pic_url || fallbackUrl;
+          fullName = u.full_name || cleanUname;
+          isVerified = Boolean(u.is_verified);
+        }
+      }
+    } catch (_) {}
+
+    const result = {
+      username: cleanUname,
+      fullName: fullName,
+      hdUrl: hdUrl,
+      isVerified: isVerified
+    };
+
+    hdAvatarCache.set(cleanUname, result);
+    return result;
+  }
+
+  function findAvatarElementAndInfo(target) {
+    if (!target) return null;
+
+    // 1. Chỉ thực thi trên trang Profile cá nhân
+    const profileUsername = isUserProfilePage();
+    if (!profileUsername) return null;
+
+    // 2. Tuyệt đối bỏ qua nếu nằm trong:
+    // - Thanh điều hướng bên trái / mobile nav (nav, [role="navigation"], aside)
+    // - Lưới bài viết (article, a[href*="/p/"], a[href*="/reel/"])
+    // - Bảng thông báo (Notifications), Hộp tin nhắn (Direct/Chat), Khung tìm kiếm (Search)
+    // - Bất kỳ popup / modal nào (div[role="dialog"])
+    if (target.closest('nav, [role="navigation"], aside, article, div[role="dialog"], [aria-label*="Notification" i], [aria-label*="Thông báo" i], [aria-label*="Search" i], [aria-label*="Tìm kiếm" i], [aria-label*="Direct" i], [aria-label*="Chat" i], [aria-label*="Tin nhắn" i], a[href*="/p/"], a[href*="/reel/"]')) {
+      return null;
+    }
+
+    // 3. Phải nằm trong vùng nội dung chính <main>
+    const mainEl = target.closest('main');
+    if (!mainEl) return null;
+
+    // --- TRƯỜNG HỢP A: ẢNH BÌA HIGHLIGHTS (TIN NỔI BẬT) ---
+    const hLink = target.closest('a[href*="/stories/highlights/"]');
+    if (hLink) {
+      const hImg = hLink.querySelector('img') || (target.tagName === 'IMG' ? target : null);
+      if (hImg) {
+        const src = hImg.currentSrc || hImg.src || '';
+        if (src && !src.includes('emoji.php') && !src.includes('/rsrc.php/')) {
+          let highlightId = '';
+          const hm = (hLink.getAttribute('href') || '').match(/\/stories\/highlights\/([0-9]+)/);
+          if (hm && hm[1]) highlightId = hm[1];
+
+          // Lấy Title của Highlight (chữ hiển thị ngay dưới vòng tròn)
+          let highlightTitle = '';
+          const hWrapper = hLink.closest('li, [role="menuitem"], [role="button"]') || hLink.parentElement;
+          if (hWrapper) {
+            const titleSpan = hWrapper.querySelector('div[dir="auto"], span[dir="auto"], span');
+            if (titleSpan) {
+              const tText = titleSpan.innerText.trim();
+              if (tText && tText.length < 50) highlightTitle = tText;
+            }
+          }
+          const alt = (hImg.getAttribute('alt') || '').trim();
+          if (!highlightTitle && alt && alt.length < 40 && !/profile picture|ảnh đại diện|avatar/i.test(alt)) {
+            highlightTitle = alt;
+          }
+
+          return {
+            isHighlight: true,
+            highlightId: highlightId,
+            highlightTitle: highlightTitle || 'Tin nổi bật',
+            ownerUsername: profileUsername,
+            username: profileUsername,
+            fullName: highlightTitle ? `Tin nổi bật: ${highlightTitle}` : 'Ảnh bìa Tin nổi bật',
+            imgUrl: src,
+            imgEl: hImg
+          };
+        }
+      }
+    }
+
+    // --- TRƯỜNG HỢP B: AVATAR CHÍNH CỦA PROFILE ---
+    let avatarImg = null;
+    if (target.tagName === 'IMG') {
+      avatarImg = target;
+    } else {
+      // Nếu rê chuột vào container bọc avatar (button, canvas, vòng tròn story)
+      const btn = target.closest('button, [role="button"], a, span');
+      if (btn && !btn.querySelector('h1, h2, h3, p') && btn.innerText.trim().length < 5) {
+        avatarImg = btn.querySelector('img');
+      }
+    }
+
+    if (avatarImg) {
+      // Xác minh avatarImg có phải avatar của profile không:
+      // - Không nằm trong highlight link
+      // - Không nằm trong article (bài viết)
+      // - Kích thước hợp lệ của avatar (>= 40px và <= 250px)
+      if (!avatarImg.closest('a[href*="/stories/highlights/"], article')) {
+        const rect = avatarImg.getBoundingClientRect();
+        if (rect.width >= 40 && rect.width <= 250 && rect.height >= 40 && rect.height <= 250) {
+          const alt = (avatarImg.getAttribute('alt') || '').toLowerCase();
+          const isAvatar = /profile picture|ảnh đại diện|avatar|ảnh hồ sơ|'s photo/i.test(alt) || 
+                           Boolean(avatarImg.closest('header')) || 
+                           Boolean(target.closest('[aria-label*="Ảnh đại diện" i], [aria-label*="profile picture" i]'));
+          
+          if (isAvatar) {
+            const src = avatarImg.currentSrc || avatarImg.src || '';
+            if (src && !src.includes('emoji.php') && !src.includes('/rsrc.php/')) {
+              let fullName = '';
+              const hTitle = mainEl.querySelector('header h2, header h1, h2, h1');
+              if (hTitle) fullName = hTitle.innerText.trim();
+
+              return {
+                isHighlight: false,
+                username: profileUsername,
+                fullName: fullName || profileUsername,
+                imgUrl: src,
+                imgEl: avatarImg
+              };
+            }
+          }
+        }
+      }
+    }
+
+    return null;
+  }
+
+  function showAvatarHoverPopover(info) {
+    if (!info || !info.imgEl) return;
+    currentTargetInfo = info;
+
+    const labelText = info.isHighlight ? 'Xem ảnh bìa' : 'Xem ảnh';
+
+    if (!activeHoverPopover) {
+      activeHoverPopover = document.createElement('div');
+      activeHoverPopover.id = 'igt-avatar-hover-popover';
+      activeHoverPopover.className = 'igt-avatar-hover-popover';
+      document.body.appendChild(activeHoverPopover);
+
+      activeHoverPopover.onmouseenter = () => {
+        if (popoverHideTimer) clearTimeout(popoverHideTimer);
+      };
+      activeHoverPopover.onmouseleave = () => {
+        hideAvatarHoverPopover(120);
+      };
+
+      activeHoverPopover.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const targetInfo = activeHoverPopover._info || currentTargetInfo;
+        hideAvatarHoverPopover(0);
+        if (targetInfo) {
+          openHdAvatarModal(targetInfo);
+        }
+      };
+    }
+
+    // Luôn lưu đối tượng info trực tiếp vào popover để không bị mất khi đóng
+    activeHoverPopover._info = info;
+
+    activeHoverPopover.innerHTML = `
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <span>${labelText}</span>
+    `;
+
+    const rect = info.imgEl.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
+    let popLeft = Math.round(rect.left + rect.width / 2 - 45);
+    let popTop = Math.round(rect.top - 28);
+
+    if (popTop < 10) {
+      popTop = Math.round(rect.bottom + 6);
+    }
+    if (popLeft < 10) popLeft = 10;
+    if (popLeft + 95 > window.innerWidth) popLeft = window.innerWidth - 100;
+
+    activeHoverPopover.style.left = popLeft + 'px';
+    activeHoverPopover.style.top = popTop + 'px';
+    activeHoverPopover.style.display = 'flex';
+  }
+
+  function hideAvatarHoverPopover(delay = 150) {
+    if (popoverHideTimer) clearTimeout(popoverHideTimer);
+    if (delay === 0) {
+      if (activeHoverPopover) {
+        activeHoverPopover.remove();
+        activeHoverPopover = null;
+      }
+      currentTargetInfo = null;
+      return;
+    }
+    popoverHideTimer = setTimeout(() => {
+      if (activeHoverPopover) {
+        activeHoverPopover.remove();
+        activeHoverPopover = null;
+      }
+      currentTargetInfo = null;
+    }, delay);
+  }
+
+  async function openHdAvatarModal(info) {
+    if (!info) return;
+
+    // Đóng và gỡ bỏ modal cũ nếu có
+    const existing = document.getElementById('igt-hd-avatar-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'igt-hd-avatar-modal';
+    modal.className = 'igt-hd-avatar-modal';
+    document.body.appendChild(modal);
+
+    const initialSrc = info.imgUrl;
+    let initialName = '';
+    let initialUser = '';
+    let downloadBtnText = 'Tải ảnh Full HD';
+
+    if (info.isHighlight) {
+      initialName = escapeHtml(info.fullName || 'Ảnh bìa Tin nổi bật');
+      initialUser = info.ownerUsername ? `@${escapeHtml(info.ownerUsername)} • Tin nổi bật` : 'Instagram Highlight';
+      downloadBtnText = 'Tải ảnh bìa Highlight';
+    } else {
+      initialUser = info.username ? `@${escapeHtml(info.username)}` : '';
+      initialName = info.fullName ? escapeHtml(info.fullName) : (initialUser || 'Ảnh đại diện');
+      downloadBtnText = 'Tải ảnh Full HD';
+    }
+
+    modal.innerHTML = `
+      <div class="igt-hd-avatar-backdrop"></div>
+      <div class="igt-hd-avatar-dialog">
+        <!-- Header (ĐÃ BỎ TÍCH XANH HOÀN TOÀN THEO YÊU CẦU) -->
+        <div class="igt-hd-avatar-header">
+          <div class="igt-hd-avatar-user-info">
+            <img class="igt-hd-avatar-thumb-mini" src="${initialSrc}" alt="" />
+            <div class="igt-hd-avatar-names">
+              <div class="igt-hd-avatar-title-row">
+                <span id="igt-hd-modal-fullname" class="igt-hd-modal-fullname">${initialName}</span>
+              </div>
+              <span id="igt-hd-modal-username" class="igt-hd-modal-username">${initialUser}</span>
+            </div>
+          </div>
+          <button type="button" id="igt-hd-close-btn" class="igt-hd-close-btn" title="Đóng (ESC)">✕</button>
+        </div>
+
+        <!-- Main Image Area (Luôn bo tròn) -->
+        <div class="igt-hd-avatar-body">
+          <div class="igt-hd-avatar-img-wrap">
+            <div id="igt-hd-img-spinner" class="igt-hd-center-spinner"></div>
+            <img id="igt-hd-modal-img" class="igt-hd-modal-img" src="${initialSrc}" alt="Ảnh xem phóng to" />
+          </div>
+        </div>
+
+        <!-- Footer / Action Bar (Màu xanh IG) -->
+        <div class="igt-hd-avatar-footer">
+          <button type="button" id="igt-hd-btn-download" class="igt-hd-action-btn primary" title="Tải ảnh gốc về máy">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span>${downloadBtnText}</span>
+          </button>
+        </div>
+      </div>
+    `;
+
+    modal.style.display = 'flex';
+
+    const modalImg = modal.querySelector('#igt-hd-modal-img');
+    const spinner = modal.querySelector('#igt-hd-img-spinner');
+    const fullNameEl = modal.querySelector('#igt-hd-modal-fullname');
+    const usernameEl = modal.querySelector('#igt-hd-modal-username');
+    const btnDownload = modal.querySelector('#igt-hd-btn-download');
+    const btnClose = modal.querySelector('#igt-hd-close-btn');
+    const backdrop = modal.querySelector('.igt-hd-avatar-backdrop');
+
+    // Đóng modal triệt để bằng remove()
+    const closeModal = (e) => {
+      if (e) { e.preventDefault(); e.stopPropagation(); }
+      modal.remove();
+    };
+
+    if (btnClose) btnClose.onclick = closeModal;
+    if (backdrop) backdrop.onclick = closeModal;
+
+    let currentHdUrl = initialSrc;
+
+    // Xử lý nạp ảnh chất lượng cao
+    if (info.isHighlight && info.highlightId) {
+      fetchHdHighlightCover(info.highlightId, initialSrc).then(hdCover => {
+        currentHdUrl = hdCover || initialSrc;
+        const preloader = new Image();
+        preloader.src = currentHdUrl;
+        preloader.onload = () => {
+          if (!document.body.contains(modal)) return;
+          modalImg.src = currentHdUrl;
+          if (spinner) spinner.style.display = 'none';
+        };
+        preloader.onerror = () => {
+          if (!document.body.contains(modal)) return;
+          if (spinner) spinner.style.display = 'none';
+        };
+      });
+    } else if (info.username) {
+      fetchHdAvatarInfo(info.username, initialSrc).then(res => {
+        currentHdUrl = res.hdUrl || initialSrc;
+        if (fullNameEl && res.fullName && !info.isHighlight) fullNameEl.innerText = res.fullName;
+        if (usernameEl && res.username && !info.isHighlight) usernameEl.innerText = `@${res.username}`;
+
+        const preloader = new Image();
+        preloader.src = currentHdUrl;
+        preloader.onload = () => {
+          if (!document.body.contains(modal)) return;
+          modalImg.src = currentHdUrl;
+          if (spinner) spinner.style.display = 'none';
+        };
+        preloader.onerror = () => {
+          if (!document.body.contains(modal)) return;
+          if (spinner) spinner.style.display = 'none';
+        };
+      });
+    } else {
+      if (spinner) spinner.style.display = 'none';
+    }
+
+    if (btnDownload) {
+      btnDownload.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (info.isHighlight) {
+          const safeTitle = (info.highlightTitle || 'story').replace(/[^a-zA-Z0-9_]/g, '_');
+          downloadImageDirect(currentHdUrl, `highlight_${safeTitle}_cover.jpg`);
+        } else {
+          const uname = info.username || 'instagram_user';
+          downloadImageDirect(currentHdUrl, `avatar_${uname}_1080p.jpg`);
+        }
+      };
+    }
+  }
+
+  // Helper tải ảnh trực tiếp không bị chặn
+  async function downloadImageDirect(url, filename) {
+    try {
+      const res = await fetch(url, { mode: 'cors' });
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename || 'avatar_hd.jpg';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+    } catch (_) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.download = filename || 'avatar_hd.jpg';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+  }
+
+  // Lắng nghe sự kiện rê chuột (hover) để hiện Popover "Xem ảnh" / "Xem ảnh bìa"
+  document.addEventListener('mouseover', (e) => {
+    if (!v3Settings.hdAvatar) return;
+    const target = e.target;
+    // Bỏ qua nếu chuột đang nằm trong chính Popover
+    if (target && target.closest && target.closest('.igt-avatar-hover-popover')) {
+      if (popoverHideTimer) clearTimeout(popoverHideTimer);
+      return;
+    }
+
+    const info = findAvatarElementAndInfo(target);
+    if (info) {
+      if (popoverHideTimer) clearTimeout(popoverHideTimer);
+      if (activeHoverPopover && currentTargetInfo && currentTargetInfo.imgEl === info.imgEl) {
+        return;
+      }
+      showAvatarHoverPopover(info);
+    } else {
+      hideAvatarHoverPopover(150);
+    }
+  }, { passive: true });
+
+  document.addEventListener('mouseout', (e) => {
+    if (!v3Settings.hdAvatar) return;
+    const related = e.relatedTarget;
+    if (related && (related.closest('.igt-avatar-hover-popover') || findAvatarElementAndInfo(related))) {
+      return;
+    }
+    hideAvatarHoverPopover(150);
+  }, { passive: true });
+
+  // Lắng nghe sự kiện Click trực tiếp:
+  // 1. Click vào nút Popover "Xem ảnh" / "Xem ảnh bìa"
+  // 2. Click hoặc Double-click trực tiếp vào Avatar của Profile
+  document.addEventListener('click', (e) => {
+    if (!v3Settings.hdAvatar) return;
+    if (e.target.closest('#igt-hd-avatar-modal')) return;
+
+    // Click vào popover
+    const pop = e.target.closest('.igt-avatar-hover-popover');
+    if (pop) {
+      e.preventDefault();
+      e.stopPropagation();
+      const targetInfo = pop._info || currentTargetInfo;
+      hideAvatarHoverPopover(0);
+      if (targetInfo) openHdAvatarModal(targetInfo);
+      return;
+    }
+
+    // Click trực tiếp vào avatar
+    const info = findAvatarElementAndInfo(e.target);
+    if (info && !info.isHighlight) {
+      hideAvatarHoverPopover(0);
+      openHdAvatarModal(info);
+    }
+  }, true);
+
+  // Phím tắt ESC đóng Modal ngay lập tức
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const modal = document.getElementById('igt-hd-avatar-modal');
+      if (modal) modal.remove();
+      hideAvatarHoverPopover(0);
+    }
+  });
+
   // --- 5. HỆ THỐNG WATCHLIST & AN TOÀN SCANNER (PHASE 2 - v3.1.0) ---
   let currentProfileData = null;
 
@@ -1187,6 +2140,8 @@
       });
     }
 
+
+
     // 2. Ai được cả 2 follow / Ai cùng follow cả 2 (Người này đang theo dõi cả bạn và user so sánh)
     if (myFollowersSnap?.items && targetFollowersSnap?.items) {
       targetFollowersSnap.items.forEach(u => {
@@ -1203,6 +2158,8 @@
         }
       });
     }
+
+
 
     // 3. Bạn bè chung là những ai (Người là bạn bè follow chéo của Bạn VÀ đồng thời cũng là bạn bè follow chéo của User so sánh)
     allCommonMap.forEach((u, key) => {
@@ -1471,8 +2428,12 @@
     return resData;
   }
 
-  // Tự động đính nút "+ Watchlist" lên Profile Header của Instagram
+  // Tự động đính nút "+ Watchlist" lên Profile Header của Instagram (ĐÃ TẠM ẨN ĐỂ TỐI ƯU TẢI TRANG)
   async function scanAndAttachWatchlistButton() {
+    const existing = document.getElementById('igt-v3-profile-watchlist-btn');
+    if (existing) existing.remove();
+    return; // Đã vô hiệu hóa để tối ưu hiệu năng tải trang
+
     updateScanMyselfButtonUI();
 
     const profile = getActiveProfileInfo();
@@ -1645,6 +2606,8 @@
         }
       });
     }
+
+
 
     // Cách 1: Tìm icon Home hoặc danh sách link menu bên trái của Instagram
     const homeIconSvg = document.querySelector('svg[aria-label*="Home"], svg[aria-label*="Trang chủ"]');
@@ -1878,11 +2841,38 @@
                 </label>
               </div>
             </div>
+
+            <!-- HÀNG 2: XEM ẢNH ĐẠI DIỆN FULL HD 1080P -->
+            <div class="igt-v3-grid-row" style="margin-top: 8px;">
+              <div class="igt-v3-feature-col">
+                <div class="igt-v3-feat-left">
+                  <div class="igt-v3-popover-wrap">
+                    <span class="igt-v3-info-icon" title="Xem chú thích">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                      </svg>
+                    </span>
+                    <div class="igt-v3-popover-box">
+                      <div class="igt-v3-popover-title">🔍 Xem Avatar Full HD (1080p)</div>
+                      <div class="igt-v3-popover-desc">Nhấp đúp hoặc Alt + Click vào bất kỳ ảnh đại diện nào để mở popup xem ảnh gốc 1080p và tải về.</div>
+                    </div>
+                  </div>
+                  <span class="igt-v3-feat-name">Xem Avatar Full HD</span>
+                </div>
+                <label class="igt-v3-switch">
+                  <input type="checkbox" id="igt-toggle-hd-avatar" ${v3Settings.hdAvatar ? 'checked' : ''} />
+                  <span class="igt-v3-slider"></span>
+                </label>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- SECTION 3: CHẾ ĐỘ XEM NÂNG CAO -->
-        <div class="igt-v3-section-group">
+        <!-- SECTION 3: CHẾ ĐỘ XEM NÂNG CAO (ĐÃ ẨN & COMMENT THEO YÊU CẦU ĐỂ TỐI ƯU TẢI TRANG) -->
+        <!--
+        <div class="igt-v3-section-group igt-v3-watchlist-section" style="display: none !important;">
           <div class="igt-v3-section-title" style="display: flex; align-items: center; justify-content: space-between;">
             <div style="display: flex; align-items: center; gap: 8px;">
               <img class="igt-v3-sec-icon" src="${icon3Advanced}" alt="" />
@@ -1899,8 +2889,6 @@
             </button>
           </div>
           <div class="igt-v3-section">
-            
-            <!-- Toolbar -->
             <div class="igt-v3-wl-toolbar">
               <div class="igt-v3-search-wrap">
                 <img class="igt-v3-search-icon-img" src="${icon4Search}" alt="" />
@@ -1909,13 +2897,10 @@
               <button id="igt-btn-add-user" class="igt-v3-my-account-btn add-btn" title="Thêm tài khoản vào Watchlist">+ Thêm</button>
               <button id="igt-btn-scan-myself" class="igt-v3-my-account-btn" title="Quét & thêm tài khoản của chính bạn">quét tôi</button>
             </div>
-
-            <!-- Watchlist List Container -->
-            <div id="igt-v3-watchlist-container" class="igt-v3-watchlist-list">
-              <!-- Render động từ IndexedDB -->
-            </div>
+            <div id="igt-v3-watchlist-container" class="igt-v3-watchlist-list"></div>
           </div>
         </div>
+        -->
 
         <!-- SECTION 4: SAO LƯU (INDEXEDDB) -->
         <div class="igt-v3-section-group">
@@ -1970,7 +2955,7 @@
 
     // Lắng nghe các nút Toggle & Action
     setupDrawerEventListeners();
-    renderWatchlistInDrawer();
+    // renderWatchlistInDrawer(); // Tạm ẩn theo yêu cầu để tối ưu tải trang
   }
 
   function setupDrawerEventListeners() {
@@ -1987,6 +2972,9 @@
     const tAd = document.getElementById('igt-toggle-adblock');
     if (tAd) tAd.addEventListener('change', (e) => saveSettings('adblock', e.target.checked));
 
+    const tAvatar = document.getElementById('igt-toggle-hd-avatar');
+    if (tAvatar) tAvatar.addEventListener('change', (e) => saveSettings('hdAvatar', e.target.checked));
+
     const tSharp = document.getElementById('igt-toggle-sharpness');
     if (tSharp) {
       tSharp.addEventListener('change', (e) => {
@@ -2000,6 +2988,8 @@
       });
     }
 
+
+
     // Tự động lắng nghe thay đổi băng thông mạng thời gian thực
     const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     if (conn && typeof conn.addEventListener === 'function') {
@@ -2012,6 +3002,8 @@
         }
       });
     }
+
+
 
     // Xử lý Popover Chú thích (Hỗ trợ cả Hover chuột lẫn Click)
     const popoverWraps = document.querySelectorAll('.igt-v3-popover-wrap');
@@ -2088,6 +3080,8 @@
       });
     }
 
+
+
     const btnExpandWl = document.getElementById('igt-btn-expand-wl');
     if (btnExpandWl) {
       btnExpandWl.addEventListener('click', () => {
@@ -2109,6 +3103,8 @@
         }
       });
     }
+
+
 
     const scanMyselfBtn = document.getElementById('igt-btn-scan-myself');
     if (scanMyselfBtn) {
@@ -2268,6 +3264,8 @@
       });
     }
 
+
+
     // Phím tắt ESC để đóng Drawer
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && isDrawerOpen) {
@@ -2283,8 +3281,8 @@
       const lastScanned = item.lastScannedAt ? new Date(item.lastScannedAt).toLocaleDateString('vi-VN') : 'Chưa quét';
       const rel = item.relationship || { type: 'stranger', label: 'người lạ' };
       const hasCheckpoint = item.checkpoints?.followers?.cursor || item.checkpoints?.following?.cursor;
-      const scanStatusText = hasCheckpoint 
-        ? `${lastScanned} <span style="color: #38bdf8; font-weight: 700;" title="Đang có điểm dừng để cào tiếp tục an toàn">• Dở dang</span>` 
+      const scanStatusText = hasCheckpoint
+        ? `${lastScanned} <span style="color: #38bdf8; font-weight: 700;" title="Đang có điểm dừng để cào tiếp tục an toàn">• Dở dang</span>`
         : lastScanned;
 
       return `
@@ -2394,6 +3392,9 @@
   let isExpandedWatchlistOpen = false;
 
   function toggleExpandedWatchlist() {
+    const existingPanel = document.getElementById('igt-v3-expanded-panel');
+    if (existingPanel) existingPanel.remove();
+    return; // Đã tạm ẩn theo yêu cầu để tối ưu hiệu năng
     isExpandedWatchlistOpen = !isExpandedWatchlistOpen;
     const expandBtn = document.getElementById('igt-btn-expand-wl');
     let panel = document.getElementById('igt-v3-expanded-panel');
@@ -2497,6 +3498,7 @@
   }
 
   async function renderWatchlistInDrawer(filterText = '') {
+    return; // Đã tạm ẩn Watchlist để tránh nặng và tối ưu hiệu năng tải trang
     updateScanMyselfButtonUI();
     const container = document.getElementById('igt-v3-watchlist-container');
     if (!container) return;
@@ -3907,7 +4909,7 @@
       panel.classList.add('igt-open');
       backdrop.classList.add('igt-open');
       isDrawerOpen = true;
-      renderWatchlistInDrawer();
+      // renderWatchlistInDrawer(); // Tạm ẩn theo yêu cầu để tối ưu tải trang
     }
   }
 
@@ -3933,6 +4935,7 @@
     applyVideoSharpness();
     cleanFeedAds();
     updateGhostStatusBadge();
+    scanAndAttachViewOnceButtons();
   }
 
   // --- 8. KHỞI CHẠY VÀ MUTATION OBSERVER ---
@@ -3944,10 +4947,10 @@
     // 1. Khởi tạo Drawer DOM ngay từ đầu để panel và backdrop luôn sẵn sàng, mở tức thì 0ms trễ
     createDrawerDOM();
 
-    // 2. Thử inject nút navigation, status badge và nút Watchlist trên Profile
+    // 2. Thử inject nút navigation và status badge
     injectSidebarNavButton();
     updateGhostStatusBadge();
-    scanAndAttachWatchlistButton();
+    // scanAndAttachWatchlistButton(); // Tạm ẩn theo yêu cầu để tối ưu tải trang
 
     // 3. Áp dụng tính năng ban đầu
     applyActiveSettings();
@@ -3973,6 +4976,7 @@
         try { observer.disconnect(); } catch (_) { }
         return;
       }
+
       let hasExternalChanges = false;
       for (let i = 0; i < mutations.length; i++) {
         const m = mutations[i];
@@ -4000,7 +5004,7 @@
         lastKnownPath = window.location.pathname;
         injectSidebarNavButton();
         updateGhostStatusBadge();
-        scanAndAttachWatchlistButton();
+        scanAndAttachViewOnceButtons();
       }
 
       if (!domChangeThrottle) {
@@ -4014,7 +5018,7 @@
           cleanFeedAds();
           injectSidebarNavButton();
           updateGhostStatusBadge();
-          scanAndAttachWatchlistButton();
+          scanAndAttachViewOnceButtons();
         }, 250);
       }
     });
@@ -4031,9 +5035,8 @@
         if (!isExtensionValid()) return;
         injectSidebarNavButton();
         updateGhostStatusBadge();
-        scanAndAttachWatchlistButton();
         applyActiveSettings();
-        if (isDrawerOpen) renderWatchlistInDrawer();
+        scanAndAttachViewOnceButtons();
       }, 300);
     });
 
@@ -4043,7 +5046,7 @@
         if (!isExtensionValid()) return;
         injectSidebarNavButton();
         updateGhostStatusBadge();
-        scanAndAttachWatchlistButton();
+        scanAndAttachViewOnceButtons();
       }, 200);
     });
 
@@ -4058,7 +5061,7 @@
       }
     });
 
-    console.log('[InstaTweaks v3.1] Core Module Initialized Successfully.');
+    console.log('[InstaTweaks v3.2.0] Core Module Initialized Successfully.');
   }
 
   if (document.readyState === 'loading') {

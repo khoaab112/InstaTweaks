@@ -2,6 +2,12 @@
  * Popup Script - Quản lý cài đặt người dùng (v1.2.0)
  */
 
+if (window.location.search.includes('reload=true')) {
+  try {
+    chrome.runtime.reload();
+  } catch (_) {}
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const autoplayToggle = document.getElementById('autoplay-toggle');
   const autounmuteToggle = document.getElementById('autounmute-toggle');

@@ -43,4 +43,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
     return true;
   }
+
+  if (message.action === 'reload_extension') {
+    console.log('[InstaTweaks] Reloading extension via chrome.runtime.reload()...');
+    chrome.runtime.reload();
+    sendResponse({ success: true });
+    return true;
+  }
+
+  // Thông báo Desktop Notification chuẩn của Windows / Chrome (Ảnh 1)
+  if (message.action === 'show_desktop_notification') {
+    const { title, text, sender } = message;
+    try {
+      chrome.notifications.create({
+        type: 'basic',
+        iconUrl: 'icons/icon128.png',
+        title: title || '⚠️ [InstaTweaks] Tin nhắn vừa bị thu hồi!',
+        message: text ? `${sender || 'Đối phương'}: "${text}"` : `${sender || 'Đối phương'} vừa thu hồi một tin nhắn!`,
+        priority: 2,
+        requireInteraction: true
+      });
+      sendResponse({ success: true });
+    } catch (e) {
+      sendResponse({ success: false, error: e.message });
+    }
+    return true;
+  }
 });
