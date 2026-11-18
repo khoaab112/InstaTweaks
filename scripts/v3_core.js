@@ -775,6 +775,74 @@
     return match ? decodeURIComponent(match[3]) : '';
   }
 
+  // Lấy thông tin tài khoản người dùng đang đăng nhập
+  async function getLoggedInUserInfo() {
+    let myUid = getCookie('ds_user_id') || '';
+    let myUname = '';
+    let myAvatar = '';
+    let myFullName = 'Chính tôi';
+    let myFlwCount = 0;
+    let myFlwingCount = 0;
+
+    // 1. Thử lấy username từ profile link bên menu trái của Instagram
+    const profileLinks = Array.from(document.querySelectorAll('a[href^="/"]'));
+    const navProfileA = profileLinks.find(a =>
+      a.querySelector('img[alt*="profile picture"], img[alt*="ảnh đại diện"]') ||
+      a.innerText.trim().toLowerCase() === 'profile' ||
+      a.innerText.trim().toLowerCase() === 'trang cá nhân'
+    );
+    if (navProfileA) {
+      const href = navProfileA.getAttribute('href').replace(/\//g, '').trim();
+      if (href && !['explore', 'reels', 'direct', 'stories', 'accounts', 'emails', 'p', 'reel', 'tv'].includes(href.toLowerCase())) {
+        myUname = href;
+      }
+    }
+
+    // 2. Thử tìm trong Watchlist xem đã lưu tài khoản trùng myUid hoặc myUname chưa
+    const currentList = await dbGetWatchlist();
+    const match = currentList.find(u => (myUid && String(u.userId) === String(myUid)) || (myUname && u.username?.toLowerCase() === myUname.toLowerCase()));
+    if (match) {
+      if (!myUid && match.userId) myUid = match.userId;
+      if (!myUname && match.username) myUname = match.username;
+      myFullName = match.fullName || myFullName;
+      myAvatar = match.avatarUrl || myAvatar;
+      myFlwCount = match.followerCount || myFlwCount;
+      myFlwingCount = match.followingCount || myFlwingCount;
+    }
+
+    // 3. Nếu có myUid mà chưa có username, thử truy vấn API
+    if (myUid && !myUname) {
+      try {
+        const res = await fetch(`https://www.instagram.com/api/v1/users/${myUid}/info/`, {
+          headers: {
+            'X-IG-App-ID': '936619743392459',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          credentials: 'include'
+        });
+        if (res.ok) {
+          const pj = await res.json();
+          if (pj.user) {
+            if (pj.user.username) myUname = pj.user.username;
+            if (pj.user.full_name) myFullName = pj.user.full_name;
+            if (pj.user.profile_pic_url) myAvatar = pj.user.profile_pic_url;
+            if (pj.user.follower_count != null) myFlwCount = pj.user.follower_count;
+            if (pj.user.following_count != null) myFlwingCount = pj.user.following_count;
+          }
+        }
+      } catch (_) {}
+    }
+
+    return {
+      userId: myUid,
+      username: myUname,
+      fullName: myFullName,
+      avatarUrl: myAvatar || DEFAULT_AVATAR,
+      followerCount: myFlwCount,
+      followingCount: myFlwingCount
+    };
+  }
+
   // --- CÁC HÀM TƯƠNG TÁC INDEXEDDB CHO WATCHLIST & SNAPSHOTS ---
   function dbGetWatchlist() {
     return new Promise((resolve) => {
@@ -983,26 +1051,70 @@
 
   function computeCrossUserCommon(myFollowingSnap, targetFollowingSnap, myFollowersSnap, targetFollowersSnap) {
     const commonFollowing = [];
+    const commonFollowers = [];
+    const commonMutualFriends = [];
+    const allCommonMap = new Map();
+
+    const myFollowingMap = new Map();
+    (myFollowingSnap?.items || []).forEach(u => myFollowingMap.set(String(u.id || u.username).toLowerCase(), u));
+
+    const myFollowersMap = new Map();
+    (myFollowersSnap?.items || []).forEach(u => myFollowersMap.set(String(u.id || u.username).toLowerCase(), u));
+
+    const targetFollowingMap = new Map();
+    (targetFollowingSnap?.items || []).forEach(u => targetFollowingMap.set(String(u.id || u.username).toLowerCase(), u));
+
+    const targetFollowersMap = new Map();
+    (targetFollowersSnap?.items || []).forEach(u => targetFollowersMap.set(String(u.id || u.username).toLowerCase(), u));
+
+    // 1. Cả 2 cùng follow ai (Cả bạn và user so sánh đều đang follow người này)
     if (myFollowingSnap?.items && targetFollowingSnap?.items) {
-      const myMap = new Map();
-      myFollowingSnap.items.forEach(u => myMap.set(String(u.id || u.username).toLowerCase(), u));
       targetFollowingSnap.items.forEach(u => {
         const key = String(u.id || u.username).toLowerCase();
-        if (myMap.has(key)) commonFollowing.push({ ...u, mutualStatus: 'Cả hai cùng theo dõi' });
+        if (myFollowingMap.has(key)) {
+          const item = { ...u, commonType: 'following', commonLabel: 'Cả 2 cùng follow' };
+          commonFollowing.push(item);
+          allCommonMap.set(key, item);
+        }
       });
     }
 
-    const commonFollowers = [];
+    // 2. Ai được cả 2 follow / Ai cùng follow cả 2 (Người này đang theo dõi cả bạn và user so sánh)
     if (myFollowersSnap?.items && targetFollowersSnap?.items) {
-      const myMap = new Map();
-      myFollowersSnap.items.forEach(u => myMap.set(String(u.id || u.username).toLowerCase(), u));
       targetFollowersSnap.items.forEach(u => {
         const key = String(u.id || u.username).toLowerCase();
-        if (myMap.has(key)) commonFollowers.push({ ...u, mutualStatus: 'Cùng theo dõi cả hai' });
+        if (myFollowersMap.has(key)) {
+          const item = { ...u, commonType: 'followers', commonLabel: 'Cùng follow cả 2' };
+          commonFollowers.push(item);
+          if (!allCommonMap.has(key)) {
+            allCommonMap.set(key, item);
+          } else {
+            const existing = allCommonMap.get(key);
+            existing.commonLabel = 'Cùng follow & Cả 2 theo dõi';
+          }
+        }
       });
     }
 
-    return { commonFollowing, commonFollowers };
+    // 3. Bạn bè chung là những ai (Người là bạn bè follow chéo của Bạn VÀ đồng thời cũng là bạn bè follow chéo của User so sánh)
+    allCommonMap.forEach((u, key) => {
+      const isMyMutual = myFollowingMap.has(key) && myFollowersMap.has(key);
+      const isTargetMutual = targetFollowingMap.has(key) && targetFollowersMap.has(key);
+      if (isMyMutual && isTargetMutual) {
+        const item = { ...u, commonType: 'mutual_friends', commonLabel: '🤝 Bạn bè chung' };
+        commonMutualFriends.push(item);
+        allCommonMap.set(key, item);
+      }
+    });
+
+    const allCommonList = Array.from(allCommonMap.values());
+
+    return {
+      commonFollowing,
+      commonFollowers,
+      commonMutualFriends,
+      allCommonList
+    };
   }
 
   // Nhận diện Profile đang xem
@@ -2776,6 +2888,7 @@
     let diffType = 'followers'; // 'followers' hoặc 'following'
     let diffFilter = 'all';     // 'all', 'added', 'removed'
     let mutualFilter = 'not_following_back'; // 'not_following_back', 'fans', 'mutual', 'common'
+    let commonSubFilter = 'all'; // 'all', 'following', 'followers', 'mutual_friends'
 
     const flwCount = followersSnap?.totalCount != null ? followersSnap.totalCount : (snapshotOrUser.followerCount || 0);
     const flwingCount = followingSnap?.totalCount != null ? followingSnap.totalCount : (snapshotOrUser.followingCount || 0);
@@ -3119,10 +3232,10 @@
     }
 
     // --- TAB 4: 👥 PHÂN TÍCH TƯƠNG HỖ & FOLLOW CHÉO (MUTUAL) ---
-    function renderMutualView() {
+    async function renderMutualView() {
       exportJsonBtn.style.display = 'none';
 
-      // Kiểm tra có đủ cả Followers và Following không
+      // Kiểm tra có đủ cả Followers và Following của target không
       if (!followersSnap || !followingSnap) {
         const missing = !followersSnap ? 'Followers' : 'Following';
         if (subtitleEl) subtitleEl.innerText = `Cần quét thêm ${missing}`;
@@ -3154,8 +3267,44 @@
 
       const mutualResult = computeMutualAnalysis(followersSnap, followingSnap);
 
+      // Lấy thông tin tài khoản người dùng đang đăng nhập (Tài khoản của tôi)
+      const myInfo = await getLoggedInUserInfo();
+      const isMyself = Boolean(
+        myInfo.username && targetUsername && (
+          myInfo.username.toLowerCase() === targetUsername.toLowerCase() ||
+          (myInfo.userId && String(myInfo.userId) === String(targetUserId))
+        )
+      );
+
+      let myFollowersSnap = null;
+      let myFollowingSnap = null;
+      let crossCommon = null;
+
+      if (!isMyself) {
+        if (myInfo.userId) {
+          myFollowersSnap = await dbGetLatestSnapshot(myInfo.userId, 'followers');
+          myFollowingSnap = await dbGetLatestSnapshot(myInfo.userId, 'following');
+        }
+        if (!myFollowersSnap && myInfo.username) {
+          myFollowersSnap = await dbGetLatestSnapshot(myInfo.username, 'followers');
+        }
+        if (!myFollowingSnap && myInfo.username) {
+          myFollowingSnap = await dbGetLatestSnapshot(myInfo.username, 'following');
+        }
+
+        if (myFollowersSnap || myFollowingSnap) {
+          crossCommon = computeCrossUserCommon(myFollowingSnap, followingSnap, myFollowersSnap, followersSnap);
+        }
+      }
+
+      const commonTotal = crossCommon ? crossCommon.allCommonList.length : 0;
+
       if (subtitleEl) {
-        subtitleEl.innerText = `Phân tích tương hỗ giữa ${followersSnap.totalCount.toLocaleString()} flwer và ${followingSnap.totalCount.toLocaleString()} flwing`;
+        if (mutualFilter === 'common') {
+          subtitleEl.innerText = `Điểm chung giữa Bạn (@${myInfo.username || 'tôi'}) và @${targetUsername}`;
+        } else {
+          subtitleEl.innerText = `Phân tích tương hỗ giữa ${followersSnap.totalCount.toLocaleString()} flwer và ${followingSnap.totalCount.toLocaleString()} flwing`;
+        }
       }
 
       dynamicControls.innerHTML = `
@@ -3168,6 +3317,9 @@
           </button>
           <button class="igt-v3-mutual-pill ${mutualFilter === 'mutual' ? 'active' : ''}" data-filter="mutual">
             🤝 Follow chéo (${mutualResult.mutual.length.toLocaleString()})
+          </button>
+          <button class="igt-v3-mutual-pill ${mutualFilter === 'common' ? 'active' : ''}" data-filter="common" title="Những người có điểm chung giữa bạn và @${targetUsername}">
+            👥 Điểm chung ${crossCommon ? `(${commonTotal.toLocaleString()})` : ''}
           </button>
         </div>
       `;
@@ -3182,6 +3334,145 @@
         };
       });
 
+      // XỬ LÝ SUB-TAB 4: ĐIỂM CHUNG GIỮA BẠN VÀ USER SO SÁNH
+      if (mutualFilter === 'common') {
+        if (isMyself) {
+          if (subtitleEl) subtitleEl.innerText = `Điểm chung: Bạn đang xem chính tài khoản của mình`;
+          listWrap.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 260px; color: #71717a; gap: 10px; text-align: center; padding: 20px;">
+              <div style="font-size: 32px;">👤</div>
+              <div style="color: #e4e4e7; font-size: 13.5px; font-weight: 600;">Bạn đang xem chính tài khoản của mình</div>
+              <div style="font-size: 12px; color: #a1a1aa; max-width: 340px; line-height: 1.5;">
+                Tính năng <strong>Điểm chung</strong> giúp bạn đối chiếu xem bạn và một người khác trong Watchlist: <strong>Cả 2 cùng follow ai</strong>, <strong>Ai cùng follow cả 2</strong> và <strong>Có bạn bè chung là những ai</strong>.<br/><br/>
+                Hãy bấm <strong>Quay lại</strong> và mở tài khoản của một người khác để bắt đầu đối chiếu điểm chung!
+              </div>
+            </div>
+          `;
+          return;
+        }
+
+        if (!myFollowersSnap && !myFollowingSnap) {
+          if (subtitleEl) subtitleEl.innerText = `Cần quét tài khoản của bạn để đối chiếu Điểm chung`;
+          listWrap.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 280px; color: #71717a; gap: 12px; text-align: center; padding: 24px;">
+              <div style="font-size: 34px;">🔍</div>
+              <div style="color: #38bdf8; font-size: 14px; font-weight: 700;">Chưa có dữ liệu tài khoản của bạn để đối chiếu</div>
+              <div style="font-size: 12px; color: #cbd5e1; max-width: 360px; line-height: 1.5;">
+                Để phát hiện:<br/>
+                • <strong>Cả 2 cùng follow ai</strong><br/>
+                • <strong>Ai được cả 2 follow / cùng follow cả 2</strong><br/>
+                • <strong>Có bạn bè chung là những ai</strong><br/><br/>
+                Hệ thống cần có bản Snapshot dữ liệu của chính bạn (${myInfo.username ? '@' + myInfo.username : 'tài khoản đang đăng nhập'}).
+              </div>
+              <button id="igt-scan-myself-for-common-btn" class="igt-v3-action-btn primary" style="margin-top: 6px; padding: 8px 20px; font-size: 12px; cursor: pointer; border-radius: 8px;">
+                <span>⚡ Quét tài khoản của tôi ngay</span>
+              </button>
+            </div>
+          `;
+          const scanMyBtn = document.getElementById('igt-scan-myself-for-common-btn');
+          if (scanMyBtn) {
+            scanMyBtn.onclick = async () => {
+              closeSnapshotModal();
+              const myTarget = {
+                userId: myInfo.userId || myInfo.username,
+                username: myInfo.username || 'me',
+                fullName: myInfo.fullName || 'Chính tôi',
+                avatarUrl: myInfo.avatarUrl || DEFAULT_AVATAR
+              };
+              runSafeScan(myTarget, 'all');
+            };
+          }
+          return;
+        }
+
+        // Đã có dữ liệu đối chiếu -> Hiển thị danh sách điểm chung với sub-filter
+        const subNav = document.createElement('div');
+        subNav.className = 'igt-v3-common-sub-nav';
+        subNav.innerHTML = `
+          <button class="igt-v3-common-sub-pill ${commonSubFilter === 'all' ? 'active' : ''}" data-sub="all">
+            Tất cả điểm chung (${crossCommon.allCommonList.length.toLocaleString()})
+          </button>
+          <button class="igt-v3-common-sub-pill ${commonSubFilter === 'following' ? 'active' : ''}" data-sub="following" title="Những người cả Bạn và @${targetUsername} đều đang follow">
+            🧭 Cả 2 cùng follow (${crossCommon.commonFollowing.length.toLocaleString()})
+          </button>
+          <button class="igt-v3-common-sub-pill ${commonSubFilter === 'followers' ? 'active' : ''}" data-sub="followers" title="Những người đang follow cả Bạn và @${targetUsername}">
+            👥 Cùng follow cả 2 (${crossCommon.commonFollowers.length.toLocaleString()})
+          </button>
+          <button class="igt-v3-common-sub-pill ${commonSubFilter === 'mutual_friends' ? 'active' : ''}" data-sub="mutual_friends" title="Những người vừa là bạn bè follow chéo của Bạn, vừa là bạn của @${targetUsername}">
+            🤝 Bạn bè chung (${crossCommon.commonMutualFriends.length.toLocaleString()})
+          </button>
+        `;
+        dynamicControls.appendChild(subNav);
+
+        subNav.querySelectorAll('.igt-v3-common-sub-pill').forEach(sp => {
+          sp.onclick = () => {
+            const sub = sp.getAttribute('data-sub');
+            if (commonSubFilter !== sub) {
+              commonSubFilter = sub;
+              renderMutualView();
+            }
+          };
+        });
+
+        let commonList = [];
+        let commonLabel = '';
+        if (commonSubFilter === 'following') {
+          commonList = crossCommon.commonFollowing;
+          commonLabel = 'Cả 2 cùng follow';
+        } else if (commonSubFilter === 'followers') {
+          commonList = crossCommon.commonFollowers;
+          commonLabel = 'Cùng follow cả 2';
+        } else if (commonSubFilter === 'mutual_friends') {
+          commonList = crossCommon.commonMutualFriends;
+          commonLabel = 'Bạn bè chung';
+        } else {
+          commonList = crossCommon.allCommonList;
+          commonLabel = 'Điểm chung';
+        }
+
+        if (subtitleEl) {
+          subtitleEl.innerText = `Điểm chung giữa Bạn (@${myInfo.username || 'tôi'}) và @${targetUsername} • ${commonList.length.toLocaleString()} người`;
+        }
+
+        exportCsvBtn.onclick = () => {
+          exportCustomListToCSV(commonList, `InstaTweaks_DiemChung_${targetUsername}_${commonSubFilter}`, 'Loại Điểm Chung');
+        };
+
+        renderUserList(commonList, (u) => {
+          let badgeHtml = '';
+          if (u.commonType === 'mutual_friends') {
+            badgeHtml = '<span class="igt-v3-tag-common mutual">🤝 Bạn bè chung</span>';
+          } else if (u.commonType === 'following') {
+            badgeHtml = '<span class="igt-v3-tag-common following">🧭 Cả 2 cùng fl</span>';
+          } else if (u.commonType === 'followers') {
+            badgeHtml = '<span class="igt-v3-tag-common followers">👥 Cùng fl cả 2</span>';
+          } else {
+            badgeHtml = `<span class="igt-v3-tag-common following">${u.commonLabel || 'Điểm chung'}</span>`;
+          }
+
+          return `
+            <div class="igt-v3-snap-item">
+              <div class="igt-v3-snap-col-user">
+                <img class="igt-v3-snap-item-img" src="${(u.avatarUrl && !u.avatarUrl.includes('<svg')) ? u.avatarUrl : DEFAULT_AVATAR}" alt="${u.username}" />
+                <div class="igt-v3-snap-item-info">
+                  <div class="igt-v3-snap-item-uname">
+                    <a href="/${u.username}/" target="_blank" style="color: inherit; text-decoration: none;">@${u.username}</a>
+                    ${u.isVerified ? '<span style="color: #38bdf8; font-size: 11px;"> ✓</span>' : ''}
+                  </div>
+                  <div class="igt-v3-snap-item-fname">${u.fullName || ''}</div>
+                </div>
+              </div>
+              <div class="igt-v3-snap-col-status">
+                ${badgeHtml}
+                ${u.isPrivate ? `<span class="igt-v3-private-tag" style="margin-left: 4px;"><img class="igt-v3-private-shield-img" src="${privateShieldUrl}" alt="" /></span>` : ''}
+              </div>
+            </div>
+          `;
+        }, `Không có tài khoản nào thuộc mục "${commonLabel}".`, 'Thử chọn mục điểm chung khác hoặc kiểm tra lại sau.');
+        return;
+      }
+
+      // SUB-TABS THƯỜNG: KHÔNG FOLLOW LẠI, FANS, FOLLOW CHÉO
       let targetList = [];
       let tagLabel = '';
       if (mutualFilter === 'not_following_back') {
