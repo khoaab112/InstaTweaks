@@ -1,0 +1,1745 @@
+/* ==========================================================================
+   INSTATWEAKS v3.0 - SIDEBAR & UI STYLES
+   ========================================================================== */
+
+/* --- 1. NÚT MỞ V3 TRÊN THANH NAVIGATION INSTAGRAM (CHUẨN CĂN THẲNG HÀNG VỚI ICON HOME, KHÔNG LỆCH) --- */
+.igt-v3-nav-item {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px !important;
+  min-height: 48px !important;
+  flex-shrink: 0 !important;
+  box-sizing: border-box !important;
+  padding: 0 !important;
+  margin: 4px 0 !important;
+  align-self: flex-start !important;
+  border-radius: 12px !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  transition: background 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  position: relative !important;
+  text-decoration: none !important;
+  color: inherit !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  pointer-events: auto !important;
+  z-index: 99999 !important;
+}
+
+.igt-v3-nav-item:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  transform: translateY(-1px) !important;
+}
+
+.igt-v3-nav-item:active {
+  transform: scale(0.97) !important;
+}
+
+.igt-v3-nav-item.igt-v3-fixed-fallback {
+  position: fixed !important;
+  top: 68px !important;
+  left: 12px !important;
+  width: 48px !important;
+  height: 48px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  z-index: 99999 !important;
+}
+
+.igt-v3-icon-box {
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 12px !important;
+  position: relative !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  transition: all 0.2s ease !important;
+  pointer-events: none !important;
+}
+
+.igt-v3-nav-item:hover .igt-v3-icon-box {
+  background: rgba(0, 149, 246, 0.15) !important;
+  border-color: rgba(0, 149, 246, 0.4) !important;
+  box-shadow: 0 0 14px rgba(0, 149, 246, 0.3) !important;
+}
+
+.igt-v3-ghost-icon {
+  width: 36px !important;
+  height: 36px !important;
+  object-fit: contain !important;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3)) !important;
+  transition: transform 0.25s ease !important;
+  pointer-events: none !important;
+}
+
+.igt-v3-nav-item:hover .igt-v3-ghost-icon {
+  transform: scale(1.1) rotate(-4deg) !important;
+}
+
+.igt-v3-pulse-dot {
+  position: absolute !important;
+  top: -2px !important;
+  right: -2px !important;
+  width: 8px !important;
+  height: 8px !important;
+  background: #00f2fe !important;
+  border-radius: 50% !important;
+  box-shadow: 0 0 8px #00f2fe !important;
+  pointer-events: none !important;
+}
+
+/* --- 2. BACKDROP MỜ --- */
+.igt-v3-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(0, 0, 0, 0.65) !important;
+  backdrop-filter: blur(5px) !important;
+  -webkit-backdrop-filter: blur(5px) !important;
+  z-index: 999998 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.igt-v3-backdrop.igt-open {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* --- 3. SIDEBAR DRAWER PANEL (RỘNG RÃI ~580PX CHUẨN Ô ĐỎ THIẾT KẾ) --- */
+.igt-v3-drawer-panel {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 580px !important;
+  max-width: 95vw !important;
+  height: 100vh !important;
+  background: #121214 !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 15px 0 50px rgba(0, 0, 0, 0.7) !important;
+  z-index: 999999 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-sizing: border-box !important;
+  color: #e4e4e7 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+  transform: translateX(-100%) !important;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.igt-v3-drawer-panel.igt-open {
+  transform: translateX(0) !important;
+}
+
+/* --- 4. HEADER CỦA SIDEBAR --- */
+.igt-v3-drawer-header {
+  padding: 18px 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: rgba(24, 24, 27, 0.8) !important;
+}
+
+.igt-v3-brand-wrap {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.igt-v3-brand-icon {
+  width: 48px !important;
+  height: 48px !important;
+  object-fit: contain !important;
+  filter: drop-shadow(0 2px 8px rgba(0, 242, 254, 0.4)) !important;
+}
+
+.igt-v3-brand-title {
+  font-size: 17px !important;
+  font-weight: 800 !important;
+  background: linear-gradient(135deg, #ffffff 30%, #a1a1aa 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  letter-spacing: -0.3px !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.igt-v3-phase-pill {
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  color: #38bdf8 !important;
+  background: rgba(56, 189, 248, 0.15) !important;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+  padding: 2px 7px !important;
+  border-radius: 999px !important;
+  letter-spacing: 0.5px !important;
+  text-transform: uppercase !important;
+}
+
+.igt-v3-close-btn {
+  width: 32px !important;
+  height: 32px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 50% !important;
+  color: #a1a1aa !important;
+  cursor: pointer !important;
+  font-size: 16px !important;
+  transition: all 0.2s ease !important;
+}
+
+.igt-v3-close-btn:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: #fff !important;
+  transform: rotate(90deg) !important;
+}
+
+/* --- 5. BODY NỘI DUNG CUỘN --- */
+.igt-v3-drawer-body {
+  flex: 1 !important;
+  overflow-y: auto !important;
+  padding: 16px 18px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 18px !important;
+}
+
+.igt-v3-drawer-body::-webkit-scrollbar {
+  width: 5px !important;
+}
+
+.igt-v3-drawer-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-radius: 10px !important;
+}
+
+/* --- 6. SECTION GROUP & CARD --- */
+.igt-v3-section-group {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+
+.igt-v3-section-title {
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.8px !important;
+  color: #94a3b8 !important;
+  margin: 0 0 0 4px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  user-select: none !important;
+}
+
+.igt-v3-section {
+  background: rgba(24, 24, 27, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  border-radius: 14px !important;
+  padding: 10px 12px !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important;
+  overflow: visible !important;
+}
+
+.igt-v3-sec-icon {
+  width: 26px !important;
+  height: 26px !important;
+  object-fit: contain !important;
+  display: inline-block !important;
+  vertical-align: middle !important;
+  flex-shrink: 0 !important;
+}
+
+/* --- 7. BỐ CỤC GRID 1 HÀNG CHO CÁC TÍNH NĂNG (GỌN GÀNG, CHỐNG TRÀN CARD RA NGOÀI) --- */
+.igt-v3-grid-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  gap: 10px !important;
+  margin-top: 4px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+}
+
+.igt-v3-feature-col {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 8px 12px !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  border-radius: 12px !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  position: relative !important;
+  overflow: visible !important;
+  transition: all 0.2s ease !important;
+}
+
+.igt-v3-feature-col:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.igt-v3-feat-left {
+  display: flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  min-width: 0 !important;
+  flex: 1 !important;
+  overflow: visible !important;
+}
+
+.igt-v3-feature-col .igt-v3-feat-name {
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  color: #f4f4f5 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  min-width: 0 !important;
+  flex: 1 !important;
+}
+
+/* --- 7.1. ICON CHÚ THÍCH & POPOVER TOOLTIP HOVER --- */
+.igt-v3-popover-wrap {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}
+
+.igt-v3-info-icon {
+  width: 25px !important;
+  height: 25px !important;
+  min-width: 25px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 50% !important;
+  color: #a1a1aa !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.igt-v3-info-icon:hover,
+.igt-v3-popover-wrap:hover .igt-v3-info-icon,
+.igt-v3-popover-wrap.igt-active .igt-v3-info-icon {
+  color: #38bdf8 !important;
+  background: rgba(56, 189, 248, 0.2) !important;
+  border-color: rgba(56, 189, 248, 0.5) !important;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.4) !important;
+}
+
+.igt-v3-popover-box {
+  position: absolute !important;
+  top: calc(100% + 9px) !important;
+  left: -8px !important;
+  width: 255px !important;
+  background: #1c1c20 !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 10px !important;
+  padding: 10px 12px !important;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.85), 0 0 1px rgba(255, 255, 255, 0.2) !important;
+  z-index: 9999999 !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transform: translateY(-4px) !important;
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s !important;
+}
+
+.igt-v3-popover-box::after {
+  content: '' !important;
+  position: absolute !important;
+  bottom: 100% !important;
+  left: 14px !important;
+  border-width: 5px !important;
+  border-style: solid !important;
+  border-color: transparent transparent #1c1c20 transparent !important;
+}
+
+/* Với cột thứ 2 bên phải, dịch popover căn sang phải để không tràn mép màn hình */
+.igt-v3-grid-row>div:nth-child(2) .igt-v3-popover-box {
+  left: auto !important;
+  right: -8px !important;
+}
+
+.igt-v3-grid-row>div:nth-child(2) .igt-v3-popover-box::after {
+  left: auto !important;
+  right: 14px !important;
+}
+
+.igt-v3-popover-wrap:hover .igt-v3-popover-box,
+.igt-v3-popover-wrap.igt-active .igt-v3-popover-box,
+.igt-v3-info-icon:focus+.igt-v3-popover-box {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  transform: translateY(0) !important;
+}
+
+.igt-v3-popover-title {
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  color: #38bdf8 !important;
+  margin-bottom: 4px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+}
+
+.igt-v3-popover-desc {
+  font-size: 11px !important;
+  line-height: 1.45 !important;
+  color: #d4d4d8 !important;
+}
+
+/* Hộp chẩn đoán phần cứng & Băng thông mạng trong Popover của Video HD */
+.igt-v3-diag-box {
+  margin-top: 8px !important;
+  padding-top: 8px !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 5px !important;
+}
+
+.igt-v3-diag-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  font-size: 10.5px !important;
+  color: #a1a1aa !important;
+}
+
+.igt-v3-diag-val {
+  font-weight: 600 !important;
+  font-size: 10px !important;
+}
+
+.igt-v3-diag-val.good {
+  color: #4ade80 !important;
+}
+
+.igt-v3-diag-val.warn {
+  color: #facc15 !important;
+}
+
+.igt-v3-diag-val.bad {
+  color: #f87171 !important;
+}
+
+.igt-diag-tag {
+  padding: 1px 6px !important;
+  border-radius: 4px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+}
+
+.igt-diag-tag.optimal {
+  background: rgba(34, 197, 94, 0.2) !important;
+  color: #4ade80 !important;
+  border: 1px solid rgba(34, 197, 94, 0.4) !important;
+}
+
+.igt-diag-tag.moderate {
+  background: rgba(234, 179, 8, 0.2) !important;
+  color: #facc15 !important;
+  border: 1px solid rgba(234, 179, 8, 0.4) !important;
+}
+
+.igt-diag-tag.low {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #f87171 !important;
+  border: 1px solid rgba(239, 68, 68, 0.4) !important;
+}
+
+.igt-v3-diag-desc {
+  font-size: 10px !important;
+  line-height: 1.4 !important;
+  color: #cbd5e1 !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-radius: 6px !important;
+  padding: 5px 8px !important;
+  margin-top: 3px !important;
+  border-left: 2px solid #38bdf8 !important;
+}
+
+/* Badge chẩn đoán nhỏ bên cạnh Video HD */
+.igt-perf-badge {
+  font-size: 9.5px !important;
+  font-weight: 700 !important;
+  padding: 1px 5px !important;
+  border-radius: 4px !important;
+  margin-left: 4px !important;
+  cursor: help !important;
+  vertical-align: middle !important;
+  white-space: nowrap !important;
+  display: inline-block !important;
+}
+
+.igt-perf-badge.optimal {
+  background: rgba(34, 197, 94, 0.15) !important;
+  color: #4ade80 !important;
+  border: 1px solid rgba(34, 197, 94, 0.3) !important;
+}
+
+.igt-perf-badge.moderate {
+  background: rgba(234, 179, 8, 0.15) !important;
+  color: #facc15 !important;
+  border: 1px solid rgba(234, 179, 8, 0.3) !important;
+}
+
+.igt-perf-badge.low {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #f87171 !important;
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
+}
+
+.igt-v3-feature-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 10px 0 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  gap: 12px !important;
+}
+
+.igt-v3-feature-row:last-child {
+  border-bottom: none !important;
+  padding-bottom: 2px !important;
+}
+
+.igt-v3-feature-row:first-child {
+  padding-top: 2px !important;
+}
+
+.igt-v3-feat-info {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 3px !important;
+  flex: 1 !important;
+}
+
+.igt-v3-feat-desc {
+  font-size: 11.5px !important;
+  color: #71717a !important;
+  line-height: 1.4 !important;
+}
+
+/* --- 8. TOGGLE SWITCH ĐẲNG CẤP --- */
+.igt-v3-switch {
+  position: relative !important;
+  display: inline-block !important;
+  width: 38px !important;
+  height: 22px !important;
+  min-width: 38px !important;
+  flex-shrink: 0 !important;
+  cursor: pointer !important;
+}
+
+.igt-v3-switch input {
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  position: absolute !important;
+}
+
+.igt-v3-slider {
+  position: absolute !important;
+  cursor: pointer !important;
+  inset: 0 !important;
+  background-color: #27272a !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 999px !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.igt-v3-slider:before {
+  position: absolute !important;
+  content: "" !important;
+  height: 16px !important;
+  width: 16px !important;
+  left: 2px !important;
+  bottom: 2px !important;
+  background-color: #e4e4e7 !important;
+  border-radius: 50% !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4) !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.igt-v3-switch input:checked+.igt-v3-slider {
+  background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%) !important;
+  border-color: rgba(79, 172, 254, 0.6) !important;
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.35) !important;
+}
+
+.igt-v3-switch input:checked+.igt-v3-slider:before {
+  transform: translateX(16px) !important;
+  background-color: #ffffff !important;
+}
+
+/* --- 9. WATCHLIST & SCANNER SYSTEM (PHASE 2 - v3.1.0) --- */
+.igt-v3-watchlist-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  padding: 6px 14px !important;
+  margin-left: 8px !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #f4f4f5 !important;
+  user-select: none !important;
+  line-height: normal !important;
+  text-decoration: none !important;
+  vertical-align: middle !important;
+  box-sizing: border-box !important;
+}
+
+.igt-v3-watchlist-btn:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  transform: translateY(-1px) !important;
+}
+
+.igt-v3-watchlist-btn.active {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.15) 0%, rgba(79, 172, 254, 0.25) 100%) !important;
+  border-color: rgba(0, 242, 254, 0.5) !important;
+  color: #38bdf8 !important;
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.25) !important;
+}
+
+/* Watchlist Toolbar inside Drawer */
+.igt-v3-wl-toolbar {
+  display: flex !important;
+  gap: 8px !important;
+  margin-bottom: 10px !important;
+}
+
+.igt-v3-search-wrap {
+  flex: 1 !important;
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.igt-v3-search-icon-img {
+  position: absolute !important;
+  left: 10px !important;
+  width: 22px !important;
+  height: 22px !important;
+  object-fit: contain !important;
+  pointer-events: none !important;
+}
+
+.igt-v3-search-input {
+  width: 100% !important;
+  background: rgba(24, 24, 27, 0.7) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 8px !important;
+  padding: 8px 10px 8px 38px !important;
+  font-size: 12px !important;
+  color: #f4f4f5 !important;
+  outline: none !important;
+  transition: all 0.2s ease !important;
+}
+
+.igt-v3-search-input:focus {
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.25) !important;
+}
+
+.igt-v3-my-account-btn {
+  background: rgba(56, 189, 248, 0.12) !important;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+  color: #38bdf8 !important;
+  border-radius: 8px !important;
+  padding: 0 12px !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+  transition: all 0.2s ease !important;
+}
+
+.igt-v3-my-account-btn:hover {
+  background: rgba(56, 189, 248, 0.22) !important;
+}
+
+.igt-v3-my-account-btn.add-btn {
+  background: rgba(34, 197, 94, 0.16) !important;
+  border-color: rgba(34, 197, 94, 0.45) !important;
+  color: #4ade80 !important;
+}
+
+.igt-v3-my-account-btn.add-btn:hover {
+  background: rgba(34, 197, 94, 0.3) !important;
+  border-color: #22c55e !important;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.35) !important;
+}
+
+.igt-v3-my-account-btn.target-user {
+  background: rgba(168, 85, 247, 0.16) !important;
+  border-color: rgba(168, 85, 247, 0.45) !important;
+  color: #c084fc !important;
+}
+
+.igt-v3-my-account-btn.target-user:hover {
+  background: rgba(168, 85, 247, 0.3) !important;
+  border-color: #a855f7 !important;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.35) !important;
+}
+
+/* Watchlist List & Card */
+.igt-v3-watchlist-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  max-height: 280px !important;
+  overflow-y: auto !important;
+  padding-right: 2px !important;
+}
+
+.igt-v3-watchlist-empty {
+  font-size: 12px !important;
+  color: #71717a !important;
+  text-align: center !important;
+  padding: 16px 8px !important;
+  background: rgba(24, 24, 27, 0.3) !important;
+  border: 1px dashed rgba(255, 255, 255, 0.08) !important;
+  border-radius: 8px !important;
+  line-height: 1.5 !important;
+}
+
+/* Nút Mở rộng trên thanh tiêu đề Watchlist (Ảnh 1) */
+.igt-v3-wl-expand-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  padding: 4px 10px !important;
+  border-radius: 6px !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #cbd5e1 !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.igt-v3-wl-expand-btn:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  color: #fff !important;
+  transform: translateY(-1px) !important;
+}
+
+.igt-v3-wl-expand-btn.active {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.3) 0%, rgba(56, 189, 248, 0.18) 100%) !important;
+  border-color: rgba(56, 189, 248, 0.55) !important;
+  color: #38bdf8 !important;
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3) !important;
+}
+
+/* Cửa sổ phụ mở rộng danh sách Watchlist (Ảnh 2) */
+.igt-v3-expanded-panel {
+  position: fixed !important;
+  top: 0 !important;
+  left: 580px !important;
+  width: 900px !important;
+  max-width: calc(100vw - 590px) !important;
+  height: 100vh !important;
+  background: #111114 !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 15px 0 45px rgba(0, 0, 0, 0.65) !important;
+  z-index: 999998 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  transform: translateX(-25px);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.28s ease !important;
+}
+
+.igt-v3-expanded-panel.igt-open {
+  transform: translateX(0) !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+.igt-v3-expanded-header {
+  padding: 16px 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.igt-v3-expanded-cards-wrap {
+  flex: 1 !important;
+  overflow-y: auto !important;
+  padding: 16px !important;
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)) !important;
+  gap: 12px !important;
+  align-content: start !important;
+}
+
+@media (max-width: 1350px) {
+  .igt-v3-expanded-panel {
+    left: 480px !important;
+    width: calc(100vw - 490px) !important;
+  }
+}
+@media (max-width: 950px) {
+  .igt-v3-expanded-panel {
+    left: 20px !important;
+    width: calc(100vw - 40px) !important;
+    z-index: 1000000 !important;
+  }
+}
+
+.igt-v3-wl-card {
+  background: rgba(39, 39, 42, 0.45) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 10px !important;
+  padding: 10px 12px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  transition: all 0.2s ease !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.igt-v3-wl-card:hover {
+  background: rgba(39, 39, 42, 0.65) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+.igt-v3-wl-top {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  flex-wrap: nowrap !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.igt-v3-wl-user-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  flex: 0 1 150px !important;
+  overflow: hidden !important;
+}
+
+.igt-v3-wl-avatar {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.15) !important;
+  flex-shrink: 0 !important;
+}
+
+.igt-v3-wl-meta {
+  min-width: 0 !important;
+  flex: 1 !important;
+  overflow: hidden !important;
+}
+
+.igt-v3-wl-name {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #fff !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  display: block !important;
+}
+
+.igt-v3-wl-user {
+  font-size: 11px !important;
+  color: #a1a1aa !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  display: block !important;
+}
+
+.igt-v3-wl-stats {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  flex-shrink: 0 !important;
+}
+
+.igt-v3-stat-chip {
+  background: rgba(255, 255, 255, 0.05) !important;
+  padding: 2.5px 6px !important;
+  border-radius: 5px !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  font-size: 10.5px !important;
+  font-weight: 500 !important;
+  color: #cbd5e1 !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+.igt-v3-wl-right-meta {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin-left: auto !important;
+  flex-shrink: 0 !important;
+}
+
+.igt-v3-wl-last-scanned {
+  font-size: 10.5px !important;
+  color: #71717a !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+.igt-v3-wl-remove {
+  background: transparent !important;
+  border: none !important;
+  color: #71717a !important;
+  cursor: pointer !important;
+  padding: 3px !important;
+  font-size: 14px !important;
+  border-radius: 4px !important;
+  transition: color 0.15s ease !important;
+  line-height: 1 !important;
+  flex-shrink: 0 !important;
+}
+
+.igt-v3-wl-remove:hover {
+  color: #ef4444 !important;
+}
+
+.igt-v3-wl-actions {
+  display: flex !important;
+  gap: 6px !important;
+  margin-top: 2px !important;
+}
+
+.igt-v3-scan-sub-btn {
+  flex: 1 !important;
+  padding: 6px 8px !important;
+  border-radius: 6px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #e4e4e7 !important;
+  transition: all 0.15s ease !important;
+}
+
+.igt-v3-scan-sub-btn:hover {
+  background: rgba(56, 189, 248, 0.2) !important;
+  border-color: rgba(56, 189, 248, 0.4) !important;
+  color: #38bdf8 !important;
+}
+
+.igt-v3-scan-sub-btn.view-snap {
+  background: rgba(168, 85, 247, 0.12) !important;
+  border-color: rgba(168, 85, 247, 0.3) !important;
+  color: #c084fc !important;
+}
+
+.igt-v3-scan-sub-btn.view-snap:hover {
+  background: rgba(168, 85, 247, 0.24) !important;
+}
+
+/* Scanner Modal Overlay inside Drawer */
+.igt-v3-scanner-overlay {
+  position: absolute !important;
+  inset: 0 !important;
+  background: #0f0f12 !important;
+  backdrop-filter: blur(12px) !important;
+  z-index: 130 !important;
+  padding: 20px !important;
+  display: flex;
+  flex-direction: column !important;
+  gap: 16px !important;
+  animation: igtFadeIn 0.2s ease !important;
+}
+
+.igt-v3-scanner-overlay.igt-hidden {
+  display: none !important;
+}
+
+.igt-v3-scan-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding-bottom: 12px !important;
+}
+
+.igt-v3-scan-target {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: #fff !important;
+}
+
+/* Badge Trạng thái Đang chạy / Đang dừng */
+.igt-v3-scan-status-tag {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  padding: 3px 10px !important;
+  border-radius: 999px !important;
+  letter-spacing: 0.3px !important;
+  transition: all 0.2s ease !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.igt-v3-scan-status-tag.running {
+  background: rgba(34, 197, 94, 0.15) !important;
+  color: #4ade80 !important;
+  border: 1px solid rgba(34, 197, 94, 0.4) !important;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.25) !important;
+}
+
+.igt-v3-scan-status-tag.paused {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #f87171 !important;
+  border: 1px solid rgba(239, 68, 68, 0.5) !important;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.3) !important;
+}
+
+.igt-v3-scan-loading-gif {
+  width: 22px !important;
+  height: 22px !important;
+  object-fit: contain !important;
+  vertical-align: middle !important;
+  flex-shrink: 0 !important;
+}
+
+.igt-v3-scan-btn-icon {
+  width: 26px !important;
+  height: 26px !important;
+  object-fit: contain !important;
+  flex-shrink: 0 !important;
+  vertical-align: middle !important;
+}
+
+.igt-v3-action-btn.paused {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.45) 0%, rgba(185, 28, 28, 0.35) 100%) !important;
+  border-color: #ef4444 !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.45) !important;
+}
+
+.igt-v3-action-btn.paused:hover {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.6) 0%, rgba(185, 28, 28, 0.5) 100%) !important;
+  border-color: #f87171 !important;
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.6) !important;
+  color: #fff !important;
+}
+
+.igt-v3-progress-box {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  background: rgba(24, 24, 27, 0.7) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 10px !important;
+  padding: 14px !important;
+}
+
+.igt-v3-progress-track {
+  width: 100% !important;
+  height: 10px !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 999px !important;
+  overflow: hidden !important;
+  position: relative !important;
+}
+
+.igt-v3-progress-fill {
+  height: 100% !important;
+  width: 0%;
+  background: linear-gradient(90deg, #00f2fe 0%, #4facfe 50%, #818cf8 100%) !important;
+  border-radius: 999px !important;
+  transition: width 0.35s ease !important;
+  box-shadow: 0 0 10px rgba(79, 172, 254, 0.5) !important;
+}
+
+.igt-v3-progress-fill.indeterminate {
+  width: 45% !important;
+  animation: igtProgressIndeterminate 1.4s infinite cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+@keyframes igtProgressIndeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+.igt-v3-scan-status-text {
+  font-size: 12px !important;
+  color: #a1a1aa !important;
+  line-height: 1.4 !important;
+}
+
+.igt-v3-scan-ctrls {
+  display: flex !important;
+  gap: 8px !important;
+  margin-top: auto !important;
+}
+
+/* Snapshot Viewer Modal */
+.igt-v3-snap-modal {
+  position: absolute !important;
+  inset: 0 !important;
+  background: #0f0f12 !important;
+  z-index: 150 !important;
+  padding: 16px !important;
+  display: flex;
+  flex-direction: column !important;
+  gap: 12px !important;
+  animation: igtFadeIn 0.2s ease !important;
+}
+
+.igt-v3-snap-modal.igt-hidden {
+  display: none !important;
+}
+
+.igt-v3-snap-header-row {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding-bottom: 10px !important;
+  gap: 10px !important;
+}
+
+/* Tabs chuyển Followers / Following trong Snapshot Viewer */
+.igt-v3-snap-tabs {
+  display: inline-flex !important;
+  align-items: center !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 9px !important;
+  padding: 3px !important;
+  gap: 3px !important;
+  margin-left: auto !important;
+  margin-right: 10px !important;
+  flex-shrink: 0 !important;
+}
+
+.igt-v3-snap-tab {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  color: #a1a1aa !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  padding: 5px 12px !important;
+  border-radius: 7px !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  user-select: none !important;
+  white-space: nowrap !important;
+}
+
+.igt-v3-snap-tab:hover {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.igt-v3-snap-tab.active {
+  background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 10px rgba(14, 165, 233, 0.45) !important;
+}
+
+.igt-v3-snap-tab-badge {
+  font-size: 10.5px !important;
+  padding: 1px 6px !important;
+  border-radius: 10px !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: inherit !important;
+}
+
+.igt-v3-snap-tab.active .igt-v3-snap-tab-badge {
+  background: rgba(0, 0, 0, 0.28) !important;
+  color: #fff !important;
+}
+
+.igt-v3-snap-toolbar {
+  display: flex !important;
+  gap: 8px !important;
+  align-items: center !important;
+}
+
+.igt-v3-snap-table-wrap {
+  flex: 1 !important;
+  overflow-y: auto !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 8px !important;
+  background: rgba(24, 24, 27, 0.6) !important;
+}
+
+.igt-v3-snap-item {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  padding: 8px 14px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.igt-v3-snap-item:last-child {
+  border-bottom: none !important;
+}
+
+.igt-v3-snap-col-user {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.igt-v3-snap-col-status {
+  flex-shrink: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  min-width: 90px !important;
+}
+
+.igt-v3-snap-item-img {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+}
+
+.igt-v3-snap-item-info {
+  flex: 1 !important;
+  overflow: hidden !important;
+}
+
+.igt-v3-snap-item-uname {
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  color: #fff !important;
+}
+
+.igt-v3-snap-item-fname {
+  font-size: 11px !important;
+  color: #71717a !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  flex-wrap: wrap !important;
+}
+
+/* Nút ← Quay lại thiết kế nổi trội, sang trọng */
+.igt-v3-snap-back-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  padding: 6px 14px !important;
+  border-radius: 8px !important;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.22) 0%, rgba(56, 189, 248, 0.12) 100%) !important;
+  border: 1px solid rgba(56, 189, 248, 0.45) !important;
+  color: #38bdf8 !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.3px !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  box-shadow: 0 2px 10px rgba(56, 189, 248, 0.2) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.igt-v3-snap-back-btn:hover {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.4) 0%, rgba(56, 189, 248, 0.25) 100%) !important;
+  border-color: #38bdf8 !important;
+  box-shadow: 0 4px 16px rgba(56, 189, 248, 0.4) !important;
+  transform: translateX(-2px) !important;
+  color: #fff !important;
+}
+
+.igt-v3-snap-back-btn:active {
+  transform: scale(0.96) !important;
+}
+
+/* Nút Export CSV & JSON trong Snapshot */
+.igt-v3-snap-export-btn {
+  padding: 7px 12px !important;
+  border-radius: 8px !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  white-space: nowrap !important;
+  transition: all 0.2s ease !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #f4f4f5 !important;
+}
+
+.igt-v3-snap-export-btn:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  transform: translateY(-1px) !important;
+}
+
+.igt-v3-snap-export-btn.csv-btn {
+  background: rgba(34, 197, 94, 0.12) !important;
+  border-color: rgba(34, 197, 94, 0.35) !important;
+  color: #4ade80 !important;
+}
+
+.igt-v3-snap-export-btn.csv-btn:hover {
+  background: rgba(34, 197, 94, 0.22) !important;
+  border-color: rgba(34, 197, 94, 0.6) !important;
+  box-shadow: 0 2px 10px rgba(34, 197, 94, 0.2) !important;
+}
+
+.igt-v3-snap-export-btn.json-btn {
+  background: rgba(168, 85, 247, 0.12) !important;
+  border-color: rgba(168, 85, 247, 0.35) !important;
+  color: #c084fc !important;
+}
+
+.igt-v3-snap-export-btn.json-btn:hover {
+  background: rgba(168, 85, 247, 0.22) !important;
+  border-color: rgba(168, 85, 247, 0.6) !important;
+  box-shadow: 0 2px 10px rgba(168, 85, 247, 0.2) !important;
+}
+
+.igt-v3-snap-btn-icon {
+  width: 24px !important;
+  height: 24px !important;
+  object-fit: contain !important;
+  flex-shrink: 0 !important;
+}
+
+/* Tag và icon Riêng tư (Private Shield) */
+.igt-v3-private-tag {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  color: #4ade80 !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  background: rgba(34, 197, 94, 0.12) !important;
+  border: 1px solid rgba(34, 197, 94, 0.3) !important;
+  padding: 3px 8px !important;
+  border-radius: 6px !important;
+}
+
+.igt-v3-private-shield-img {
+  width: 20px !important;
+  height: 20px !important;
+  object-fit: contain !important;
+  vertical-align: middle !important;
+  display: inline-block !important;
+  flex-shrink: 0 !important;
+}
+
+/* --- 10. NÚT BACKUP & RESTORE --- */
+.igt-v3-btn-group {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 8px !important;
+  margin-top: 6px !important;
+}
+
+.igt-v3-action-btn {
+  padding: 9px 12px !important;
+  border-radius: 10px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  transition: all 0.2s ease !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #f4f4f5 !important;
+}
+
+.igt-v3-btn-icon {
+  width: 24px !important;
+  height: 24px !important;
+  object-fit: contain !important;
+  flex-shrink: 0 !important;
+  display: inline-block !important;
+  vertical-align: middle !important;
+}
+
+.igt-v3-action-btn:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  transform: translateY(-1px) !important;
+}
+
+.igt-v3-action-btn.primary {
+  background: rgba(0, 149, 246, 0.2) !important;
+  border-color: rgba(0, 149, 246, 0.4) !important;
+  color: #38bdf8 !important;
+}
+
+.igt-v3-action-btn.primary:hover {
+  background: rgba(0, 149, 246, 0.3) !important;
+}
+
+/* --- 11. ROADMAP STATUS ITEM --- */
+.igt-v3-roadmap-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.igt-v3-roadmap-item {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  font-size: 12px !important;
+  color: #71717a !important;
+  padding: 6px 8px !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+
+.igt-v3-roadmap-item.active {
+  color: #38bdf8 !important;
+  background: rgba(56, 189, 248, 0.08) !important;
+  font-weight: 600 !important;
+}
+
+/* --- 12. VIDEO SHARPNESS FILTER STYLE (LÀM NÉT RÕ RỆT) --- */
+video.igt-sharp-video {
+  filter: contrast(124%) saturate(128%) brightness(103%) drop-shadow(0 0 1px rgba(0, 0, 0, 0.6)) !important;
+  image-rendering: -webkit-optimize-contrast !important;
+  image-rendering: crisp-edges !important;
+  transform: translateZ(0) !important;
+}
+
+/* BADGE HD PRO TRÊN VIDEO (ĐÃ ẨN HOÀN TOÀN THEO YÊU CẦU) */
+.igt-video-hd-badge {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* STATUS BADGE VÙNG ĐỎ BÊN TRÁI CHO GHOST STORY (XEM STORY ẨN DANH) */
+.igt-v3-stealth-badge.igt-v3-story-badge {
+  position: fixed !important;
+  top: 58px !important;
+  left: 16px !important;
+  margin: 0 !important;
+  z-index: 99999 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  padding: 4px 10px 4px 6px !important;
+  border-radius: 14px !important;
+  background: rgba(18, 18, 22, 0.88) !important;
+  border: 1px solid rgba(34, 197, 94, 0.45) !important;
+  color: #4ade80 !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.7), 0 0 10px rgba(34, 197, 94, 0.2) !important;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  animation: igtBadgeFade 0.25s ease !important;
+}
+
+.igt-v3-stealth-badge.igt-v3-story-badge:hover {
+  background: rgba(24, 24, 30, 0.95) !important;
+  border-color: rgba(34, 197, 94, 0.75) !important;
+  transform: translateY(-1px) scale(1.03) !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.8), 0 0 14px rgba(34, 197, 94, 0.35) !important;
+}
+
+/* Chú mèo GIF / icon trong badge Ghost Story */
+.igt-v3-story-cat-img {
+  width: 30px !important;
+  height: 30px !important;
+  min-width: 30px !important;
+  object-fit: contain !important;
+  image-rendering: pixelated !important;
+  image-rendering: -moz-crisp-edges !important;
+  image-rendering: crisp-edges !important;
+  border-radius: 0 !important;
+  display: inline-block !important;
+  flex-shrink: 0 !important;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.9)) !important;
+  transition: transform 0.25s ease !important;
+}
+
+.igt-v3-stealth-badge.igt-v3-story-badge:hover .igt-v3-story-cat-img {
+  transform: rotate(-10deg) scale(1.2) !important;
+}
+
+/* STATUS BADGE VÙNG ĐỎ PHÍA TRÊN CỬA SỔ CHAT POPUP (GÓC PHẢI DƯỚI) */
+.igt-v3-stealth-badge.igt-v3-floating-dm-badge {
+  position: fixed !important;
+  z-index: 999999 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  padding: 4px 12px 4px 8px !important;
+  border-radius: 16px !important;
+  background: rgba(18, 18, 22, 0.94) !important;
+  border: 1px solid rgba(34, 197, 94, 0.5) !important;
+  color: #4ade80 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 10px rgba(34, 197, 94, 0.25) !important;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  animation: igtBadgeFade 0.25s ease !important;
+  user-select: none !important;
+}
+
+.igt-v3-stealth-badge.igt-v3-floating-dm-badge:hover {
+  background: rgba(24, 24, 30, 0.98) !important;
+  border-color: rgba(34, 197, 94, 0.8) !important;
+  transform: translateY(-2px) scale(1.03) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.65), 0 0 14px rgba(34, 197, 94, 0.4) !important;
+}
+
+.igt-v3-stealth-badge.igt-v3-floating-dm-badge:hover .igt-v3-dm-cat-img {
+  transform: rotate(-12deg) scale(1.2) !important;
+}
+
+/* STATUS BADGE VÙNG ĐỎ BÊN TRÁI CHO GHOST STORY (FALLBACK CHUNG) */
+.igt-v3-stealth-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  padding: 3px 9px !important;
+  margin: 2px 0 6px 0 !important;
+  align-self: flex-start !important;
+  border-radius: 12px !important;
+  background: rgba(34, 197, 94, 0.14) !important;
+  border: 1px solid rgba(34, 197, 94, 0.35) !important;
+  color: #4ade80 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  letter-spacing: 0.3px !important;
+  white-space: nowrap !important;
+  user-select: none !important;
+  pointer-events: none !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) !important;
+  transition: all 0.2s ease !important;
+  z-index: 99999 !important;
+  animation: igtBadgeFade 0.25s ease !important;
+}
+
+.igt-v3-stealth-badge.igt-v3-fixed-fallback {
+  position: fixed !important;
+  top: 118px !important;
+  left: 12px !important;
+  margin: 0 !important;
+}
+
+/* STATUS BADGE ĐƯA LÊN HEADER CỘT TIN NHẮN DIRECT THEO HƯỚNG MŨI TÊN */
+.igt-v3-stealth-badge.igt-v3-dm-header {
+  position: static !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 3px 10px 3px 6px !important;
+  margin: 0 10px 0 auto !important;
+  align-self: center !important;
+  border-radius: 14px !important;
+  background: rgba(34, 197, 94, 0.12) !important;
+  border: 1px solid rgba(34, 197, 94, 0.35) !important;
+  color: #16a34a !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  vertical-align: middle !important;
+  z-index: 100 !important;
+}
+
+.igt-v3-stealth-badge.igt-v3-dm-header:hover {
+  background: rgba(34, 197, 94, 0.22) !important;
+  border-color: rgba(34, 197, 94, 0.5) !important;
+  transform: translateY(-1px) scale(1.03) !important;
+  box-shadow: 0 3px 10px rgba(34, 197, 94, 0.25) !important;
+}
+
+/* Fallback cố định ở vị trí header Direct nếu DOM chưa kịp mount */
+.igt-v3-stealth-badge.igt-v3-dm-fixed {
+  position: fixed !important;
+  top: 22px !important;
+  left: 240px !important;
+  margin: 0 !important;
+  z-index: 99999 !important;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  background: rgba(34, 197, 94, 0.14) !important;
+  border: 1px solid rgba(34, 197, 94, 0.38) !important;
+  color: #16a34a !important;
+}
+
+/* Chú mèo GIF / icon trong badge Direct */
+.igt-v3-dm-cat-img {
+  height: 30px !important;
+  width: auto !important;
+  max-width: 33px !important;
+  object-fit: contain !important;
+  border-radius: 0 !important;
+  display: inline-block !important;
+  flex-shrink: 0 !important;
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.4)) drop-shadow(0 0 2px rgba(34, 197, 94, 0.3)) !important;
+  transition: transform 0.25s ease !important;
+}
+
+.igt-v3-stealth-badge.igt-v3-dm-header:hover .igt-v3-dm-cat-img,
+.igt-v3-stealth-badge.igt-v3-dm-fixed:hover .igt-v3-dm-cat-img {
+  transform: rotate(-12deg) scale(1.2) !important;
+}
+
+/* Hỗ trợ chế độ Dark Theme của Instagram */
+html[class*="theme-dark"] .igt-v3-stealth-badge.igt-v3-dm-header,
+html[class*="theme-dark"] .igt-v3-stealth-badge.igt-v3-dm-fixed,
+body[class*="theme-dark"] .igt-v3-stealth-badge.igt-v3-dm-header,
+body[class*="theme-dark"] .igt-v3-stealth-badge.igt-v3-dm-fixed {
+  background: rgba(34, 197, 94, 0.18) !important;
+  border-color: rgba(34, 197, 94, 0.4) !important;
+  color: #4ade80 !important;
+}
+
+html[class*="theme-dark"] .igt-v3-dm-cat-img,
+body[class*="theme-dark"] .igt-v3-dm-cat-img {
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.8)) drop-shadow(0 0 2px rgba(34, 197, 94, 0.6)) !important;
+}
+
+.igt-v3-stealth-icon-img {
+  width: 23px !important;
+  height: 23px !important;
+  min-width: 23px !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  display: inline-block !important;
+  flex-shrink: 0 !important;
+}
+
+.igt-v3-stealth-dot {
+  width: 6px !important;
+  height: 6px !important;
+  border-radius: 50% !important;
+  background: #22c55e !important;
+  box-shadow: 0 0 6px #22c55e, 0 0 2px #22c55e !important;
+  display: inline-block !important;
+  animation: igtPulseGreen 2s infinite ease-in-out !important;
+}
+
+.igt-v3-stealth-text {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: #4ade80 !important;
+  line-height: 1 !important;
+}
+
+@keyframes igtBadgeFade {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes igtPulseGreen {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.5;
+    transform: scale(0.85);
+  }
+}
+
+/* --- 13. CHẶN QUẢNG CÁO INSTAGRAM FEED (CHỈ ẨN ĐÚNG BÀI VIẾT QUẢNG CÁO, TUYỆT ĐỐI KHÔNG ẨN CONTAINER CHỨA FEED) --- */
+.igt-ad-blocked {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0px !important;
+  min-height: 0px !important;
+  max-height: 0px !important;
+  margin: 0px !important;
+  padding: 0px !important;
+  opacity: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}

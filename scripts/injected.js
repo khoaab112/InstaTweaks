@@ -26,6 +26,158 @@
   let lastKnownProfileDocId = localStorage.getItem('__ig_profile_doc_id__') || '6936306999797079';
   let lastKnownStoryDocId = localStorage.getItem('__ig_story_doc_id__') || '8845758582119845';
 
+  // =========================================================================
+  // INSTATWEAKS v3.0 - SETTINGS & GHOST MODE INTERCEPTOR (HOÀN THIỆN 100%)
+  // =========================================================================
+  const igtV3Settings = {
+    ghostStory: localStorage.getItem('__igt_ghost_story__') !== 'false',
+    ghostDM: localStorage.getItem('__igt_ghost_dm__') !== 'false',
+    adblock: localStorage.getItem('__igt_adblock__') !== 'false',
+    videoSharpness: localStorage.getItem('__igt_video_sharpness__') !== 'false'
+  };
+
+  window.addEventListener('__IGT_SYNC_SETTINGS__', (e) => {
+    if (e.detail) {
+      Object.assign(igtV3Settings, e.detail);
+      if (e.detail.ghostStory !== undefined) localStorage.setItem('__igt_ghost_story__', String(e.detail.ghostStory));
+      if (e.detail.ghostDM !== undefined) localStorage.setItem('__igt_ghost_dm__', String(e.detail.ghostDM));
+      if (e.detail.adblock !== undefined) localStorage.setItem('__igt_adblock__', String(e.detail.adblock));
+      if (e.detail.videoSharpness !== undefined) localStorage.setItem('__igt_video_sharpness__', String(e.detail.videoSharpness));
+    }
+  });
+
+  // Lắng nghe sự kiện người dùng vừa gửi tin nhắn để mở đường cho tín hiệu đã xem hợp lệ
+  window.addEventListener('__IGT_USER_SENT_DM__', () => {
+    lastSentMessageTime = Date.now();
+    console.log('[InstaTweaks 3.0] Ghost DM: Nhận tín hiệu người dùng gửi tin nhắn -> Kích hoạt chế độ gửi đã xem hợp lệ!');
+  });
+
+  // HÀM TRÍCH XUẤT BODY AN TOÀN CHO CẢ FORMDATA, URLSEARCHPARAMS, STRING
+  function safeExtractBodyString(body) {
+    if (!body) return '';
+    if (typeof body === 'string') return body;
+    try {
+      if (body instanceof URLSearchParams) {
+        return body.toString();
+      }
+      if (typeof FormData !== 'undefined' && body instanceof FormData) {
+        const parts = [];
+        body.forEach((val, key) => {
+          if (typeof val === 'string') parts.push(`${key}=${val}`);
+        });
+        return parts.join('&');
+      }
+    } catch (_) {}
+    return '';
+  }
+
+  function isGhostStoryRequest(url, bodyStr = '', friendlyName = '') {
+    if (!igtV3Settings.ghostStory) return false;
+    const fullCheck = (typeof url === 'string' ? url : '') + ' ' + (typeof bodyStr === 'string' ? bodyStr : '') + ' ' + (typeof friendlyName === 'string' ? friendlyName : '');
+    
+    // 1. REST API endpoints
+    if (
+      fullCheck.includes('/api/v1/stories/reel/seen') ||
+      fullCheck.includes('/stories/reel/seen') ||
+      fullCheck.includes('stories/reel/seen')
+    ) {
+      return true;
+    }
+
+    // 2. GraphQL Mutations báo seen Story (CHÍNH XÁC POLARIS WEB APP)
+    if (
+      fullCheck.includes('PolarisStoriesV3SeenMutation') ||
+      fullCheck.includes('StoriesV3SeenMutation') ||
+      fullCheck.includes('StoriesSeenMutation') ||
+      fullCheck.includes('useStoriesSeenMutation') ||
+      fullCheck.includes('stories_reel_seen')
+    ) {
+      // Đảm bảo không phải là query nạp timeline/profile/stories
+      if (!fullCheck.includes('PolarisProfile') && !fullCheck.includes('PolarisStoriesV3Query') && !fullCheck.includes('PolarisStoriesQuery')) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  let lastSentMessageTime = 0; // Ghi nhận thời điểm người dùng vừa trả lời tin nhắn
+
+  function isGhostDMRequest(url, bodyStr = '', friendlyName = '') {
+    if (!igtV3Settings.ghostDM) return false;
+    // NẾU NGƯỜI DÙNG VỪA TRẢ LỜI TIN NHẮN (TRONG VÒNG 10S) -> KHÔNG CHẶN SEEN ĐỂ GỬI BÁO ĐÃ XEM HỢP LỆ LÊN SERVER!
+    if (Date.now() - lastSentMessageTime < 10000) {
+      console.log('[InstaTweaks 3.0] Ghost DM: Người dùng vừa gửi tin nhắn -> Cho phép gửi tín hiệu Đã xem tự nhiên.');
+      return false;
+    }
+
+    const fullCheck = (typeof url === 'string' ? url : '') + ' ' + (typeof bodyStr === 'string' ? bodyStr : '') + ' ' + (typeof friendlyName === 'string' ? friendlyName : '');
+
+    // 1. REST API endpoints báo seen trong DM
+    if (
+      (fullCheck.includes('/direct_v2/threads/') && fullCheck.includes('/seen')) ||
+      (fullCheck.includes('/api/v1/direct_v2/threads/') && fullCheck.includes('/seen'))
+    ) {
+      return true;
+    }
+
+    // 2. GraphQL Mutations báo seen DM (CHÍNH XÁC POLARIS WEB APP: useIGDMarkThreadAsReadMutation)
+    if (
+      fullCheck.includes('useIGDMarkThreadAsReadMutation') ||
+      fullCheck.includes('IGDMarkThreadAsReadMutation') ||
+      fullCheck.includes('MarkThreadAsReadMutation') ||
+      fullCheck.includes('MarkThreadAsRead') ||
+      fullCheck.includes('mark_thread_as_read') ||
+      fullCheck.includes('DirectThreadSeenMutation') ||
+      fullCheck.includes('useDirectThreadSeenMutation') ||
+      fullCheck.includes('PolarisDirectThreadSeenMutation') ||
+      fullCheck.includes('mark_direct_thread_seen') ||
+      fullCheck.includes('direct_thread_seen')
+    ) {
+      if (!fullCheck.includes('DirectInboxQuery') && !fullCheck.includes('DirectThreadQuery')) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // --- HOOK NAVIGATOR.SENDBEACON (CHẶN STORY & DM SEEN BEACONS) ---
+  if (navigator && typeof navigator.sendBeacon === 'function') {
+    const originalSendBeacon = navigator.sendBeacon;
+    navigator.sendBeacon = function (url, data) {
+      const urlStr = typeof url === 'string' ? url : (url?.url || '');
+      const bodyStr = safeExtractBodyString(data);
+
+      if (isGhostStoryRequest(urlStr, bodyStr)) {
+        console.log('[InstaTweaks 3.0] Ghost Story: Blocked sendBeacon ->', urlStr);
+        return true;
+      }
+      if (isGhostDMRequest(urlStr, bodyStr)) {
+        console.log('[InstaTweaks 3.0] Ghost DM: Blocked sendBeacon ->', urlStr);
+        return true;
+      }
+      return originalSendBeacon.apply(navigator, [url, data]);
+    };
+  }
+
+  // --- HOOK WEBSOCKET (CHẶN REALTIME DM SEEN BEACONS) ---
+  if (typeof WebSocket !== 'undefined') {
+    const originalWsSend = WebSocket.prototype.send;
+    WebSocket.prototype.send = function (data) {
+      if (igtV3Settings.ghostDM && typeof data === 'string') {
+        if (
+          data.includes('"mark_seen"') ||
+          data.includes('"action":"seen"') ||
+          data.includes('"item_type":"seen"') ||
+          data.includes('/seen')
+        ) {
+          console.log('[InstaTweaks 3.0] Ghost DM: Blocked WebSocket seen event!');
+          return;
+        }
+      }
+      return originalWsSend.apply(this, arguments);
+    };
+  }
+
   // HÀM QUẢN LÝ BỘ NHỚ AN TOÀN (CHỐNG TRÀN RAM - GIỚI HẠN KÍCH THƯỚC MAP & SET)
   function safeMapSet(map, key, value, maxSize = 60) {
     if (!map || key === undefined || key === null) return;
@@ -812,6 +964,69 @@
     }
   }
 
+  function extractUserProfileInfo(json) {
+    if (!json || typeof json !== 'object') return;
+    try {
+      let user = null;
+      if (json.data && json.data.user) {
+        user = json.data.user;
+      } else if (json.graphql && json.graphql.user) {
+        user = json.graphql.user;
+      } else if (json.user && (json.user.pk || json.user.id)) {
+        user = json.user;
+      }
+
+      if (user && (user.id || user.pk) && user.username) {
+        const profileData = {
+          id: String(user.id || user.pk),
+          username: user.username,
+          fullName: user.full_name || '',
+          biography: user.biography || '',
+          externalUrl: user.external_url || '',
+          bioLinks: user.bio_links || [],
+          isPrivate: Boolean(user.is_private),
+          isVerified: Boolean(user.is_verified),
+          profilePicUrl: user.profile_pic_url_hd || user.profile_pic_url || '',
+          followersCount: user.edge_followed_by?.count ?? user.follower_count ?? 0,
+          followingCount: user.edge_follow?.count ?? user.following_count ?? 0,
+          postsCount: user.edge_owner_to_timeline_media?.count ?? user.media_count ?? 0
+        };
+        window.__igt_last_profile_info__ = profileData;
+        window.dispatchEvent(new CustomEvent('__IGT_PROFILE_INFO__', { detail: profileData }));
+      }
+    } catch (_) {}
+  }
+
+  // ÉP TẢI LUỒNG PHÂN GIẢI CAO NHẤT (1080p) TRỰC TIẾP TỪ MÁY CHỦ META
+  function forceHighestResolutionVideoVersions(obj, depth = 0) {
+    if (!obj || typeof obj !== 'object' || depth > 10) return;
+    if (Array.isArray(obj)) {
+      for (let i = 0; i < obj.length; i++) forceHighestResolutionVideoVersions(obj[i], depth + 1);
+      return;
+    }
+    if (Array.isArray(obj.video_versions) && obj.video_versions.length > 1) {
+      let best = obj.video_versions[0];
+      let bestArea = (best.width || 0) * (best.height || 0);
+      for (let i = 1; i < obj.video_versions.length; i++) {
+        const v = obj.video_versions[i];
+        const area = (v.width || 0) * (v.height || 0);
+        if (area > bestArea) {
+          bestArea = area;
+          best = v;
+        }
+      }
+      // Giữ lại duy nhất bản phân giải cao nhất để Instagram không thể hạ xuống bản mờ
+      obj.video_versions = [best];
+    }
+    const keys = Object.keys(obj);
+    for (let i = 0; i < keys.length; i++) {
+      const val = obj[keys[i]];
+      if (val && typeof val === 'object') {
+        forceHighestResolutionVideoVersions(val, depth + 1);
+      }
+    }
+  }
+
   function processPayload(json, fallbackCode = null) {
     if (!json) return;
     try {
@@ -824,6 +1039,10 @@
       extractMediaCollections(json, fallbackCode);
       extractStoryItems(json);
       extractHighlightsFromPayload(json);
+      extractUserProfileInfo(json);
+      if (igtV3Settings.videoSharpness) {
+        forceHighestResolutionVideoVersions(json);
+      }
     } catch (_) {}
   }
 
@@ -884,10 +1103,70 @@
   const originalFetch = window.fetch;
   window.fetch = async function (...args) {
     try {
-      const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
+      let url = '';
+      let bodyData = null;
+
+      if (typeof args[0] === 'string') {
+        url = args[0];
+        bodyData = args[1]?.body;
+      } else if (args[0] && typeof args[0] === 'object') {
+        url = args[0].url || '';
+        bodyData = args[1]?.body || args[0].body;
+      }
+
+      const bodyStr = safeExtractBodyString(bodyData);
+      
+      // Trích xuất Friendly Name từ Headers nếu có
+      let friendlyName = '';
+      try {
+        const hdrs = args[1]?.headers;
+        if (hdrs) {
+          if (typeof hdrs.get === 'function') {
+            friendlyName = hdrs.get('x-fb-friendly-name') || hdrs.get('X-FB-Friendly-Name') || '';
+          } else if (typeof hdrs === 'object') {
+            friendlyName = hdrs['x-fb-friendly-name'] || hdrs['X-FB-Friendly-Name'] || '';
+          }
+        }
+      } catch (_) {}
+
+      // PHÁT HIỆN HÀNH ĐỘNG GỬI TIN NHẮN (TRẢ LỜI DM) -> TỰ ĐỘNG BẬT GỬI BÁO ĐÃ XEM CHO SERVER
+      if (
+        friendlyName.includes('SendMessage') ||
+        friendlyName.includes('DirectSendMessage') ||
+        url.includes('/broadcast/') ||
+        (bodyStr && (bodyStr.includes('SendMessage') || bodyStr.includes('send_item')))
+      ) {
+        lastSentMessageTime = Date.now();
+        console.log('[InstaTweaks 3.0] Ghost DM: Phát hiện bạn vừa gửi tin nhắn -> Kích hoạt chế độ gửi đã xem hợp lệ!');
+      }
+
+      // INSTATWEAKS v3.0: CHẶN GHOST STORY (XEM STORY ẨN DANH)
+      if (isGhostStoryRequest(url, bodyStr, friendlyName)) {
+        console.log('[InstaTweaks 3.0] Ghost Story: Blocked fetch seen beacon ->', url, friendlyName);
+        return new Response(JSON.stringify({
+          data: { stories_reel_seen: { status: 'ok' } },
+          status: 'ok',
+          live_views_disabled: false
+        }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }
+
+      // INSTATWEAKS v3.0: CHẶN GHOST DM (ĐỌC TIN NHẮN ẨN DANH)
+      if (isGhostDMRequest(url, bodyStr, friendlyName)) {
+        console.log('[InstaTweaks 3.0] Ghost DM: Blocked fetch seen beacon ->', url, friendlyName);
+        return new Response(JSON.stringify({
+          data: { direct_thread_seen: { status: 'ok' } },
+          status: 'ok'
+        }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }
+
       recordVideoUrl(url);
       if (url.includes('/graphql/query') || url.includes('/api/graphql')) {
-        const bodyStr = typeof args[1]?.body === 'string' ? args[1].body : '';
         if (bodyStr.includes('doc_id=')) {
           const match = bodyStr.match(/doc_id=([0-9]+)/);
           if (match) {
@@ -918,7 +1197,7 @@
         }
         if (ct.includes('json') || ct.includes('javascript') || ct.includes('text/plain')) {
           response.clone().text().then(text => {
-            if (text && text.length > 0 && text.length < 2000000) {
+            if (text && text.length > 0 && text.length < 3000000) {
               parseMetaResponseText(text);
             }
           }).catch(() => {});
@@ -931,6 +1210,14 @@
   // --- 2. Hook XMLHttpRequest ---
   const originalOpen = XMLHttpRequest.prototype.open;
   const originalSend = XMLHttpRequest.prototype.send;
+  const originalSetRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
+
+  XMLHttpRequest.prototype.setRequestHeader = function (header, value) {
+    if (typeof header === 'string' && header.toLowerCase() === 'x-fb-friendly-name') {
+      this._friendlyName = String(value);
+    }
+    return originalSetRequestHeader.apply(this, arguments);
+  };
 
   XMLHttpRequest.prototype.open = function (method, url, ...rest) {
     this._ig_url = typeof url === 'string' ? url : '';
@@ -939,8 +1226,65 @@
   };
 
   XMLHttpRequest.prototype.send = function (...args) {
+    const bodyStr = safeExtractBodyString(args[0]);
+
+    // PHÁT HIỆN HÀNH ĐỘNG GỬI TIN NHẮN (TRẢ LỜI DM) QUA XHR
+    if (
+      (this._friendlyName && (this._friendlyName.includes('SendMessage') || this._friendlyName.includes('DirectSendMessage'))) ||
+      this._ig_url.includes('/broadcast/') ||
+      (bodyStr && (bodyStr.includes('SendMessage') || bodyStr.includes('send_item')))
+    ) {
+      lastSentMessageTime = Date.now();
+      console.log('[InstaTweaks 3.0] Ghost DM: Phát hiện bạn vừa gửi tin nhắn qua XHR -> Kích hoạt chế độ gửi đã xem hợp lệ!');
+    }
+
+    // INSTATWEAKS v3.0: CHẶN GHOST STORY VỚI XHR
+    if (isGhostStoryRequest(this._ig_url, bodyStr, this._friendlyName)) {
+      console.log('[InstaTweaks 3.0] Ghost Story: Blocked XHR seen ->', this._ig_url, this._friendlyName);
+      try {
+        Object.defineProperty(this, 'readyState', { value: 4, configurable: true });
+        Object.defineProperty(this, 'status', { value: 200, configurable: true });
+        Object.defineProperty(this, 'statusText', { value: 'OK', configurable: true });
+        Object.defineProperty(this, 'responseText', {
+          value: '{"data":{"stories_reel_seen":{"status":"ok"}},"status":"ok"}',
+          configurable: true
+        });
+        Object.defineProperty(this, 'response', {
+          value: '{"data":{"stories_reel_seen":{"status":"ok"}},"status":"ok"}',
+          configurable: true
+        });
+        setTimeout(() => {
+          if (typeof this.onreadystatechange === 'function') this.onreadystatechange();
+          if (typeof this.onload === 'function') this.onload();
+        }, 10);
+      } catch (_) {}
+      return;
+    }
+
+    // INSTATWEAKS v3.0: CHẶN GHOST DM VỚI XHR
+    if (isGhostDMRequest(this._ig_url, bodyStr, this._friendlyName)) {
+      console.log('[InstaTweaks 3.0] Ghost DM: Blocked XHR seen ->', this._ig_url, this._friendlyName);
+      try {
+        Object.defineProperty(this, 'readyState', { value: 4, configurable: true });
+        Object.defineProperty(this, 'status', { value: 200, configurable: true });
+        Object.defineProperty(this, 'statusText', { value: 'OK', configurable: true });
+        Object.defineProperty(this, 'responseText', {
+          value: '{"data":{"direct_thread_seen":{"status":"ok"}},"status":"ok"}',
+          configurable: true
+        });
+        Object.defineProperty(this, 'response', {
+          value: '{"data":{"direct_thread_seen":{"status":"ok"}},"status":"ok"}',
+          configurable: true
+        });
+        setTimeout(() => {
+          if (typeof this.onreadystatechange === 'function') this.onreadystatechange();
+          if (typeof this.onload === 'function') this.onload();
+        }, 10);
+      } catch (_) {}
+      return;
+    }
+
     try {
-      const bodyStr = typeof args[0] === 'string' ? args[0] : '';
       if (bodyStr.includes('doc_id=')) {
         const match = bodyStr.match(/doc_id=([0-9]+)/);
         if (match) {
