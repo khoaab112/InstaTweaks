@@ -858,6 +858,153 @@
     });
   }
 
+  function dbGetSnapshotsHistory(targetUserId, type) {
+    return new Promise((resolve) => {
+      if (!dbInstance) return resolve([]);
+      try {
+        const tx = dbInstance.transaction('snapshots', 'readonly');
+        const store = tx.objectStore('snapshots');
+        const req = store.getAll();
+        req.onsuccess = () => {
+          const all = req.result || [];
+          const matches = all.filter(s => (String(s.targetUserId) === String(targetUserId) || (s.targetUsername && String(s.targetUsername).toLowerCase() === String(targetUserId).toLowerCase())) && (!type || s.type === type));
+          matches.sort((a, b) => b.timestamp - a.timestamp);
+          resolve(matches);
+        };
+        req.onerror = () => resolve([]);
+      } catch (_) { resolve([]); }
+    });
+  }
+
+  // =========================================================================
+  // THUẬT TOÁN SNAPSHOT DIFFING & MUTUAL ANALYSIS (PHASE 3 - v3.2.0)
+  // =========================================================================
+
+  function computeSnapshotDiff(oldSnap, newSnap) {
+    if (!newSnap || !newSnap.items) return null;
+    if (!oldSnap || !oldSnap.items) {
+      return {
+        isFirstBaseline: true,
+        baselineCount: newSnap.items.length,
+        newUsers: [],
+        lostUsers: [],
+        stableUsers: newSnap.items,
+        timestampOld: null,
+        timestampNew: newSnap.timestamp
+      };
+    }
+
+    const oldMap = new Map();
+    oldSnap.items.forEach(u => {
+      const key = String(u.id || u.username).toLowerCase();
+      oldMap.set(key, u);
+    });
+
+    const newMap = new Map();
+    newSnap.items.forEach(u => {
+      const key = String(u.id || u.username).toLowerCase();
+      newMap.set(key, u);
+    });
+
+    const newUsers = [];
+    const stableUsers = [];
+    newSnap.items.forEach(u => {
+      const key = String(u.id || u.username).toLowerCase();
+      if (!oldMap.has(key)) {
+        newUsers.push({ ...u, diffType: 'added', diffStatus: 'Mới Follow (+)' });
+      } else {
+        stableUsers.push({ ...u, diffType: 'stable', diffStatus: 'Ổn định (=)' });
+      }
+    });
+
+    const lostUsers = [];
+    oldSnap.items.forEach(u => {
+      const key = String(u.id || u.username).toLowerCase();
+      if (!newMap.has(key)) {
+        lostUsers.push({ ...u, diffType: 'removed', diffStatus: 'Đã Unfollow (-)' });
+      }
+    });
+
+    return {
+      isFirstBaseline: false,
+      newUsers,
+      lostUsers,
+      stableUsers,
+      timestampOld: oldSnap.timestamp,
+      timestampNew: newSnap.timestamp
+    };
+  }
+
+  function computeMutualAnalysis(followersSnap, followingSnap) {
+    const followers = followersSnap?.items || [];
+    const following = followingSnap?.items || [];
+
+    const followerMap = new Map();
+    followers.forEach(u => followerMap.set(String(u.id || u.username).toLowerCase(), u));
+
+    const followingMap = new Map();
+    following.forEach(u => followingMap.set(String(u.id || u.username).toLowerCase(), u));
+
+    // 1. Không follow lại (User đang follow họ, nhưng họ không follow lại user)
+    const notFollowingBack = [];
+    following.forEach(u => {
+      const key = String(u.id || u.username).toLowerCase();
+      if (!followerMap.has(key)) {
+        notFollowingBack.push({ ...u, mutualStatus: 'Không follow lại bạn' });
+      }
+    });
+
+    // 2. Người hâm mộ (Fans: Họ follow user, nhưng user chưa follow họ)
+    const fans = [];
+    followers.forEach(u => {
+      const key = String(u.id || u.username).toLowerCase();
+      if (!followingMap.has(key)) {
+        fans.push({ ...u, mutualStatus: 'Người hâm mộ (Fan)' });
+      }
+    });
+
+    // 3. Bạn bè follow chéo (Mutual): Cả 2 cùng follow nhau
+    const mutual = [];
+    following.forEach(u => {
+      const key = String(u.id || u.username).toLowerCase();
+      if (followerMap.has(key)) {
+        mutual.push({ ...u, mutualStatus: 'Bạn bè (Follow chéo)' });
+      }
+    });
+
+    return {
+      hasFollowers: Boolean(followersSnap),
+      hasFollowing: Boolean(followingSnap),
+      notFollowingBack,
+      fans,
+      mutual
+    };
+  }
+
+  function computeCrossUserCommon(myFollowingSnap, targetFollowingSnap, myFollowersSnap, targetFollowersSnap) {
+    const commonFollowing = [];
+    if (myFollowingSnap?.items && targetFollowingSnap?.items) {
+      const myMap = new Map();
+      myFollowingSnap.items.forEach(u => myMap.set(String(u.id || u.username).toLowerCase(), u));
+      targetFollowingSnap.items.forEach(u => {
+        const key = String(u.id || u.username).toLowerCase();
+        if (myMap.has(key)) commonFollowing.push({ ...u, mutualStatus: 'Cả hai cùng theo dõi' });
+      });
+    }
+
+    const commonFollowers = [];
+    if (myFollowersSnap?.items && targetFollowersSnap?.items) {
+      const myMap = new Map();
+      myFollowersSnap.items.forEach(u => myMap.set(String(u.id || u.username).toLowerCase(), u));
+      targetFollowersSnap.items.forEach(u => {
+        const key = String(u.id || u.username).toLowerCase();
+        if (myMap.has(key)) commonFollowers.push({ ...u, mutualStatus: 'Cùng theo dõi cả hai' });
+      });
+    }
+
+    return { commonFollowing, commonFollowers };
+  }
+
   // Nhận diện Profile đang xem
   function getActiveProfileInfo() {
     const parts = window.location.pathname.replace(/^\/|\/$/g, '').split('/');
@@ -1366,7 +1513,7 @@
           <img class="igt-v3-brand-icon" src="${ghostIconUrl}" alt="Ghost" />
           <h2 class="igt-v3-brand-title">
             INSTATWEAKS
-            <span class="igt-v3-phase-pill">v3.1.0</span>
+            <span class="igt-v3-phase-pill">v3.2.0</span>
           </h2>
         </div>
         <button id="igt-v3-close-btn" class="igt-v3-close-btn" title="Đóng">✕</button>
@@ -1581,12 +1728,16 @@
                 <span>✅ v3.0.0: Privacy & Video HD</span>
                 <span>Hoàn thành</span>
               </div>
+              <div class="igt-v3-roadmap-item completed">
+                <span>✅ v3.1.0: Watchlist & Bộ cào Follower an toàn</span>
+                <span>Hoàn thành</span>
+              </div>
               <div class="igt-v3-roadmap-item active">
-                <span>🚀 v3.1.0: Watchlist & Bộ cào Follower an toàn</span>
+                <span>⚡ v3.2.0: Diffing Engine (Follow/Unfollow)</span>
                 <span>Đang chạy</span>
               </div>
               <div class="igt-v3-roadmap-item">
-                <span>⚡ v3.2.0: Diffing Engine (Follow/Unfollow)</span>
+                <span>📊 v3.3.0: Profile History Audit & Growth Charts</span>
                 <span>Sắp tới</span>
               </div>
             </div>
@@ -1948,6 +2099,9 @@
             <button class="igt-v3-scan-sub-btn view-snap" data-action="view-snapshot" title="Xem lịch sử Snapshot đã lưu">
               Snapshot
             </button>
+            <button class="igt-v3-scan-sub-btn diff-btn" data-action="view-diff" title="So sánh biến động Follow / Unfollow">
+              ⚡ Biến động
+            </button>
           </div>
         </div>
       `;
@@ -1997,6 +2151,13 @@
           const latestSnap = followersSnap || followingSnap || (await dbGetLatestSnapshot(targetUid));
           // Mở Snapshot Viewer, nếu chưa quét sẽ có nút bắt đầu quét ngay thay vì alert cụt
           showSnapshotViewer(latestSnap || targetUser);
+        });
+      }
+
+      const diffBtn = card.querySelector('[data-action="view-diff"]');
+      if (diffBtn) {
+        diffBtn.addEventListener('click', () => {
+          showSnapshotViewer(targetUser, 'diff');
         });
       }
     });
@@ -2581,40 +2742,40 @@
     const targetUserId = snapshotOrUser.targetUserId || snapshotOrUser.userId || snapshotOrUser.username;
     const targetUsername = snapshotOrUser.targetUsername || snapshotOrUser.username || '';
 
-    // Lấy dữ liệu Snapshot mới nhất của cả Followers và Following
-    let followersSnap = await dbGetLatestSnapshot(targetUserId, 'followers');
-    if (!followersSnap && targetUsername) {
-      followersSnap = await dbGetLatestSnapshot(targetUsername, 'followers');
+    // Lấy toàn bộ lịch sử Snapshot từ IndexedDB
+    let followersHistory = await dbGetSnapshotsHistory(targetUserId, 'followers');
+    if (followersHistory.length === 0 && targetUsername) {
+      followersHistory = await dbGetSnapshotsHistory(targetUsername, 'followers');
     }
-    let followingSnap = await dbGetLatestSnapshot(targetUserId, 'following');
-    if (!followingSnap && targetUsername) {
-      followingSnap = await dbGetLatestSnapshot(targetUsername, 'following');
+    let followingHistory = await dbGetSnapshotsHistory(targetUserId, 'following');
+    if (followingHistory.length === 0 && targetUsername) {
+      followingHistory = await dbGetSnapshotsHistory(targetUsername, 'following');
     }
 
     // Nếu snapshot vừa quét xong được truyền trực tiếp vào
-    if (!followersSnap && snapshotOrUser.type === 'followers' && snapshotOrUser.items) {
-      followersSnap = snapshotOrUser;
+    if (snapshotOrUser.items && snapshotOrUser.type === 'followers') {
+      if (!followersHistory.some(s => s.timestamp === snapshotOrUser.timestamp)) {
+        followersHistory.unshift(snapshotOrUser);
+      }
     }
-    if (!followingSnap && snapshotOrUser.type === 'following' && snapshotOrUser.items) {
-      followingSnap = snapshotOrUser;
-    }
-
-    // Quyết định tab khởi đầu
-    let currentType = preferredType || snapshotOrUser.type;
-    if (!currentType) {
-      currentType = followersSnap ? 'followers' : (followingSnap ? 'following' : 'followers');
-    }
-    if (currentType === 'followers' && !followersSnap && followingSnap) {
-      currentType = 'following';
-    } else if (currentType === 'following' && !followingSnap && followersSnap) {
-      currentType = 'followers';
+    if (snapshotOrUser.items && snapshotOrUser.type === 'following') {
+      if (!followingHistory.some(s => s.timestamp === snapshotOrUser.timestamp)) {
+        followingHistory.unshift(snapshotOrUser);
+      }
     }
 
-    let activeSnapshot = currentType === 'followers' ? followersSnap : followingSnap;
-    if (!activeSnapshot && snapshotOrUser.items) {
-      activeSnapshot = snapshotOrUser;
-      currentType = snapshotOrUser.type || 'followers';
+    let followersSnap = followersHistory[0] || null;
+    let followingSnap = followingHistory[0] || null;
+
+    // Quyết định Tab khởi đầu (followers, following, diff, mutual)
+    let currentTab = preferredType || snapshotOrUser.type;
+    if (!currentTab) {
+      currentTab = followersSnap ? 'followers' : (followingSnap ? 'following' : 'followers');
     }
+
+    let diffType = 'followers'; // 'followers' hoặc 'following'
+    let diffFilter = 'all';     // 'all', 'added', 'removed'
+    let mutualFilter = 'not_following_back'; // 'not_following_back', 'fans', 'mutual', 'common'
 
     const flwCount = followersSnap?.totalCount != null ? followersSnap.totalCount : (snapshotOrUser.followerCount || 0);
     const flwingCount = followingSnap?.totalCount != null ? followingSnap.totalCount : (snapshotOrUser.followingCount || 0);
@@ -2625,6 +2786,7 @@
     const privateShieldUrl = (typeof chrome !== 'undefined' && chrome.runtime?.getURL) ? chrome.runtime.getURL('icons/v3_private_shield.png') : '';
 
     modal.innerHTML = `
+      <!-- Header Row: Back button, Title, Close -->
       <div class="igt-v3-snap-header-row">
         <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
           <button id="igt-snap-back-btn" class="igt-v3-snap-back-btn" title="Quay lại danh sách Watchlist">
@@ -2635,35 +2797,46 @@
             <span>Quay lại</span>
           </button>
           <div style="min-width: 0;">
-            <div style="font-size: 13.5px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" id="igt-snap-title">Snapshot: @${targetUsername}</div>
+            <div style="font-size: 13.5px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" id="igt-snap-title">Snapshot & Biến động: @${targetUsername}</div>
             <div style="font-size: 11px; color: #a1a1aa; white-space: nowrap;" id="igt-snap-subtitle">Đang tải...</div>
           </div>
-        </div>
-
-        <!-- 2 Tabs: Followers & Following -->
-        <div class="igt-v3-snap-tabs">
-          <button class="igt-v3-snap-tab ${currentType === 'followers' ? 'active' : ''}" id="igt-snap-tab-followers" data-type="followers">
-            <span>Followers</span>
-            <span class="igt-v3-snap-tab-badge" id="igt-snap-tab-flw-count">${flwCount.toLocaleString()}</span>
-          </button>
-          <button class="igt-v3-snap-tab ${currentType === 'following' ? 'active' : ''}" id="igt-snap-tab-following" data-type="following">
-            <span>Following</span>
-            <span class="igt-v3-snap-tab-badge" id="igt-snap-tab-flwing-count">${flwingCount.toLocaleString()}</span>
-          </button>
         </div>
 
         <button id="igt-snap-close-btn" class="igt-v3-close-btn" title="Đóng">✕</button>
       </div>
 
-      <!-- Toolbar: Search & Export -->
-      <div class="igt-v3-snap-toolbar">
+      <!-- 4 Tabs Chuyên Sâu: Followers, Following, ⚡ Biến động (Diff), 👥 Tương hỗ (Mutual) -->
+      <div class="igt-v3-snap-tabs-bar">
+        <button class="igt-v3-snap-tab ${currentTab === 'followers' ? 'active' : ''}" id="igt-snap-tab-followers" data-tab="followers">
+          <span>Followers</span>
+          <span class="igt-v3-snap-tab-badge" id="igt-snap-tab-flw-count">${flwCount.toLocaleString()}</span>
+        </button>
+        <button class="igt-v3-snap-tab ${currentTab === 'following' ? 'active' : ''}" id="igt-snap-tab-following" data-tab="following">
+          <span>Following</span>
+          <span class="igt-v3-snap-tab-badge" id="igt-snap-tab-flwing-count">${flwingCount.toLocaleString()}</span>
+        </button>
+        <button class="igt-v3-snap-tab ${currentTab === 'diff' ? 'active' : ''}" id="igt-snap-tab-diff" data-tab="diff">
+          <span>⚡ Biến động</span>
+          <span class="igt-v3-snap-tab-badge igt-diff-badge" id="igt-snap-tab-diff-count">Diff</span>
+        </button>
+        <button class="igt-v3-snap-tab ${currentTab === 'mutual' ? 'active' : ''}" id="igt-snap-tab-mutual" data-tab="mutual">
+          <span>👥 Tương hỗ</span>
+          <span class="igt-v3-snap-tab-badge igt-mutual-badge">Phân tích</span>
+        </button>
+      </div>
+
+      <!-- Vùng điều khiển phụ động (thay đổi theo tab) -->
+      <div id="igt-snap-dynamic-controls" style="display: flex; flex-direction: column; gap: 8px;"></div>
+
+      <!-- Toolbar tìm kiếm & Xuất dữ liệu -->
+      <div class="igt-v3-snap-toolbar" id="igt-snap-toolbar">
         <div class="igt-v3-search-wrap" style="flex: 1;">
           <img class="igt-v3-search-icon-img" src="${searchIconUrl}" alt="" />
           <input type="text" id="igt-snap-search" class="igt-v3-search-input" placeholder="Lọc theo username hoặc tên..." />
         </div>
         <button id="igt-btn-export-csv" class="igt-v3-snap-export-btn csv-btn" title="Xuất dữ liệu ra file CSV mở bằng Excel">
           <img class="igt-v3-snap-btn-icon" src="${csvIconUrl}" alt="CSV" />
-          <span>Xuất CSV (Excel)</span>
+          <span>Xuất CSV</span>
         </button>
         <button id="igt-btn-export-json" class="igt-v3-snap-export-btn json-btn" title="Xuất dữ liệu dự phòng JSON">
           <img class="igt-v3-snap-btn-icon" src="${jsonIconUrl}" alt="JSON" />
@@ -2671,7 +2844,7 @@
         </button>
       </div>
 
-      <!-- Items List -->
+      <!-- Items List Container -->
       <div id="igt-snap-items-list" class="igt-v3-snap-table-wrap"></div>
     `;
 
@@ -2685,86 +2858,67 @@
     }
 
     const closeBtn = document.getElementById('igt-snap-close-btn');
-    if (closeBtn) {
-      closeBtn.onclick = closeSnapshotModal;
-      closeBtn.addEventListener('click', closeSnapshotModal);
-    }
+    if (closeBtn) closeBtn.onclick = closeSnapshotModal;
 
     const snapBackBtn = document.getElementById('igt-snap-back-btn');
-    if (snapBackBtn) {
-      snapBackBtn.onclick = closeSnapshotModal;
-      snapBackBtn.addEventListener('click', closeSnapshotModal);
-    }
+    if (snapBackBtn) snapBackBtn.onclick = closeSnapshotModal;
 
     const searchInput = document.getElementById('igt-snap-search');
     const listWrap = document.getElementById('igt-snap-items-list');
+    const dynamicControls = document.getElementById('igt-snap-dynamic-controls');
     const subtitleEl = document.getElementById('igt-snap-subtitle');
-    const tabFollowersBtn = document.getElementById('igt-snap-tab-followers');
-    const tabFollowingBtn = document.getElementById('igt-snap-tab-following');
+    const exportCsvBtn = document.getElementById('igt-btn-export-csv');
+    const exportJsonBtn = document.getElementById('igt-btn-export-json');
 
-    function updateActiveSnapshotView() {
-      activeSnapshot = currentType === 'followers' ? followersSnap : followingSnap;
+    // Lưu danh sách đang hiển thị để xuất file
+    let currentRenderedItems = [];
 
-      // Cập nhật giao diện 2 tabs
-      if (tabFollowersBtn) {
-        tabFollowersBtn.classList.toggle('active', currentType === 'followers');
-      }
-      if (tabFollowingBtn) {
-        tabFollowingBtn.classList.toggle('active', currentType === 'following');
-      }
-
-      // Cập nhật thông tin tiêu đề con
-      if (subtitleEl) {
-        if (activeSnapshot && activeSnapshot.timestamp) {
-          const dateStr = new Date(activeSnapshot.timestamp).toLocaleString('vi-VN');
-          subtitleEl.innerText = `${activeSnapshot.totalCount.toLocaleString()} người • Lưu lúc: ${dateStr}`;
-        } else {
-          subtitleEl.innerText = `Chưa có bản lưu ${currentType === 'followers' ? 'Followers' : 'Following'}`;
+    // Chuyển đổi tab chính
+    modal.querySelectorAll('.igt-v3-snap-tabs-bar .igt-v3-snap-tab').forEach(tabBtn => {
+      tabBtn.onclick = () => {
+        const selectedTab = tabBtn.getAttribute('data-tab');
+        if (currentTab !== selectedTab) {
+          currentTab = selectedTab;
+          modal.querySelectorAll('.igt-v3-snap-tabs-bar .igt-v3-snap-tab').forEach(b => {
+            b.classList.toggle('active', b.getAttribute('data-tab') === currentTab);
+          });
+          if (searchInput) searchInput.value = '';
+          renderActiveView();
         }
-      }
+      };
+    });
 
-      if (searchInput) searchInput.value = '';
-      renderItems('');
+    function renderActiveView() {
+      if (currentTab === 'followers' || currentTab === 'following') {
+        renderStandardSnapshotView();
+      } else if (currentTab === 'diff') {
+        renderDiffView();
+      } else if (currentTab === 'mutual') {
+        renderMutualView();
+      }
     }
 
-    function renderItems(filter = '') {
-      if (!activeSnapshot || !activeSnapshot.items || activeSnapshot.items.length === 0) {
-        const typeLabel = currentType === 'followers' ? 'Followers (Người theo dõi)' : 'Following (Đang theo dõi)';
-        listWrap.innerHTML = `
-          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 260px; color: #71717a; gap: 10px; text-align: center; padding: 20px;">
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.5;">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="8" x2="12" y2="12"></line>
-              <line x1="12" y1="16" x2="12.01" y2="16"></line>
-            </svg>
-            <div style="color: #e4e4e7; font-size: 13px; font-weight: 600;">Chưa có bản lưu ${typeLabel}</div>
-            <div style="font-size: 11.5px; color: #71717a; max-width: 280px;">Tài khoản @${targetUsername} chưa có dữ liệu Snapshot cho mục này.</div>
-            <button id="igt-snap-empty-scan-btn" class="igt-v3-action-btn primary" style="margin-top: 8px; padding: 7px 18px; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; border-radius: 8px;">
-              <span>⚡ Quét ${currentType === 'followers' ? 'Followers' : 'Following'} ngay</span>
-            </button>
-          </div>
-        `;
-        const emptyScanBtn = document.getElementById('igt-snap-empty-scan-btn');
-        if (emptyScanBtn) {
-          emptyScanBtn.onclick = () => {
-            closeSnapshotModal();
-            runSafeScan(snapshotOrUser, currentType || 'all');
-          };
+    // --- TAB 1 & TAB 2: FOLLOWERS & FOLLOWING TIÊU CHUẨN ---
+    function renderStandardSnapshotView() {
+      dynamicControls.innerHTML = '';
+      exportJsonBtn.style.display = 'inline-flex';
+
+      const activeSnap = currentTab === 'followers' ? followersSnap : followingSnap;
+      const typeLabel = currentTab === 'followers' ? 'Followers' : 'Following';
+
+      if (subtitleEl) {
+        if (activeSnap && activeSnap.timestamp) {
+          const dateStr = new Date(activeSnap.timestamp).toLocaleString('vi-VN');
+          subtitleEl.innerText = `${activeSnap.totalCount.toLocaleString()} người • Lưu lúc: ${dateStr}`;
+        } else {
+          subtitleEl.innerText = `Chưa có bản lưu ${typeLabel}`;
         }
-        return;
       }
 
-      const f = filter.toLowerCase().trim();
-      const filtered = f
-        ? activeSnapshot.items.filter(u => u.username.toLowerCase().includes(f) || (u.fullName && u.fullName.toLowerCase().includes(f)))
-        : activeSnapshot.items.slice(0, 150);
+      exportCsvBtn.onclick = () => exportSnapshotToCSV(activeSnap);
+      exportJsonBtn.onclick = () => exportSnapshotToJSON(activeSnap);
 
-      if (filtered.length === 0) {
-        listWrap.innerHTML = `<div style="text-align: center; color: #71717a; font-size: 12px; padding: 24px;">Không tìm thấy tài khoản nào khớp từ khóa "${filter}".</div>`;
-        return;
-      }
-
-      listWrap.innerHTML = filtered.map(u => `
+      renderUserList(activeSnap?.items || [], (u) => `
         <div class="igt-v3-snap-item">
           <div class="igt-v3-snap-col-user">
             <img class="igt-v3-snap-item-img" src="${(u.avatarUrl && !u.avatarUrl.includes('<svg')) ? u.avatarUrl : DEFAULT_AVATAR}" alt="${u.username}" />
@@ -2780,32 +2934,387 @@
             ${u.isPrivate ? `<span class="igt-v3-private-tag"><img class="igt-v3-private-shield-img" src="${privateShieldUrl}" alt="" /> Riêng tư</span>` : ''}
           </div>
         </div>
-      `).join('') + (activeSnapshot.items.length > 150 && !f ? `<div style="text-align: center; color: #71717a; font-size: 11px; padding: 8px;">(Hiển thị trước 150 / ${activeSnapshot.items.length} người. Xuất file CSV để xem toàn bộ 100%)</div>` : '');
+      `, `Chưa có bản lưu ${typeLabel}`, `Tài khoản @${targetUsername} chưa có dữ liệu Snapshot cho mục này.`, () => {
+        closeSnapshotModal();
+        runSafeScan(snapshotOrUser, currentTab);
+      });
     }
 
-    if (tabFollowersBtn) {
-      tabFollowersBtn.onclick = () => {
-        if (currentType !== 'followers') {
-          currentType = 'followers';
-          updateActiveSnapshotView();
+    // --- TAB 3: ⚡ SNAPSHOT DIFFING (T1 vs T0) ---
+    function renderDiffView() {
+      exportJsonBtn.style.display = 'none';
+      const history = diffType === 'followers' ? followersHistory : followingHistory;
+
+      dynamicControls.innerHTML = `
+        <div class="igt-v3-diff-sub-bar">
+          <div class="igt-v3-diff-modes">
+            <button class="igt-v3-diff-mode-btn ${diffType === 'followers' ? 'active' : ''}" id="igt-diff-mode-followers">👥 Biến động Followers</button>
+            <button class="igt-v3-diff-mode-btn ${diffType === 'following' ? 'active' : ''}" id="igt-diff-mode-following">🧭 Biến động Following</button>
+          </div>
+          <div id="igt-diff-time-range" style="font-size: 11px; color: #a1a1aa;"></div>
+        </div>
+        <div id="igt-diff-metrics-area"></div>
+      `;
+
+      const modeFlwBtn = document.getElementById('igt-diff-mode-followers');
+      const modeFlwingBtn = document.getElementById('igt-diff-mode-following');
+      if (modeFlwBtn) {
+        modeFlwBtn.onclick = () => {
+          if (diffType !== 'followers') {
+            diffType = 'followers';
+            diffFilter = 'all';
+            renderDiffView();
+          }
+        };
+      }
+      if (modeFlwingBtn) {
+        modeFlwingBtn.onclick = () => {
+          if (diffType !== 'following') {
+            diffType = 'following';
+            diffFilter = 'all';
+            renderDiffView();
+          }
+        };
+      }
+
+      const metricsArea = document.getElementById('igt-diff-metrics-area');
+      const timeRangeEl = document.getElementById('igt-diff-time-range');
+
+      if (history.length === 0) {
+        if (subtitleEl) subtitleEl.innerText = `Chưa có bản quét ${diffType === 'followers' ? 'Followers' : 'Following'}`;
+        listWrap.innerHTML = `
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 260px; color: #71717a; gap: 10px; text-align: center; padding: 20px;">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.5;">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+            <div style="color: #e4e4e7; font-size: 13.5px; font-weight: 600;">Chưa có dữ liệu để so sánh</div>
+            <div style="font-size: 11.5px; color: #71717a; max-width: 320px;">Bạn cần quét danh sách ít nhất 1 lần để tạo mốc cơ sở (T₀).</div>
+            <button id="igt-diff-scan-first-btn" class="igt-v3-action-btn primary" style="margin-top: 8px; padding: 7px 18px; font-size: 12px; cursor: pointer; border-radius: 8px;">
+              <span>⚡ Quét ${diffType === 'followers' ? 'Followers' : 'Following'} ngay</span>
+            </button>
+          </div>
+        `;
+        const scanFirstBtn = document.getElementById('igt-diff-scan-first-btn');
+        if (scanFirstBtn) {
+          scanFirstBtn.onclick = () => {
+            closeSnapshotModal();
+            runSafeScan(snapshotOrUser, diffType);
+          };
+        }
+        return;
+      }
+
+      if (history.length === 1) {
+        const base = history[0];
+        const dateStr = new Date(base.timestamp).toLocaleString('vi-VN');
+        if (subtitleEl) subtitleEl.innerText = `Mốc cơ sở T₀ • ${base.totalCount.toLocaleString()} người`;
+        if (timeRangeEl) timeRangeEl.innerText = `Đã lưu mốc gốc: ${dateStr}`;
+
+        listWrap.innerHTML = `
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 280px; color: #71717a; gap: 12px; text-align: center; padding: 24px;">
+            <div style="font-size: 32px;">🌱</div>
+            <div style="color: #4ade80; font-size: 14px; font-weight: 700;">Đã thiết lập Mốc Gốc Cơ Sở (T₀)</div>
+            <div style="font-size: 12px; color: #cbd5e1; max-width: 360px; line-height: 1.5;">
+              Hệ thống đã lưu danh sách gồm <strong>${base.totalCount.toLocaleString()}</strong> tài khoản lúc ${dateStr}.<br/><br/>
+              Khi bạn bấm <strong>Quét lại</strong> sau một thời gian, Thuật toán Diffing sẽ đối chiếu 100% tài khoản và lập tức phát hiện:
+              <span style="color: #4ade80;">+ Ai mới follow</span> và <span style="color: #f87171;">- Ai vừa unfollow bạn!</span>
+            </div>
+            <button id="igt-diff-scan-second-btn" class="igt-v3-action-btn primary" style="margin-top: 10px; padding: 8px 20px; font-size: 12px; cursor: pointer; border-radius: 8px;">
+              <span>⚡ Quét lại lần nữa để kiểm tra biến động ngay</span>
+            </button>
+          </div>
+        `;
+        const scanSecondBtn = document.getElementById('igt-diff-scan-second-btn');
+        if (scanSecondBtn) {
+          scanSecondBtn.onclick = () => {
+            closeSnapshotModal();
+            runSafeScan(snapshotOrUser, diffType);
+          };
+        }
+        return;
+      }
+
+      // Có >= 2 bản quét: So sánh bản mới nhất (T₁) với bản liền kề trước đó (T₀)
+      const newSnap = history[0];
+      const oldSnap = history[1];
+      const diffResult = computeSnapshotDiff(oldSnap, newSnap);
+
+      const dNewStr = new Date(newSnap.timestamp).toLocaleString('vi-VN');
+      const dOldStr = new Date(oldSnap.timestamp).toLocaleString('vi-VN');
+      if (subtitleEl) subtitleEl.innerText = `So sánh giữa ${dNewStr} và ${dOldStr}`;
+      if (timeRangeEl) timeRangeEl.innerText = `${dOldStr} ➜ ${dNewStr}`;
+
+      const totalChanges = diffResult.newUsers.length + diffResult.lostUsers.length;
+
+      // Render 3 Metric Cards
+      metricsArea.innerHTML = `
+        <div class="igt-v3-diff-metrics-grid">
+          <div class="igt-v3-diff-card green ${diffFilter === 'added' ? 'active' : ''}" id="igt-diff-card-added" title="Xem người mới Follow">
+            <div class="igt-v3-diff-card-num">+${diffResult.newUsers.length.toLocaleString()}</div>
+            <div class="igt-v3-diff-card-lbl">${diffType === 'followers' ? 'Mới Follow' : 'Mới Theo Dõi'}</div>
+          </div>
+          <div class="igt-v3-diff-card red ${diffFilter === 'removed' ? 'active' : ''}" id="igt-diff-card-removed" title="Xem người đã Unfollow">
+            <div class="igt-v3-diff-card-num">-${diffResult.lostUsers.length.toLocaleString()}</div>
+            <div class="igt-v3-diff-card-lbl">${diffType === 'followers' ? 'Đã Unfollow' : 'Đã Hủy Follow'}</div>
+          </div>
+          <div class="igt-v3-diff-card grey ${diffFilter === 'all' ? 'active' : ''}" id="igt-diff-card-all" title="Xem toàn bộ biến động">
+            <div class="igt-v3-diff-card-num">${totalChanges.toLocaleString()}</div>
+            <div class="igt-v3-diff-card-lbl">Tổng Biến Động</div>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('igt-diff-card-added').onclick = () => {
+        diffFilter = 'added';
+        renderDiffView();
+      };
+      document.getElementById('igt-diff-card-removed').onclick = () => {
+        diffFilter = 'removed';
+        renderDiffView();
+      };
+      document.getElementById('igt-diff-card-all').onclick = () => {
+        diffFilter = 'all';
+        renderDiffView();
+      };
+
+      // Xác định danh sách theo filter
+      let diffList = [];
+      if (diffFilter === 'added') diffList = diffResult.newUsers;
+      else if (diffFilter === 'removed') diffList = diffResult.lostUsers;
+      else diffList = [...diffResult.newUsers, ...diffResult.lostUsers];
+
+      exportCsvBtn.onclick = () => {
+        exportCustomListToCSV(diffList, `InstaTweaks_Diff_${targetUsername}_${diffType}`, 'Loại Biến Động');
+      };
+
+      if (totalChanges === 0) {
+        listWrap.innerHTML = `
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 240px; color: #71717a; gap: 8px; text-align: center; padding: 20px;">
+            <div style="font-size: 28px;">✨</div>
+            <div style="color: #cbd5e1; font-size: 13.5px; font-weight: 600;">Không có bất kỳ biến động nào!</div>
+            <div style="font-size: 11.5px; color: #71717a; max-width: 320px;">100% tài khoản (${newSnap.totalCount.toLocaleString()} người) vẫn giữ nguyên trạng thái giữa 2 lần quét.</div>
+          </div>
+        `;
+        return;
+      }
+
+      renderUserList(diffList, (u) => `
+        <div class="igt-v3-snap-item">
+          <div class="igt-v3-snap-col-user">
+            <img class="igt-v3-snap-item-img" src="${(u.avatarUrl && !u.avatarUrl.includes('<svg')) ? u.avatarUrl : DEFAULT_AVATAR}" alt="${u.username}" />
+            <div class="igt-v3-snap-item-info">
+              <div class="igt-v3-snap-item-uname">
+                <a href="/${u.username}/" target="_blank" style="color: inherit; text-decoration: none;">@${u.username}</a>
+                ${u.isVerified ? '<span style="color: #38bdf8; font-size: 11px;"> ✓</span>' : ''}
+              </div>
+              <div class="igt-v3-snap-item-fname">${u.fullName || ''}</div>
+            </div>
+          </div>
+          <div class="igt-v3-snap-col-status">
+            ${u.diffType === 'added' ? '<span class="igt-v3-tag-added">▲ + MỚI FOLLOW</span>' : '<span class="igt-v3-tag-removed">▼ - ĐÃ UNFOLLOW</span>'}
+            ${u.isPrivate ? `<span class="igt-v3-private-tag" style="margin-left: 4px;"><img class="igt-v3-private-shield-img" src="${privateShieldUrl}" alt="" /></span>` : ''}
+          </div>
+        </div>
+      `, 'Không có biến động nào trong bộ lọc này.', 'Thử chọn bộ lọc khác hoặc tìm kiếm từ khóa khác.');
+    }
+
+    // --- TAB 4: 👥 PHÂN TÍCH TƯƠNG HỖ & FOLLOW CHÉO (MUTUAL) ---
+    function renderMutualView() {
+      exportJsonBtn.style.display = 'none';
+
+      // Kiểm tra có đủ cả Followers và Following không
+      if (!followersSnap || !followingSnap) {
+        const missing = !followersSnap ? 'Followers' : 'Following';
+        if (subtitleEl) subtitleEl.innerText = `Cần quét thêm ${missing}`;
+        dynamicControls.innerHTML = '';
+        listWrap.innerHTML = `
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 260px; color: #71717a; gap: 10px; text-align: center; padding: 20px;">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.5;">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            <div style="color: #e4e4e7; font-size: 13.5px; font-weight: 600;">Cần dữ liệu của cả 2 danh sách</div>
+            <div style="font-size: 11.5px; color: #71717a; max-width: 320px;">Để phân tích ai không follow lại hoặc ai là fan, hệ thống cần có bản Snapshot của cả Followers và Following.</div>
+            <button id="igt-mutual-scan-missing-btn" class="igt-v3-action-btn primary" style="margin-top: 8px; padding: 7px 18px; font-size: 12px; cursor: pointer; border-radius: 8px;">
+              <span>⚡ Quét ${missing} ngay</span>
+            </button>
+          </div>
+        `;
+        const scanMissingBtn = document.getElementById('igt-mutual-scan-missing-btn');
+        if (scanMissingBtn) {
+          scanMissingBtn.onclick = () => {
+            closeSnapshotModal();
+            runSafeScan(snapshotOrUser, missing.toLowerCase());
+          };
+        }
+        return;
+      }
+
+      const mutualResult = computeMutualAnalysis(followersSnap, followingSnap);
+
+      if (subtitleEl) {
+        subtitleEl.innerText = `Phân tích tương hỗ giữa ${followersSnap.totalCount.toLocaleString()} flwer và ${followingSnap.totalCount.toLocaleString()} flwing`;
+      }
+
+      dynamicControls.innerHTML = `
+        <div class="igt-v3-mutual-nav">
+          <button class="igt-v3-mutual-pill ${mutualFilter === 'not_following_back' ? 'active' : ''}" data-filter="not_following_back">
+            ❌ Không follow lại (${mutualResult.notFollowingBack.length.toLocaleString()})
+          </button>
+          <button class="igt-v3-mutual-pill ${mutualFilter === 'fans' ? 'active' : ''}" data-filter="fans">
+            💖 Người hâm mộ (${mutualResult.fans.length.toLocaleString()})
+          </button>
+          <button class="igt-v3-mutual-pill ${mutualFilter === 'mutual' ? 'active' : ''}" data-filter="mutual">
+            🤝 Follow chéo (${mutualResult.mutual.length.toLocaleString()})
+          </button>
+        </div>
+      `;
+
+      dynamicControls.querySelectorAll('.igt-v3-mutual-pill').forEach(pill => {
+        pill.onclick = () => {
+          const f = pill.getAttribute('data-filter');
+          if (mutualFilter !== f) {
+            mutualFilter = f;
+            renderMutualView();
+          }
+        };
+      });
+
+      let targetList = [];
+      let tagLabel = '';
+      if (mutualFilter === 'not_following_back') {
+        targetList = mutualResult.notFollowingBack;
+        tagLabel = 'Không follow lại bạn';
+      } else if (mutualFilter === 'fans') {
+        targetList = mutualResult.fans;
+        tagLabel = 'Người hâm mộ (Fan)';
+      } else {
+        targetList = mutualResult.mutual;
+        tagLabel = 'Bạn bè (Follow chéo)';
+      }
+
+      exportCsvBtn.onclick = () => {
+        exportCustomListToCSV(targetList, `InstaTweaks_Mutual_${targetUsername}_${mutualFilter}`, 'Quan Hệ Tương Hỗ');
+      };
+
+      renderUserList(targetList, (u) => `
+        <div class="igt-v3-snap-item">
+          <div class="igt-v3-snap-col-user">
+            <img class="igt-v3-snap-item-img" src="${(u.avatarUrl && !u.avatarUrl.includes('<svg')) ? u.avatarUrl : DEFAULT_AVATAR}" alt="${u.username}" />
+            <div class="igt-v3-snap-item-info">
+              <div class="igt-v3-snap-item-uname">
+                <a href="/${u.username}/" target="_blank" style="color: inherit; text-decoration: none;">@${u.username}</a>
+                ${u.isVerified ? '<span style="color: #38bdf8; font-size: 11px;"> ✓</span>' : ''}
+              </div>
+              <div class="igt-v3-snap-item-fname">${u.fullName || ''}</div>
+            </div>
+          </div>
+          <div class="igt-v3-snap-col-status">
+            ${mutualFilter === 'not_following_back' ? '<span class="igt-v3-tag-removed">Không follow lại</span>' : (mutualFilter === 'fans' ? '<span class="igt-v3-tag-added">Fan hâm mộ</span>' : '<span style="font-size: 10px; color: #a855f7; font-weight: 700;">🤝 Follow chéo</span>')}
+            ${u.isPrivate ? `<span class="igt-v3-private-tag" style="margin-left: 4px;"><img class="igt-v3-private-shield-img" src="${privateShieldUrl}" alt="" /></span>` : ''}
+          </div>
+        </div>
+      `, `Không có tài khoản nào thuộc nhóm "${tagLabel}".`, 'Tất cả tài khoản trong danh sách đều có quan hệ tương hỗ khác.');
+    }
+
+    // --- HÀM RENDER USER CHUNG CHO TẤT CẢ CÁC VIEW ---
+    function renderUserList(fullItems, itemRenderer, emptyTitle, emptySubtitle, onActionClick) {
+      currentRenderedItems = fullItems;
+      const f = (searchInput ? searchInput.value : '').toLowerCase().trim();
+
+      if (!fullItems || fullItems.length === 0) {
+        listWrap.innerHTML = `
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 240px; color: #71717a; gap: 8px; text-align: center; padding: 20px;">
+            <div style="color: #e4e4e7; font-size: 13px; font-weight: 600;">${emptyTitle}</div>
+            <div style="font-size: 11.5px; color: #71717a; max-width: 280px;">${emptySubtitle}</div>
+            ${onActionClick ? `
+              <button id="igt-snap-common-action-btn" class="igt-v3-action-btn primary" style="margin-top: 8px; padding: 7px 18px; font-size: 12px; cursor: pointer; border-radius: 8px;">
+                <span>⚡ Bắt đầu quét ngay</span>
+              </button>
+            ` : ''}
+          </div>
+        `;
+        const actBtn = document.getElementById('igt-snap-common-action-btn');
+        if (actBtn && onActionClick) actBtn.onclick = onActionClick;
+        return;
+      }
+
+      const filtered = f
+        ? fullItems.filter(u => (u.username && u.username.toLowerCase().includes(f)) || (u.fullName && u.fullName.toLowerCase().includes(f)))
+        : fullItems.slice(0, 150);
+
+      if (filtered.length === 0) {
+        listWrap.innerHTML = `<div style="text-align: center; color: #71717a; font-size: 12px; padding: 24px;">Không tìm thấy tài khoản nào khớp từ khóa "${f}".</div>`;
+        return;
+      }
+
+      listWrap.innerHTML = filtered.map(itemRenderer).join('') + (fullItems.length > 150 && !f ? `<div style="text-align: center; color: #71717a; font-size: 11px; padding: 8px;">(Hiển thị trước 150 / ${fullItems.length.toLocaleString()} người. Xuất file CSV để xem toàn bộ 100%)</div>` : '');
+    }
+
+    if (searchInput) {
+      searchInput.oninput = () => {
+        if (currentTab === 'followers' || currentTab === 'following') {
+          const activeSnap = currentTab === 'followers' ? followersSnap : followingSnap;
+          renderUserList(activeSnap?.items || [], (u) => `
+            <div class="igt-v3-snap-item">
+              <div class="igt-v3-snap-col-user">
+                <img class="igt-v3-snap-item-img" src="${(u.avatarUrl && !u.avatarUrl.includes('<svg')) ? u.avatarUrl : DEFAULT_AVATAR}" alt="${u.username}" />
+                <div class="igt-v3-snap-item-info">
+                  <div class="igt-v3-snap-item-uname">
+                    <a href="/${u.username}/" target="_blank" style="color: inherit; text-decoration: none;">@${u.username}</a>
+                    ${u.isVerified ? '<span style="color: #38bdf8; font-size: 11px;"> ✓</span>' : ''}
+                  </div>
+                  <div class="igt-v3-snap-item-fname">${u.fullName || ''}</div>
+                </div>
+              </div>
+              <div class="igt-v3-snap-col-status">
+                ${u.isPrivate ? `<span class="igt-v3-private-tag"><img class="igt-v3-private-shield-img" src="${privateShieldUrl}" alt="" /> Riêng tư</span>` : ''}
+              </div>
+            </div>
+          `, 'Không có dữ liệu', 'Hãy thử lại');
+        } else if (currentTab === 'diff') {
+          renderDiffView();
+        } else if (currentTab === 'mutual') {
+          renderMutualView();
         }
       };
     }
 
-    if (tabFollowingBtn) {
-      tabFollowingBtn.onclick = () => {
-        if (currentType !== 'following') {
-          currentType = 'following';
-          updateActiveSnapshotView();
-        }
-      };
+    // Khởi chạy view ban đầu
+    renderActiveView();
+  }
+
+  // --- HÀM XUẤT FILE DANH SÁCH TÙY BIẾN CHO DIFF VÀ MUTUAL SANG CSV ---
+  function exportCustomListToCSV(items, filename, tagLabel = 'Trạng Thái') {
+    if (!items || items.length === 0) {
+      alert('Không có dữ liệu để xuất.');
+      return;
     }
+    const headers = ['STT', 'User ID', 'Username', 'Họ Tên', tagLabel, 'Tích Xanh', 'Riêng Tư', 'Link Profile'];
+    const escapeCsv = (str) => `"${String(str || '').replace(/"/g, '""')}"`;
+    const rows = items.map((item, idx) => [
+      idx + 1,
+      escapeCsv(item.id),
+      escapeCsv(item.username),
+      escapeCsv(item.fullName),
+      escapeCsv(item.diffStatus || item.mutualStatus || (item.diffType === 'added' ? 'Mới Follow (+)' : (item.diffType === 'removed' ? 'Đã Unfollow (-)' : ''))),
+      item.isVerified ? 'Có' : 'Không',
+      item.isPrivate ? 'Riêng tư' : 'Công khai',
+      `https://www.instagram.com/${item.username}/`
+    ].join(','));
 
-    document.getElementById('igt-btn-export-csv').onclick = () => exportSnapshotToCSV(activeSnapshot);
-    document.getElementById('igt-btn-export-json').onclick = () => exportSnapshotToJSON(activeSnapshot);
-
-    searchInput.oninput = (e) => renderItems(e.target.value);
-    updateActiveSnapshotView();
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const dateStr = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `${filename}_${dateStr}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
   }
 
   // --- XUẤT FILE CSV (CHO EXCEL CÓ DẤU TIẾNG VIỆT) & JSON ---

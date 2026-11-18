@@ -67,11 +67,25 @@ flowchart TD
 
 ---
 
-### ⚡ PHASE 3: BẢN v3.2.0
-- Thuật toán Snapshot Diffing ($T_1$ vs $T_0$).
-- Báo cáo: Ai mới Follow mình, Ai vừa Unfollow mình, Mình mới Follow / vừa Unfollow ai.
-- Báo cáo biến động Follow/Unfollow của User trong Watchlist.
-- Phân tích Follow chung: Người cả 2 cùng follow, người cùng follow cả 2, quan hệ follow chéo.
+### 🟢 PHASE 3: BẢN v3.2.0 (ĐÃ HOÀN THÀNH 100% ✅)
+- [x] **1. Nâng cấp Version**: Cập nhật `manifest.json`, Drawer header và Roadmap lên `v3.2.0`.
+- [x] **2. Thuật toán Snapshot Diffing ($T_1$ vs $T_0$)**:
+  - Đối soát 100% tài khoản giữa 2 bản quét liên tiếp (hoặc mốc cơ sở $T_0$).
+  - Báo cáo phân loại chính xác:
+    - 🟢 **Mới Follow (+)**: Ai mới follow tài khoản.
+    - 🔴 **Vừa Unfollow (-)**: Ai vừa bỏ theo dõi (unfollow).
+    - ⚪ **Ổn định (=)**: Các tài khoản giữ nguyên trạng thái.
+  - Hỗ trợ cả 2 chế độ: Biến động Followers và Biến động Following (mình mới follow ai / vừa bỏ follow ai).
+- [x] **3. Phân tích Tương hỗ & Follow chéo (Mutual Analysis)**:
+  - ❌ **Không follow lại mình** (Not Following Back): Danh sách tài khoản user đang follow nhưng họ không follow lại.
+  - 💖 **Người hâm mộ (Fans)**: Danh sách tài khoản follow user nhưng user chưa follow lại.
+  - 🤝 **Bạn bè follow chéo (Mutual)**: Cả hai cùng theo dõi nhau.
+- [x] **4. Phân tích Bạn chung Cross-User**:
+  - Đối chiếu danh sách bạn chung (cùng follow / cùng được follow) giữa tài khoản của bạn và bất kỳ ai trong Watchlist.
+- [x] **5. Trình xem & Xuất Báo cáo Nâng cao**:
+  - Tích hợp 4 Tabs chuyên sâu trong Snapshot Viewer: `Followers`, `Following`, `⚡ Biến động (Diff)`, `👥 Tương hỗ (Mutual)`.
+  - Bộ thẻ thống kê trực quan (Metrics Cards) màu sắc phân biệt rõ ràng.
+  - Xuất file CSV chi tiết theo từng loại biến động và phân loại tương hỗ.
 
 ---
 
