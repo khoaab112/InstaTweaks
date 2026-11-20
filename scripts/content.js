@@ -30,7 +30,9 @@
   let currentActive = null;
 
   // Trạng thái âm thanh của phiên lướt web (Ghi nhớ nếu người dùng đã bật tiếng)
-  let isSoundSessionActive = sessionStorage.getItem('__ig_sound_active__') === 'true';
+  // Không khôi phục trạng thái bật tiếng qua lần tải trang: Chrome cần tương tác người dùng mới cho phép phát có tiếng.
+  let isSoundSessionActive = false;
+  let hasSoundSessionChoice = false;
 
   // Cache các icon option ngay từ đầu để tránh lỗi 'Extension context invalidated' khi tiện ích được reload trong Chrome
   const CACHED_PROFILE_ICONS = {
@@ -1280,7 +1282,7 @@
 
         // Nếu ở Modal Dialog hoặc Trang đơn /p/ và có bật Autoplay:
         const isModalOrDirect = Boolean(bar.closest('div[role="dialog"]') || window.location.pathname.includes('/p/'));
-        if (isModalOrDirect && config.autoplay && !currentActive) {
+        if (isModalOrDirect && config.autoplay && !currentActive && !(hasSoundSessionChoice && !isSoundSessionActive)) {
           setTimeout(() => {
             if (bar.isConnected && !currentActive) {
               speakerBtn.click();
@@ -1345,7 +1347,7 @@
     };
 
     const startPlay = () => {
-      if (!isPostViewingContext() || !bar.isConnected) return;
+      if (!isPostViewingContext() || !bar.isConnected || (hasSoundSessionChoice && !isSoundSessionActive)) return;
 
       pauseCurrentAudio();
       audio.volume = config.volume;
@@ -1376,7 +1378,7 @@
           updatePausedUI();
           const unlockAudio = () => {
             document.removeEventListener('click', unlockAudio);
-            if (audio.paused && bar.isConnected && isPostViewingContext()) {
+            if (audio.paused && bar.isConnected && isPostViewingContext() && (!hasSoundSessionChoice || isSoundSessionActive)) {
               audio.play().then(updatePlayingUI).catch(() => { });
             }
           };
@@ -1393,13 +1395,10 @@
       e?.stopPropagation();
       if (currentActive?.audio === audio && !audio.paused) {
         // NGƯỜI DÙNG BẤM TẮT TIẾNG (MUTE): Dừng tự phát các bài sau
-        isSoundSessionActive = false;
-        sessionStorage.setItem('__ig_sound_active__', 'false');
-        pauseCurrentAudio();
+        setVideoSoundSessionActive(false);
       } else {
         // NGƯỜI DÙNG BẤM BẬT TIẾNG (ACTIVATE): Kích hoạt tự phát các bài tiếp theo!
-        isSoundSessionActive = true;
-        sessionStorage.setItem('__ig_sound_active__', 'true');
+        setVideoSoundSessionActive(true);
         startPlay();
       }
     };
@@ -1514,9 +1513,9 @@
 
         // Nếu bài viết này ĐÃ ĐANG PHÁT NHẠC: Bỏ qua ngay lập tức để Instagram chuyển ảnh siêu mượt!
         if (currentActive?.audio === audio && !audio.paused) return;
+        if (hasSoundSessionChoice && !isSoundSessionActive) return;
 
-        isSoundSessionActive = true;
-        sessionStorage.setItem('__ig_sound_active__', 'true');
+        setVideoSoundSessionActive(true);
         startPlay();
       }, { passive: true });
     }
@@ -1699,18 +1698,75 @@
       video.closest('.igt-publish-modal-overlay') ||
       video.closest('#igt-cull-modal-overlay') ||
       video.closest('[id^="igt-"]') ||
-      video.closest('[class*="igt-"]') ||
       video.classList?.contains('igt-studio-active-media') ||
       video.classList?.contains('igt-card-hover-preview')
     );
   }
 
-  function ensureVideoUnmuted(video) {
+  function isStoryOrHighlightVideo(video = null) {
+    return Boolean(
+      window.location.pathname.includes('/stories/') ||
+      video?.hasAttribute?.('data-ig-target-story-video') ||
+      video?.closest?.('[data-ig-target-story-video="true"]')
+    );
+  }
+
+  function setVideoSoundSessionActive(active) {
+    if (isStoryOrHighlightVideo()) return;
+    isSoundSessionActive = Boolean(active);
+    hasSoundSessionChoice = true;
+    try {
+      sessionStorage.setItem('__ig_sound_active__', isSoundSessionActive ? 'true' : 'false');
+    } catch (_) { }
+
+    const targetVolume = (typeof config.volume === 'number' && config.volume > 0) ? config.volume : 0.8;
+    document.querySelectorAll('video').forEach((video) => {
+      if (!video.isConnected || isStoryOrHighlightVideo(video) || isStudioOrModalVideo(video)) return;
+      if (isSoundSessionActive) {
+        video._userMuted = false;
+        video._igtAudioIntent = true;
+        if (!video.paused) {
+          video.muted = false;
+          if (video.volume === 0) video.volume = targetVolume;
+        }
+      } else {
+        video._igtAudioIntent = false;
+        video.muted = true;
+      }
+    });
+
+    if (!isSoundSessionActive) pauseCurrentAudio();
+  }
+
+  function preparePreloadedReelAudio() {
+    if (!isSoundSessionActive || isStoryOrHighlightVideo()) return;
+    const targetVolume = (typeof config.volume === 'number' && config.volume > 0) ? config.volume : 0.8;
+    document.querySelectorAll('video').forEach((video) => {
+      if (!video.isConnected || isStoryOrHighlightVideo(video) || isStudioOrModalVideo(video)) return;
+      try {
+        video._userMuted = false;
+        video._igtAudioIntent = true;
+        if (!video.paused) {
+          video.muted = false;
+          if (video.volume === 0) video.volume = targetVolume;
+        }
+      } catch (_) { }
+    });
+  }
+
+  function ensureVideoUnmuted(video, allowSessionRestore = false) {
     if (!video || video._userMuted) return;
     if (isStudioOrModalVideo(video)) {
       return; // Tuyệt đối không can thiệp vào video/live photo bên trong InstaTweaks Studio hoặc Modal Sắp xếp slide
     }
-    if (config.autoUnmute === false) return;
+    const isStoryVideo = isStoryOrHighlightVideo(video);
+    const shouldRespectSession = !isStoryVideo && hasSoundSessionChoice;
+    const canRestoreFromSession = shouldRespectSession && isSoundSessionActive && allowSessionRestore;
+    if (shouldRespectSession && !isSoundSessionActive) return;
+    // Tương tác bật tiếng có hiệu lực cho cả phiên lướt: Reel tiếp theo đã autoplay
+    // muted nên có thể bỏ mute mà không gọi play() ngoài user activation.
+    if (config.autoUnmute === false && !canRestoreFromSession && !navigator.userActivation?.isActive) return;
+    if (!navigator.userActivation?.isActive && !canRestoreFromSession) return;
 
     const targetVolume = (typeof config.volume === 'number' && config.volume > 0) ? config.volume : 0.8;
 
@@ -1723,13 +1779,14 @@
         if (video.volume === 0 || Math.abs(video.volume - targetVolume) > 0.3) {
           video.volume = targetVolume;
         }
+        video._igtAudioIntent = true;
+        if (!isStoryVideo && navigator.userActivation?.isActive && !video.muted && video.volume > 0) {
+          setVideoSoundSessionActive(true);
+        }
       } catch (_) { }
     };
 
     applyUnmute();
-    requestAnimationFrame(applyUnmute);
-    setTimeout(applyUnmute, 120);
-    setTimeout(applyUnmute, 350);
   }
 
   function findVideoContainer(video) {
@@ -1853,12 +1910,14 @@
     if (!video || video._hasCustomController || !video.isConnected) return;
     if (window.location.pathname.includes('/stories/')) return;
 
-    const w = video.offsetWidth || video.videoWidth || 0;
-    const h = video.offsetHeight || video.videoHeight || 0;
+    const isDirectReelPage = /^\/reels?\//.test(window.location.pathname);
+    const videoRect = video.getBoundingClientRect();
+    const w = Math.max(video.offsetWidth || 0, video.videoWidth || 0, videoRect.width || 0);
+    const h = Math.max(video.offsetHeight || 0, video.videoHeight || 0, videoRect.height || 0);
     if (w < 100 || h < 100) return;
-    if (video.closest('header') || video.closest('nav') || video.closest('aside') || isStudioOrModalVideo(video)) return;
+    if ((!isDirectReelPage && (video.closest('header') || video.closest('nav') || video.closest('aside'))) || isStudioOrModalVideo(video)) return;
 
-    const container = findVideoContainer(video);
+    const container = findVideoContainer(video) || (isDirectReelPage ? video.parentElement : null);
     if (!container) return;
 
     video._hasCustomController = true;
@@ -1966,6 +2025,7 @@
 
     let isDragging = false;
     let wasPlayingBeforeDrag = false;
+    let wasAudibleBeforeDrag = false;
     let cachedTrackRect = null;
     let hideTimer = null;
     let savedVolume = video.volume > 0 ? video.volume : 0.8;
@@ -2141,9 +2201,30 @@
         if (hoverBar) hoverBar.style.setProperty('width', '0%', 'important');
       }
 
-      if (wasPlayingBeforeDrag) {
-        wasPlayingBeforeDrag = false;
-        video.play().catch(() => { });
+      const resumePlayback = wasPlayingBeforeDrag;
+      const restoreAudio = wasAudibleBeforeDrag && !video._userMuted;
+      wasPlayingBeforeDrag = false;
+      wasAudibleBeforeDrag = false;
+      const restoreVolume = () => {
+        if (!restoreAudio || !video.isConnected || video._userMuted) return;
+        if (video.muted || video.volume === 0) {
+          video.muted = false;
+          video.volume = savedVolume > 0 ? savedVolume : (config.volume || 0.8);
+        }
+        video._igtAudioIntent = true;
+      };
+      if (restoreAudio) {
+        setVideoSoundSessionActive(true);
+        preparePreloadedReelAudio();
+        // Restore while pointerup still has user activation so Chrome does not pause the video.
+        restoreVolume();
+        video.addEventListener('seeked', restoreVolume, { once: true });
+      }
+      if (resumePlayback) {
+        const resumePromise = video.play();
+        if (resumePromise && typeof resumePromise.then === 'function') {
+          resumePromise.then(restoreVolume).catch(() => { });
+        }
       }
 
       showControls();
@@ -2157,6 +2238,11 @@
 
       isDragging = true;
       wasPlayingBeforeDrag = !video.paused;
+      wasAudibleBeforeDrag = !video.muted && video.volume > 0 && !video._userMuted;
+      if (wasAudibleBeforeDrag) {
+        video._igtAudioIntent = true;
+        setVideoSoundSessionActive(true);
+      }
       if (wasPlayingBeforeDrag) {
         video.pause();
       }
@@ -2261,10 +2347,15 @@
       e.stopPropagation();
       if (video.muted || video.volume === 0) {
         video._userMuted = false;
+        video._igtAudioIntent = true;
+        setVideoSoundSessionActive(true);
+        preparePreloadedReelAudio();
         video.muted = false;
         video.volume = savedVolume > 0 ? savedVolume : (config.volume || 0.8);
       } else {
         video._userMuted = true;
+        video._igtAudioIntent = false;
+        setVideoSoundSessionActive(false);
         savedVolume = video.volume;
         video.muted = true;
       }
@@ -2279,10 +2370,15 @@
       if (val === 0) {
         video.muted = true;
         video._userMuted = true;
+        video._igtAudioIntent = false;
+        setVideoSoundSessionActive(false);
       } else {
         video.muted = false;
         video._userMuted = false;
+        video._igtAudioIntent = true;
+        setVideoSoundSessionActive(true);
         savedVolume = val;
+        preparePreloadedReelAudio();
       }
       updateVolumeUI();
       showControls();
@@ -2426,7 +2522,22 @@
       updateProgressUI();
     };
 
+    let previousVideoTime = video.currentTime || 0;
     const onTimeUpdate = () => {
+      const currentTime = video.currentTime || 0;
+      const duration = video.duration;
+      const loopedToStart = duration > 0 && previousVideoTime > duration - 0.75 && currentTime < 0.75;
+      previousVideoTime = currentTime;
+      if (loopedToStart && video._igtAudioIntent && !video._userMuted) {
+        const restoreAudio = () => {
+          if (!video.isConnected || !video._igtAudioIntent || video._userMuted) return;
+          if (video.muted || video.volume === 0) {
+            video.muted = false;
+            video.volume = savedVolume > 0 ? savedVolume : (config.volume || 0.8);
+          }
+        };
+        restoreAudio();
+      }
       if (video.paused || !rafTicker) {
         updateProgressUI();
       }
@@ -2509,6 +2620,8 @@
             attachVideoController(video);
           }
         } else {
+          // Reel mở trực tiếp có thể nằm trong vùng cuộn riêng; không tháo controller chỉ vì IO báo ngoài viewport.
+          if (/^\/reels?\//.test(window.location.pathname)) return;
           // Khi video cuộn ra xa khỏi màn hình -> tháo gỡ controller giải phóng RAM tức thì!
           if (video._hasCustomController) {
             detachVideoController(video);
@@ -2521,6 +2634,26 @@
     })
     : null;
 
+  function attachDirectReelVideoController(video) {
+    if (!video || !video.isConnected || video._hasCustomController) return;
+    if (!video._igtDirectControllerReadyHandler) {
+      video._igtDirectControllerReadyHandler = () => {
+        if (video.isConnected && !video._hasCustomController) attachVideoController(video);
+      };
+      ['loadedmetadata', 'loadeddata', 'canplay', 'playing'].forEach(eventName => {
+        video.addEventListener(eventName, video._igtDirectControllerReadyHandler);
+      });
+    }
+
+    attachVideoController(video);
+    if (!video._hasCustomController && !video._igtDirectControllerRetryTimer) {
+      video._igtDirectControllerRetryTimer = setTimeout(() => {
+        video._igtDirectControllerRetryTimer = null;
+        if (video.isConnected && !video._hasCustomController) attachVideoController(video);
+      }, 250);
+    }
+  }
+
   function scanAndAttachVideoControllers() {
     if (window.location.pathname.includes('/stories/')) {
       return;
@@ -2528,6 +2661,7 @@
 
     hideNativeAudioWidgets();
 
+    const isDirectReelPage = /^\/reels?\//.test(window.location.pathname);
     const videos = document.querySelectorAll('video');
     for (let i = 0; i < videos.length; i++) {
       const video = videos[i];
@@ -2535,13 +2669,18 @@
         if (video._hasCustomController && !video.isConnected) {
           detachVideoController(video);
         }
+        if (isDirectReelPage && video.isConnected && !video._hasCustomController) {
+          attachDirectReelVideoController(video);
+        }
         continue;
       }
 
-      if (video.closest('header') || video.closest('nav') || video.closest('aside') || isStudioOrModalVideo(video)) continue;
+      if ((!isDirectReelPage && (video.closest('header') || video.closest('nav') || video.closest('aside'))) || isStudioOrModalVideo(video)) continue;
 
       video._isObservedByController = true;
-      if (videoIntersectionObserver) {
+      if (isDirectReelPage) {
+        attachDirectReelVideoController(video);
+      } else if (videoIntersectionObserver) {
         videoIntersectionObserver.observe(video);
       } else {
         attachVideoController(video);
@@ -2914,20 +3053,32 @@
 
   document.addEventListener('playing', (e) => {
     if (e.target && e.target.tagName === 'VIDEO') {
-      ensureVideoUnmuted(e.target);
+      ensureVideoUnmuted(e.target, true);
     }
   }, { capture: true, passive: true });
 
+  // Instagram đôi khi mute lại video khi chuyển Reel; khôi phục âm thanh đang có chủ đích
+  // trên video đã chạy, đồng thời không can thiệp nếu người dùng đã tự mute video đó.
+  document.addEventListener('volumechange', (e) => {
+    const video = e.target;
+    if (!isSoundSessionActive || !video || video.tagName !== 'VIDEO' || isStoryOrHighlightVideo(video) || video.paused || video._userMuted || !video._igtAudioIntent) return;
+    ensureVideoUnmuted(video, true);
+  }, { capture: true, passive: true });
+
   // Đảm bảo kích hoạt âm thanh ngay khi người dùng tương tác lần đầu trên trang
-  const onFirstUserGesture = () => {
+  const onUserGesture = (event) => {
+    const target = event?.target;
+    if (isSoundSessionActive && !target?.closest?.('.ig-video-controller')) {
+      preparePreloadedReelAudio();
+    }
     document.querySelectorAll('video').forEach(vid => {
       if (!vid.paused && !vid._userMuted) {
         ensureVideoUnmuted(vid);
       }
     });
   };
-  window.addEventListener('pointerdown', onFirstUserGesture, { once: true, passive: true });
-  window.addEventListener('keydown', onFirstUserGesture, { once: true, passive: true });
+  window.addEventListener('pointerdown', onUserGesture, { capture: true, passive: true });
+  window.addEventListener('keydown', onUserGesture, { capture: true, passive: true });
 
   // --- 7.2. DOWNLOAD CHO INSTAGRAM STORIES ---
   function getBestImageUrl(img) {
@@ -4796,15 +4947,23 @@
         e.stopPropagation();
         hoveredVideo.volume = Math.min(1, (hoveredVideo.volume || 0) + 0.1);
         hoveredVideo.muted = false;
+        hoveredVideo._userMuted = false;
+        setVideoSoundSessionActive(true);
       } else if (e.code === 'ArrowDown') {
         e.preventDefault();
         e.stopPropagation();
         hoveredVideo.volume = Math.max(0, (hoveredVideo.volume || 0) - 0.1);
+        if (hoveredVideo.volume === 0) {
+          hoveredVideo.muted = true;
+          hoveredVideo._userMuted = true;
+          setVideoSoundSessionActive(false);
+        }
       } else if (e.code === 'KeyM') {
         e.preventDefault();
         e.stopPropagation();
         hoveredVideo.muted = !hoveredVideo.muted;
         hoveredVideo._userMuted = hoveredVideo.muted;
+        setVideoSoundSessionActive(!hoveredVideo.muted);
       }
     }
   });

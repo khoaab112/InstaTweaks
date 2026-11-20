@@ -2868,8 +2868,8 @@
                       </svg>
                     </span>
                     <div class="igt-v3-popover-box">
-                      <div class="igt-v3-popover-title">🎬 Làm Nét Video HD (1080p)</div>
-                      <div class="igt-v3-popover-desc">Ép phát luồng 1080p và làm nét viền thời gian thực (đã bật chế độ chống lag).</div>
+                      <div class="igt-v3-popover-title">🎬 Làm Nét Video</div>
+                      <div class="igt-v3-popover-desc">Tăng nét viền nhẹ cho video đang xem. Độ phân giải phát do Instagram lựa chọn.</div>
                       <div class="igt-v3-diag-box">
                         <div class="igt-v3-diag-row">
                           <span>💻 Cấu hình máy:</span>
@@ -2887,7 +2887,7 @@
                     </div>
                   </div>
                   <span class="igt-v3-feat-name">
-                    Làm Nét Video HD
+                    Làm Nét Video
                     <span id="igt-perf-badge-label" class="igt-perf-badge ${diag.level}" title="Chẩn đoán phần cứng & mạng">${diag.badge}</span>
                   </span>
                 </div>
@@ -2911,11 +2911,11 @@
                       </svg>
                     </span>
                     <div class="igt-v3-popover-box">
-                      <div class="igt-v3-popover-title">🔍 Xem Avatar Full HD (1080p)</div>
+                      <div class="igt-v3-popover-title">🔍 Xem AVT</div>
                       <div class="igt-v3-popover-desc">Nhấp đúp hoặc Alt + Click vào bất kỳ ảnh đại diện nào để mở popup xem ảnh gốc 1080p và tải về.</div>
                     </div>
                   </div>
-                  <span class="igt-v3-feat-name">Xem Avatar Full HD</span>
+                  <span class="igt-v3-feat-name">Xem AVT</span>
                 </div>
                 <label class="igt-v3-switch">
                   <input type="checkbox" id="igt-toggle-hd-avatar" ${v3Settings.hdAvatar ? 'checked' : ''} />

@@ -1862,9 +1862,7 @@
 
 /* --- 12. VIDEO SHARPNESS FILTER STYLE (CHUẨN HD SẮC NÉT & MỊN MƯỢT, KHÔNG VỠ HẠT) --- */
 video.igt-sharp-video {
-  filter: contrast(105%) saturate(103%) brightness(101%) !important;
-  image-rendering: -webkit-optimize-contrast !important;
-  image-rendering: auto !important;
+  filter: url("#igt-video-sharpen") contrast(105%) saturate(103%) brightness(101%) !important;
   transform: translateZ(0) !important;
   backface-visibility: hidden !important;
 }
