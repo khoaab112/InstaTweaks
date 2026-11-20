@@ -314,8 +314,10 @@
     eView.setUint16(20, 0, true);
     parts.push(eocd);
 
-    return new Blob(parts, { type: 'application/zip' });
+    const zipBlob = new Blob(parts, { type: 'application/zip' });
+    return zipBlob;
   }
+  window.__IGT_CREATE_ZIP__ = createZipBlob;
 
   function createZipBlob(files) {
     const fileRecords = [];
@@ -405,8 +407,10 @@
     }
     parts.push(eocd);
 
-    return new Blob(parts, { type: 'application/zip' });
+    const zipBlob = new Blob(parts, { type: 'application/zip' });
+    return zipBlob;
   }
+  window.__IGT_CREATE_ZIP__ = createZipBlob;
 
   // --- 2.2. DOWNLOAD HELPERS ---
   // Kiểm tra cấu trúc MP4 để phân biệt chính xác 100% giữa Video thật (>= 24 FPS) và Ảnh kèm nhạc (1 FPS)
@@ -1039,6 +1043,11 @@
   function verifyActiveAudioMatchesCurrentView() {
     if (!currentActive?.audio || currentActive.audio.paused) return;
 
+    if (document.getElementById('igt-studio-modal')) {
+      pauseCurrentAudio();
+      return;
+    }
+
     const path = window.location.pathname;
     const isDirectPost = path.includes('/p/');
     const isHome = path === '/';
@@ -1360,7 +1369,10 @@
             updatePausedUI
           };
         }).catch((err) => {
-          console.warn('[IG Music Player] Playback error:', err);
+          // Bỏ qua cảnh báo nếu là NotAllowedError (Chrome Autoplay Policy) hoặc AbortError (người dùng cuộn nhanh qua bài khác)
+          if (err && err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
+            console.warn('[IG Music Player] Playback notice:', err.message || err);
+          }
           updatePausedUI();
           const unlockAudio = () => {
             document.removeEventListener('click', unlockAudio);
@@ -1674,9 +1686,31 @@
   // --- 8. TỰ ĐỘNG BẬT TIẾNG & THANH ĐIỀU KHIỂN VIDEO (v2.5.0 - Tối ưu RAM & Hiệu năng) ---
   const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
+  function isStudioOrModalVideo(video) {
+    if (!video || !video.closest) return false;
+    return Boolean(
+      video.closest('#igt-studio-modal') ||
+      video.closest('.igt-studio-root') ||
+      video.closest('#igt-reorder-modal-overlay') ||
+      video.closest('.igt-reorder-overlay') ||
+      video.closest('.igt-reorder-card') ||
+      video.closest('.igt-reorder-modal') ||
+      video.closest('#igt-publish-modal-overlay') ||
+      video.closest('.igt-publish-modal-overlay') ||
+      video.closest('#igt-cull-modal-overlay') ||
+      video.closest('[id^="igt-"]') ||
+      video.closest('[class*="igt-"]') ||
+      video.classList?.contains('igt-studio-active-media') ||
+      video.classList?.contains('igt-card-hover-preview')
+    );
+  }
+
   function ensureVideoUnmuted(video) {
-    if (config.autoUnmute === false) return;
     if (!video || video._userMuted) return;
+    if (isStudioOrModalVideo(video)) {
+      return; // Tuyệt đối không can thiệp vào video/live photo bên trong InstaTweaks Studio hoặc Modal Sắp xếp slide
+    }
+    if (config.autoUnmute === false) return;
 
     const targetVolume = (typeof config.volume === 'number' && config.volume > 0) ? config.volume : 0.8;
 
@@ -1699,7 +1733,7 @@
   }
 
   function findVideoContainer(video) {
-    if (!video) return null;
+    if (!video || isStudioOrModalVideo(video)) return null;
     // Đi tìm khung chứa bao quát cả video và các lớp overlay/nút bấm của Instagram
     let cur = video.parentElement;
     let best = video.parentElement;
@@ -1822,7 +1856,7 @@
     const w = video.offsetWidth || video.videoWidth || 0;
     const h = video.offsetHeight || video.videoHeight || 0;
     if (w < 100 || h < 100) return;
-    if (video.closest('header') || video.closest('nav') || video.closest('aside')) return;
+    if (video.closest('header') || video.closest('nav') || video.closest('aside') || isStudioOrModalVideo(video)) return;
 
     const container = findVideoContainer(video);
     if (!container) return;
@@ -2504,7 +2538,7 @@
         continue;
       }
 
-      if (video.closest('header') || video.closest('nav') || video.closest('aside')) continue;
+      if (video.closest('header') || video.closest('nav') || video.closest('aside') || isStudioOrModalVideo(video)) continue;
 
       video._isObservedByController = true;
       if (videoIntersectionObserver) {
@@ -3356,9 +3390,19 @@
   }
 
   function findStoryControlsContainer() {
+    // Tuyệt đối không gắn nút download Story vào bên trong InstaTweaks Studio hoặc bất kỳ Modal nào của tiện ích
+    if (document.getElementById('igt-studio-modal') ||
+        document.getElementById('igt-reorder-modal-overlay') ||
+        document.getElementById('igt-publish-modal-overlay') ||
+        document.querySelector('.igt-reorder-overlay') ||
+        document.querySelector('.igt-publish-modal-overlay')) {
+      return null;
+    }
+
     const allButtons = Array.from(document.querySelectorAll('header button, div[role="dialog"] button, section button, button, div[role="button"]'))
       .filter(btn => {
         if (btn.classList.contains('ig-story-download-btn')) return false;
+        if (btn.closest('[id^="igt-"]') || btn.closest('[class*="igt-"]')) return false;
         const rect = btn.getBoundingClientRect();
         // Chỉ lấy các nút thuộc Story đang hiển thị trực tiếp trên màn hình (loại bỏ story tải ngầm ngoài mép trái/phải)
         const inTopHeader = rect.top >= 0 && rect.top < 220;

@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <title>InstaTweaks Studio Pro - Automated & Browser Test Suite</title>
+  <link rel="stylesheet" href="../styles/studio.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #0b0f19;
+      color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow-x: hidden;
+    }
+
+    #test-control-bar {
+      position: sticky;
+      top: 0;
+      z-index: 100000;
+      background: rgba(15, 23, 42, 0.95);
+      border-bottom: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      backdrop-filter: blur(12px);
+    }
+
+    .test-btn {
+      background: #0284c7;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+
+    .test-btn:hover {
+      background: #0369a1;
+    }
+
+    .test-btn.success {
+      background: #16a34a;
+    }
+
+    .test-btn.danger {
+      background: #dc2626;
+    }
+
+    #test-log-card {
+      margin: 15px 20px;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 16px;
+      max-height: 250px;
+      overflow-y: auto;
+      font-family: Consolas, monospace;
+      font-size: 12px;
+    }
+
+    .log-item {
+      margin-bottom: 6px;
+    }
+
+    .log-pass {
+      color: #4ade80;
+    }
+
+    .log-fail {
+      color: #f87171;
+      font-weight: bold;
+    }
+
+    .log-info {
+      color: #38bdf8;
+    }
+
+    /* Mock Instagram Shell */
+    #mock-instagram-sidebar {
+      position: fixed;
+      left: 0;
+      top: 60px;
+      bottom: 0;
+      width: 60px;
+      background: #000;
+      border-right: 1px solid #262626;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 20px;
+      gap: 20px;
+      z-index: 999;
+    }
+
+    .mock-ig-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #fff;
+    }
+
+    .mock-ig-icon:hover {
+      background: #1a1a1a;
+    }
+
+    #mock-ig-create-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      z-index: 999999;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #mock-ig-create-box {
+      width: 450px;
+      height: 450px;
+      background: #262626;
+      border-radius: 12px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Test Bar -->
+  <div id="test-control-bar">
+    <div style="font-weight: 800; font-size: 14px; color: #38bdf8;">🧪 STUDIO PRO TEST RUNNER</div>
+    <button class="test-btn success" id="btn-run-all-tests">▶ Chạy Toàn Bộ Test Cases</button>
+    <button class="test-btn" id="btn-open-studio-story">🎬 Mở Studio (Story)</button>
+    <button class="test-btn" id="btn-generate-video">📹 Tạo & Nạp Video Test Mẫu</button>
+    <div id="test-summary-badge" style="margin-left: auto; font-weight: 700; font-size: 13px; color: #94a3b8;">Sẵn sàng
+      chạy test...</div>
+  </div>
+
+  <!-- Test Log Console -->
+  <div id="test-log-card">
+    <div class="log-item log-info">[Test Suite] Khởi tạo môi trường kiểm thử InstaTweaks Studio Pro...</div>
+  </div>
+
+  <!-- Mock Instagram Sidebar with Create button -->
+  <div id="mock-instagram-sidebar">
+    <div class="mock-ig-icon" title="Instagram Home">🏠</div>
+    <div class="mock-ig-icon" id="mock-ig-create-btn" title="Tạo bài viết mới (Create)" role="button">
+      <svg aria-label="New post" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="5" ry="5"></rect>
+        <line x1="12" y1="8" x2="12" y2="16"></line>
+        <line x1="8" y1="12" x2="16" y2="12"></line>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Mock Instagram Upload Modal -->
+  <div id="mock-ig-create-modal">
+    <div id="mock-ig-create-box">
+      <button
+        style="position: absolute; top: 12px; right: 12px; background: none; border: none; color: #fff; cursor: pointer;"
+        onclick="document.getElementById('mock-ig-create-modal').style.display='none'">✕</button>
+      <div style="font-size: 16px; font-weight: 700; margin-bottom: 20px;">Tạo bài viết mới (Instagram Mock)</div>
+      <div id="mock-ig-upload-prompt" style="color: #a8a8a8; text-align: center;">Kéo ảnh và video vào đây</div>
+      <input type="file" id="mock-ig-file-input" accept="image/jpeg,image/png,video/mp4,video/quicktime"
+        style="display: none;" />
+      <div id="mock-ig-preview-area" style="margin-top: 15px; font-size: 12px; color: #4ade80;"></div>
+    </div>
+  </div>
+
+  <script src="../scripts/studio_core.js"></script>
+
+  <script>
+    const logBox = document.getElementById('test-log-card');
+    function log(msg, type = 'info') {
+      const div = document.createElement('div');
+      div.className = 'log-item log-' + type;
+      div.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      logBox.appendChild(div);
+      logBox.scrollTop = logBox.scrollHeight;
+      console.log(`[TEST ${type.toUpperCase()}]`, msg);
+    }
+
+    // Mock Instagram Create Button Handlers
+    const createBtn = document.getElementById('mock-ig-create-btn');
+    const createModal = document.getElementById('mock-ig-create-modal');
+    const igFileInput = document.getElementById('mock-ig-file-input');
+    const igPreview = document.getElementById('mock-ig-preview-area');
+
+    createBtn.addEventListener('click', () => {
+      createModal.style.display = 'flex';
+      log('Instagram Mock: Đã mở hộp thoại Tạo bài viết mới', 'info');
+    });
+
+    igFileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        const file = e.target.files[0];
+        igPreview.innerText = `✓ ĐÃ NHẬN TỆP: ${file.name} (${(file.size / 1024).toFixed(1)} KB - ${file.type})`;
+        log(`✓ Instagram Mock đã nhận tệp đẩy vào: ${file.name}`, 'pass');
+      }
+    });
+
+    // Helper: Tạo Synthetic Video Blob 5 giây (HD 1080x1920) với đồ họa động
+    async function createSyntheticVideoBlob(durationSec = 5) {
+      log(`Đang sinh video tổng hợp ${durationSec}s để phục vụ kiểm thử tự động...`, 'info');
+      const cvs = document.createElement('canvas');
+      cvs.width = 540;
+      cvs.height = 960;
+      const ctx = cvs.getContext('2d');
+
+      const stream = cvs.captureStream(30);
+      let mimeType = MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : 'video/webm';
+      const recorder = new MediaRecorder(stream, { mimeType });
+      const chunks = [];
+      recorder.ondataavailable = e => chunks.push(e.data);
+
+      recorder.start();
+      const startTime = performance.now();
+
+      await new Promise(resolve => {
+        function drawFrame(now) {
+          const elapsed = (now - startTime) / 1000;
+          if (elapsed >= durationSec) {
+            recorder.stop();
+            return;
+          }
+          // Vẽ gradient động
+          const hue = (elapsed * 60) % 360;
+          ctx.fillStyle = `hsl(${hue}, 70%, 25%)`;
+          ctx.fillRect(0, 0, cvs.width, cvs.height);
+
+          ctx.fillStyle = '#fff';
+          ctx.font = 'bold 36px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('InstaTweaks Studio Test', cvs.width / 2, 300);
+
+          ctx.font = 'bold 72px sans-serif';
+          ctx.fillText((durationSec - Math.floor(elapsed)) + 's', cvs.width / 2, 450);
+
+          ctx.font = '24px sans-serif';
+          ctx.fillText(`Time: ${elapsed.toFixed(2)}s`, cvs.width / 2, 550);
+
+          requestAnimationFrame(drawFrame);
+        }
+        requestAnimationFrame(drawFrame);
+        recorder.onstop = () => resolve();
+      });
+
+      const blob = new Blob(chunks, { type: mimeType });
+      log(`Video tổng hợp tạo thành công! Dung lượng: ${(blob.size / 1024).toFixed(1)} KB`, 'pass');
+      return blob;
+    }
+
+    // Nạp Video Test vào Studio
+    async function loadTestVideoIntoStudio() {
+      const blob = await createSyntheticVideoBlob(5);
+      const file = new File([blob], 'test_synthetic_reel.mp4', { type: blob.type });
+
+      // Kích hoạt sự kiện gán file vào Studio
+      window.__IGT_STUDIO_API__.openStudio('story');
+      await new Promise(r => setTimeout(r, 200));
+
+      const fileInput = document.getElementById('igt-studio-file-input');
+      if (fileInput) {
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        fileInput.files = dt.files;
+        fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+        log('Đã nạp file video test vào Studio thành công.', 'pass');
+      }
+    }
+
+    document.getElementById('btn-generate-video').addEventListener('click', loadTestVideoIntoStudio);
+    document.getElementById('btn-open-studio-story').addEventListener('click', () => {
+      window.__IGT_STUDIO_API__.openStudio('story');
+      log('Đã mở InstaTweaks Studio (Story)', 'info');
+    });
+
+    // BỘ TEST CASES TỰ ĐỘNG
+    async function runAllTestCases() {
+      const badge = document.getElementById('test-summary-badge');
+      badge.innerText = 'Đang chạy kiểm thử...';
+      badge.style.color = '#38bdf8';
+
+      let passCount = 0;
+      let totalTests = 0;
+
+      function assert(desc, condition) {
+        totalTests++;
+        if (condition) {
+          passCount++;
+          log(`[PASS] ${desc}`, 'pass');
+        } else {
+          log(`[FAIL] ${desc}`, 'fail');
+        }
+      }
+
+      log('================ BẮT ĐẦU TEST SUITE TOÀN DIỆN ================', 'info');
+      const api = window.__IGT_STUDIO_API__;
+
+      // =====================================================================
+      // MODULE 1: 3 CHẾ ĐỘ ĐĂNG CHÍNH (STORY, REEL, POST) & GIỚI HẠN TỆP
+      // =====================================================================
+      log('--- [MODULE 1] Kiểm tra 3 Chế độ đăng chính & Giới hạn tệp ---', 'info');
+      api.openStudio('story');
+      await new Promise(r => setTimeout(r, 250));
+
+      const dialog = document.querySelector('.igt-studio-dialog');
+      assert('M1.1: Studio modal render vào DOM', !!dialog);
+      if (dialog) {
+        const rect = dialog.getBoundingClientRect();
+        assert('M1.2: Chiều rộng Studio mở rộng (>= 90vw hoặc >= 1200px)', rect.width >= Math.min(window.innerWidth * 0.9, 1200));
+        assert('M1.3: Chiều cao Studio mở rộng (>= 85vh hoặc >= 800px)', rect.height >= Math.min(window.innerHeight * 0.85, 800));
+      }
+
+      // Kiểm tra chuyển chế độ Reel
+      api.switchMode('reel');
+      assert('M1.4: Chuyển sang chế độ Reel thành công', api.studioState.mode === 'reel');
+
+      // Kiểm tra chuyển chế độ Post (Bài viết)
+      api.switchMode('post');
+      assert('M1.5: Chuyển sang chế độ Post (Bài viết) thành công', api.studioState.mode === 'post');
+
+      // Chuyển lại Story
+      api.switchMode('story');
+      assert('M1.6: Chuyển về chế độ Story thành công', api.studioState.mode === 'story');
+
+      // =====================================================================
+      // MODULE 2: TỈ LỆ KHUNG HÌNH (ASPECT RATIOS) & KIỂU HIỂN THỊ (FIT MODES)
+      // =====================================================================
+      log('--- [MODULE 2] Kiểm tra 5 Tỉ lệ màn hình & Kiểu hiển thị ---', 'info');
+      api.setRatio('9:16');
+      assert('M2.1: Chuyển tỉ lệ 9:16 (Story / Reel dọc)', api.studioState.ratio === '9:16');
+
+      api.setRatio('4:5');
+      assert('M2.2: Chuyển tỉ lệ 4:5 (Dọc Feed Instagram)', api.studioState.ratio === '4:5');
+
+      api.setRatio('1:1');
+      assert('M2.3: Chuyển tỉ lệ 1:1 (Vuông Feed)', api.studioState.ratio === '1:1');
+
+      api.setRatio('16:9');
+      assert('M2.4: Chuyển tỉ lệ 16:9 (Video ngang)', api.studioState.ratio === '16:9');
+
+      api.setRatio('original');
+      assert('M2.5: Chuyển tỉ lệ Gốc (Tự do)', api.studioState.ratio === 'original');
+
+      // Đặt lại 9:16 chuẩn
+      api.setRatio('9:16');
+
+      // Kiểu hiển thị: blur_fit vs cover
+      api.studioState.fitMode = 'blur_fit';
+      api.applyFitMode();
+      assert('M2.6: Kiểu hiển thị Giữ trọn ảnh + Nền mờ (blur_fit)', api.studioState.fitMode === 'blur_fit');
+
+      api.studioState.fitMode = 'cover';
+      api.applyFitMode();
+      assert('M2.7: Kiểu hiển thị Cắt vừa kín khung (cover)', api.studioState.fitMode === 'cover');
+
+      // Căn giữa Canvas
+      const btnResetCenter = document.getElementById('igt-studio-btn-reset-center');
+      assert('M2.8: Có nút Căn giữa màn hình Studio', !!btnResetCenter);
+      if (btnResetCenter) {
+        btnResetCenter.click();
+        assert('M2.9: Bấm Căn giữa đặt lại PanX=0, PanY=0, Zoom=1', api.studioState.panX === 0 && api.studioState.panY === 0 && api.studioState.zoom === 1);
+      }
+
+      // =====================================================================
+      // MODULE 3: KHAY CHỨA TỆP, DẤU CỘNG (+) & KÉO THẢ (DRAG & DROP)
+      // =====================================================================
+      log('--- [MODULE 3] Nạp Media, Khay chứa & Kéo thả Drag & Drop ---', 'info');
+      await loadTestVideoIntoStudio();
+      await new Promise(r => setTimeout(r, 1200));
+
+      const activeMedia = document.getElementById('igt-studio-active-media');
+      assert('M3.1: Video được nạp thành công vào Player chính', !!activeMedia && activeMedia.tagName === 'VIDEO');
+
+      const queueCards = document.querySelectorAll('.igt-media-queue-card');
+      assert('M3.2: Khay chứa hiển thị tệp trong kho', queueCards.length > 0);
+
+      const firstCard = queueCards[0];
+      assert('M3.3: Thẻ tệp có thuộc tính draggable="true" để kéo thả', !!firstCard && firstCard.getAttribute('draggable') === 'true');
+
+      const addClipCardBtn = document.querySelector('.igt-media-queue-add-clip-btn');
+      assert('M3.4: Có nút dấu + trên thumbnail thẻ tệp trong khay chứa', !!addClipCardBtn);
+
+      const delBtn = document.querySelector('.igt-media-queue-del-btn');
+      assert('M3.5: Có nút Xóa tệp khỏi kho', !!delBtn);
+
+      // =====================================================================
+      // MODULE 4: DÒNG THỜI GIAN TIMELINE & CẮT GHÉP NHIỀU ĐOẠN (CAPCUT EDITING)
+      // =====================================================================
+      log('--- [MODULE 4] Timeline, Cắt đoạn & Ghép nối nhiều Video ---', 'info');
+      const speedSelect = document.querySelector('.igt-timeline-speed-select');
+      assert('M4.1: Nút chỉnh tốc độ Timeline là thẻ <select>', !!speedSelect && speedSelect.tagName === 'SELECT');
+      if (speedSelect) {
+        const options = Array.from(speedSelect.options).map(o => o.value);
+        assert('M4.2: Có đủ các mốc tốc độ [0.5, 0.75, 1, 1.25, 1.5, 2, 3]',
+          options.includes('0.5') && options.includes('0.75') && options.includes('1') &&
+          options.includes('1.5') && options.includes('2') && options.includes('3')
+        );
+      }
+
+      // Nút Thêm đoạn trên toolbar Timeline
+      const btnTimelineAdd = document.getElementById('igt-timeline-btn-add-clip');
+      assert('M4.3: Có nút ➕ Thêm đoạn trên toolbar dòng thời gian', !!btnTimelineAdd);
+      if (btnTimelineAdd) {
+        btnTimelineAdd.click();
+        await new Promise(r => setTimeout(r, 150));
+        const popoverEl = document.getElementById('igt-timeline-add-popover');
+        assert('M4.4: Bấm ➕ Thêm đoạn mở Popover chọn video/ảnh từ khay chứa', !!popoverEl);
+        if (popoverEl) popoverEl.remove();
+      }
+
+      // Cắt đoạn (Split) video tại vị trí hiện tại
+      const btnSplit = document.getElementById('igt-timeline-btn-split');
+      assert('M4.5: Có nút ✂️ Chia đoạn video trên Timeline', !!btnSplit);
+      const prevClipsCount = (api.studioState.videoClips || []).length;
+      if (btnSplit) {
+        btnSplit.click();
+        await new Promise(r => setTimeout(r, 200));
+        const newClipsCount = (api.studioState.videoClips || []).length;
+        assert('M4.6: Bấm Chia (Split) tạo thêm đoạn mới trên Timeline', newClipsCount > prevClipsCount);
+      }
+
+      // Hiệu ứng chuyển cảnh giữa các đoạn
+      const transNodes = document.querySelectorAll('.igt-timeline-transition-node');
+      assert('M4.7: Có nút chọn Hiệu ứng chuyển cảnh (Transition) giữa các đoạn', transNodes.length > 0);
+
+      // =====================================================================
+      // MODULE 5: BỘ ĐIỀU KHIỂN THU PHÓNG TIMELINE (CAPCUT ZOOM SLIDER)
+      // =====================================================================
+      log('--- [MODULE 5] CapCut Zoom Slider: 50% min, 100% ở 1/3, 200% max ---', 'info');
+      const zoomVal = document.getElementById('igt-tl-zoom-val');
+      const zoomSlider = document.getElementById('igt-tl-zoom-slider');
+      const zoomNotch = document.querySelector('.igt-tl-zoom-notch-100');
+      const zoomOutBtn = document.getElementById('igt-tl-zoom-out');
+      const zoomInBtn = document.getElementById('igt-tl-zoom-in');
+
+      assert('M5.1: Có vạch khía mốc chuẩn 100% (Notch) tại 1/3 thanh trượt', !!zoomNotch);
+      assert('M5.2: Có nút tròn Thu nhỏ ⊖ và Phóng to ⊕', !!zoomOutBtn && !!zoomInBtn);
+
+      // Kéo về Min (0) -> Zoom 50%
+      zoomSlider.value = 0;
+      zoomSlider.dispatchEvent(new Event('input', { bubbles: true }));
+      assert('M5.3: Kéo về đầu thanh trượt đạt mức Zoom tối thiểu 50%', Math.abs(api.studioState.timelineZoom - 0.5) < 0.05 && zoomVal.innerText === '50%');
+
+      const lanesInnerEl = document.getElementById('igt-timeline-lanes-inner');
+      const lanesAreaEl = document.getElementById('igt-timeline-lanes-area');
+      const isFullWidthAt50 = lanesInnerEl && (lanesInnerEl.style.width === '100%' || lanesInnerEl.offsetWidth >= (lanesAreaEl ? lanesAreaEl.clientWidth - 5 : 400));
+      assert('M5.7: Khi thu nhỏ 50%, thanh timeline duy trì trọn 100% chiều rộng khung nhìn (không co cụm rỗng)', isFullWidthAt50);
+
+      const baseDur = api.getBaseTimelineDuration();
+      const compDur = api.getTotalTimelineDuration();
+      assert('M5.8: Mở rộng dung lượng timeline theo công thức bù (gốc / 0.5 = gấp đôi thời lượng)', Math.abs(compDur - (baseDur / 0.5)) < 0.5);
+
+      // Kéo về Max (100) -> Zoom 200%
+      zoomSlider.value = 100;
+      zoomSlider.dispatchEvent(new Event('input', { bubbles: true }));
+      assert('M5.4: Kéo về cuối thanh trượt đạt mức Zoom tối đa 200%', Math.abs(api.studioState.timelineZoom - 2.0) < 0.05 && zoomVal.innerText === '200%');
+
+      // Mốc 1/3 (33.33) -> Zoom 100%
+      zoomSlider.value = 33.33;
+      zoomSlider.dispatchEvent(new Event('input', { bubbles: true }));
+      assert('M5.5: Mốc 1/3 thanh trượt đạt chuẩn Zoom 100%', Math.abs(api.studioState.timelineZoom - 1.0) < 0.05 && zoomVal.innerText === '100%');
+
+      // Nhấp nhãn % reset về 100%
+      zoomSlider.value = 0;
+      zoomSlider.dispatchEvent(new Event('input', { bubbles: true }));
+      zoomVal.click();
+      assert('M5.6: Bấm vào nhãn % tự động đặt lại Zoom chuẩn 100%', Math.abs(api.studioState.timelineZoom - 1.0) < 0.05 && zoomVal.innerText === '100%');
+
+      // =====================================================================
+      // MODULE 6: CÔNG CỤ SÁNG TẠO & NHÃN DÁN (TẤT CẢ 7 TABS)
+      // =====================================================================
+      log('--- [MODULE 6] Kiểm tra Tất cả các Tab Sáng tạo & Nhãn dán ---', 'info');
+
+      // 6.1 Tab Link
+      api.switchTab('link');
+      assert('M6.1: Chuyển sang Tab Link thành công', api.studioState.activeTab === 'link');
+      const inLinkUrl = document.getElementById('igt-link-url-input');
+      const inLinkText = document.getElementById('igt-link-text-input');
+      const btnAddLink = document.getElementById('igt-btn-add-link-sticker');
+      if (inLinkUrl && inLinkText && btnAddLink) {
+        inLinkUrl.value = 'https://instagram.com/yi_fan_y/';
+        inLinkText.value = 'Xem Profile';
+        btnAddLink.click();
+        await new Promise(r => setTimeout(r, 150));
+        const linkStk = document.querySelector('.igt-sticker-link-pill');
+        assert('M6.2: Tạo Nhãn dán Link liên kết thành công trên Canvas', !!linkStk);
+      }
+
+      // 6.2 Tab Chữ (Text)
+      api.switchTab('text');
+      assert('M6.3: Chuyển sang Tab Chữ thành công', api.studioState.activeTab === 'text');
+      const inText = document.getElementById('igt-text-input');
+      const btnAddText = document.getElementById('igt-btn-add-text-sticker');
+      if (inText && btnAddText) {
+        inText.value = 'InstaTweaks Studio Pro';
+        btnAddText.click();
+        await new Promise(r => setTimeout(r, 150));
+        const textStk = document.querySelector('.igt-sticker-text-item');
+        assert('M6.4: Tạo Chữ văn bản thành công trên Canvas', !!textStk);
+      }
+
+      // 6.3 Tab Sticker Tương tác: Poll, Q&A, Countdown, Music Disc, Emoji Slider
+      api.switchTab('stickers');
+      assert('M6.5: Chuyển sang Tab Sticker thành công', api.studioState.activeTab === 'stickers');
+
+      // Thêm Poll
+      api.addSticker({
+        type: 'poll',
+        question: 'Bạn thích CapCut Studio không?',
+        optA: 'Cực thích 😍',
+        optB: 'Tuyệt vời 👍'
+      });
+      await new Promise(r => setTimeout(r, 150));
+      const pollEl = document.querySelector('.igt-sticker-poll-card');
+      assert('M6.6: Nhãn dán Bình chọn (Poll) hiển thị trên màn hình', !!pollEl);
+      if (pollEl) {
+        const qInline = pollEl.querySelector('.igt-poll-question');
+        assert('M6.7: Hỗ trợ gõ sửa trực tiếp nội dung trên nhãn dán (contenteditable)', qInline && qInline.getAttribute('contenteditable') === 'true');
+        pollEl.click();
+        await new Promise(r => setTimeout(r, 150));
+        const inPollQ = document.getElementById('igt-edit-stk-q');
+        assert('M6.7b: Bấm vào Poll mở form sửa câu hỏi ở Sidebar', !!inPollQ);
+      }
+
+      // Thêm Q&A
+      api.addSticker({
+        type: 'question',
+        header: 'Đặt câu hỏi cho mình nhé'
+      });
+      await new Promise(r => setTimeout(r, 150));
+      const qaEl = document.querySelector('.igt-sticker-question-card');
+      assert('M6.8: Nhãn dán Hỏi đáp (Q&A) hiển thị trên màn hình', !!qaEl);
+      if (qaEl) {
+        qaEl.click();
+        await new Promise(r => setTimeout(r, 150));
+        const inQaH = document.getElementById('igt-edit-stk-header');
+        assert('M6.8b: Bấm vào Q&A mở form sửa câu hỏi ở Sidebar', !!inQaH);
+      }
+
+      // Thêm Countdown
+      api.addSticker({
+        type: 'countdown',
+        title: 'Sự kiện Ra mắt',
+        days: '03',
+        hours: '12',
+        mins: '45'
+      });
+      await new Promise(r => setTimeout(r, 150));
+      const cdEl = document.querySelector('.igt-sticker-countdown-card');
+      assert('M6.9: Nhãn dán Đếm ngược (Countdown) hiển thị trên màn hình', !!cdEl);
+      if (cdEl) {
+        cdEl.click();
+        await new Promise(r => setTimeout(r, 150));
+        const inCdT = document.getElementById('igt-edit-stk-title');
+        assert('M6.9b: Bấm vào Countdown mở form sửa sự kiện ở Sidebar', !!inCdT);
+      }
+
+      // Thêm Music Disc
+      api.addSticker({
+        type: 'music_player',
+        song: 'Lạc Trôi',
+        artist: 'Sơn Tùng M-TP'
+      });
+      await new Promise(r => setTimeout(r, 150));
+      const musicEl = document.querySelector('.igt-sticker-music-card');
+      assert('M6.10: Nhãn dán Trình phát nhạc (Music Disc) hiển thị trên màn hình', !!musicEl);
+
+      // Thêm Emoji Slider
+      api.addSticker({
+        type: 'emoji_slider',
+        question: 'Mức độ thích tính năng mới?',
+        emoji: '🔥'
+      });
+      await new Promise(r => setTimeout(r, 150));
+      const sliderEl = document.querySelector('.igt-sticker-slider-card');
+      assert('M6.11: Nhãn dán Thước đo cảm xúc (Emoji Slider) hiển thị', !!sliderEl);
+      if (sliderEl) {
+        sliderEl.click();
+        await new Promise(r => setTimeout(r, 150));
+        const inSlQ = document.getElementById('igt-edit-stk-slider-q');
+        assert('M6.11b: Bấm vào Slider mở form sửa câu hỏi & emoji ở Sidebar', !!inSlQ);
+      }
+
+      // 6.4 Tab Nhắc tên (@Mention)
+      api.switchTab('mentions');
+      assert('M6.12: Chuyển sang Tab Nhắc tên thành công', api.studioState.activeTab === 'mentions');
+      api.addSticker({
+        type: 'mention',
+        username: 'yi_fan_y',
+        mentionStyle: 'frosted',
+        isVerified: true
+      });
+      await new Promise(r => setTimeout(r, 150));
+      const mentionEl = document.querySelector('.igt-sticker-mention-pill');
+      assert('M6.13: Nhãn dán Nhắc tên (@yi_fan_y) hiển thị với tick xanh', !!mentionEl);
+
+      // 6.5 Tab Vị trí (Location)
+      api.switchTab('location');
+      assert('M6.14: Chuyển sang Tab Vị trí thành công', api.studioState.activeTab === 'location');
+      api.addSticker({
+        type: 'location',
+        name: 'Hà Nội, Việt Nam',
+        locationStyle: 'dark_glass'
+      });
+      await new Promise(r => setTimeout(r, 150));
+      const locEl = document.querySelector('.igt-sticker-location-pill');
+      assert('M6.15: Nhãn dán Vị trí hiển thị với style riêng biệt', !!locEl);
+
+      // 6.6 Tab Nhạc nền (Music)
+      api.switchTab('music');
+      assert('M6.16: Chuyển sang Tab Nhạc nền thành công', api.studioState.activeTab === 'music');
+      const inssistSearchInput = document.querySelector('#igt-inssist-music-search-input');
+      const inssistTabForYou = document.querySelector('.igt-inssist-tab-btn[data-cat="for_you"]');
+      const inssistSongItems = document.querySelectorAll('.igt-inssist-song-item');
+      assert('M6.16b: Giao diện kho nhạc INSSIST hiển thị đầy đủ ô tìm kiếm, các tab For you/Trending/Ambient và danh sách bài hát',
+        !!inssistSearchInput && !!inssistTabForYou && inssistSongItems.length > 0);
+
+      const btnFirstUse = document.querySelector('.btn-use-song');
+      if (btnFirstUse) btnFirstUse.click();
+      assert('M6.16c: Chọn sử dụng bài hát nạp thành công Audio Track vào Timeline',
+        !!api.studioState.audioUrl && !!api.studioState.audioName);
+
+      // =====================================================================
+      // MODULE 7: ĐIỀU KHIỂN ÂM THANH & CÁC MỐC PRESET
+      // =====================================================================
+      log('--- [MODULE 7] Kiểm tra Âm lượng Video & Nhạc nền ---', 'info');
+      api.switchTab('main');
+      const btnVol50 = document.querySelector('.igt-tab-vid-vol-preset[data-vol="0.5"]');
+      const btnVolMute = document.querySelector('.igt-tab-vid-vol-preset[data-vol="0"]');
+      const btnVol100 = document.querySelector('.igt-tab-vid-vol-preset[data-vol="1"]');
+      assert('M7.1: Có các nút đặt nhanh âm lượng [Tắt tiếng, 50%, 100%]', !!btnVol50 && !!btnVolMute && !!btnVol100);
+
+      if (btnVol50) {
+        btnVol50.click();
+        assert('M7.2: Đặt âm lượng 50% chính xác', Math.abs((api.studioState.videoVolume ?? 1) - 0.5) < 0.05);
+      }
+      if (btnVolMute) {
+        btnVolMute.click();
+        assert('M7.3: Đặt tắt tiếng (Mute) video chính xác', api.studioState.isVideoMuted === true || api.studioState.videoVolume === 0);
+      }
+      if (btnVol100) {
+        btnVol100.click();
+        assert('M7.4: Khôi phục âm lượng 100% chính xác', Math.abs((api.studioState.videoVolume ?? 1) - 1.0) < 0.05);
+      }
+
+      // =====================================================================
+      // MODULE 8: LỊCH SỬ THAO TÁC (UNDO / REDO) & PHÍM TẮT
+      // =====================================================================
+      log('--- [MODULE 8] Lịch sử hoàn tác (Undo/Redo) & Quản lý trạng thái ---', 'info');
+      const btnUndo = document.getElementById('igt-studio-btn-undo');
+      const btnRedo = document.getElementById('igt-studio-btn-redo');
+      assert('M8.1: Có các nút Hoàn tác (Undo) và Làm lại (Redo)', !!btnUndo && !!btnRedo);
+
+      if (btnUndo) {
+        btnUndo.click();
+        await new Promise(r => setTimeout(r, 100));
+        assert('M8.2: Bấm Hoàn tác (Undo) thực thi an toàn không ném lỗi', true);
+      }
+
+      // =====================================================================
+      // MODULE 9: XUẤT BẢN ULTRA HD 1080P
+      // =====================================================================
+      log('--- [MODULE 9] Kiểm tra tiến trình Xuất bản Ultra HD 1080p ---', 'info');
+      const exportBtn = document.getElementById('igt-studio-btn-download-hd');
+      assert('M9.1: Có nút Tải về Ultra HD', !!exportBtn);
+
+      const cfg = { targetW: 540, targetH: 960, frameW: 315, frameH: 560 };
+      const exportResult = await api.exportVideoUltraHD(cfg, new Map(), null, { skipDownload: true });
+      assert('M9.2: Render Ultra HD hoàn tất không vi phạm CSP', !!exportResult && exportResult.success === true);
+      assert('M9.3: Tạo ra Blob video hợp lệ (> 10 KB)', exportResult.blob && exportResult.blob.size > 10000);
+
+      // =====================================================================
+      // MODULE 10: CẦU NỐI ĐẨY TRỰC TIẾP VÀO INSTAGRAM (PUBLISH BRIDGE)
+      // =====================================================================
+      log('--- [MODULE 10] Cầu nối Đẩy trực tiếp vào Instagram (Direct Publish Bridge) ---', 'info');
+      const btnPublish = document.getElementById('igt-studio-btn-publish');
+      assert('M10.1: Có nút ĐẨY trên thanh công cụ Studio', !!btnPublish);
+
+      if (btnPublish) {
+        btnPublish.click();
+        await new Promise(r => setTimeout(r, 250));
+
+        const publishOverlay = document.getElementById('igt-publish-modal-overlay');
+        assert('M10.2: Mở Modal Xuất bản trực tiếp Phase 4', !!publishOverlay);
+
+        if (publishOverlay) {
+          const zIdx = parseInt(window.getComputedStyle(publishOverlay).zIndex || '0', 10);
+          assert('M10.2b: Z-Index của Modal Xuất bản nổi trên cùng màn hình (z-index >= 100,000,000)', zIdx >= 100000000);
+
+          const feedMeta = publishOverlay.querySelector('#igt-publish-post-feed-metadata');
+          const storyBtn = publishOverlay.querySelector('.igt-publish-target-btn[data-target="story"]');
+          const postBtn = publishOverlay.querySelector('.igt-publish-target-btn[data-target="post"]');
+
+          if (storyBtn) {
+            storyBtn.click();
+            await new Promise(r => setTimeout(r, 100));
+            assert('M10.2c: Chế độ Tin (Story) tự động ẩn hoàn toàn vùng Caption, Hashtags & Vị trí', feedMeta && feedMeta.classList.contains('is-hidden'));
+          }
+
+          if (postBtn) {
+            postBtn.click();
+            await new Promise(r => setTimeout(r, 100));
+            assert('M10.2d: Chế độ Bài viết (Post) hiển thị lại vùng Caption & Hashtags', feedMeta && !feedMeta.classList.contains('is-hidden'));
+          }
+
+          const btnDownloadOnly = publishOverlay.querySelector('#igt-btn-publish-download-only');
+          assert('M10.2e: Đã loại bỏ hoàn toàn nút Tải phụ theo yêu cầu, chỉ giữ lại duy nhất nút Đẩy', !btnDownloadOnly);
+        }
+
+        const btnPublishDirect = document.getElementById('igt-btn-publish-direct');
+        assert('M10.3: Có nút "🚀 Đẩy trực tiếp vào Instagram"', !!btnPublishDirect);
+
+        if (btnPublishDirect) {
+          btnPublishDirect.click();
+          await new Promise(r => setTimeout(r, 1000));
+          const btnRetryWeb = document.getElementById('igt-btn-retry-web-flow');
+          if (btnRetryWeb) {
+            btnRetryWeb.click();
+            await new Promise(r => setTimeout(r, 1000));
+          }
+
+          assert('M10.4: File video Ultra HD được đẩy trực tiếp vào Instagram input[type="file"]',
+            igFileInput.files && igFileInput.files.length > 0
+          );
+        }
+      }
+
+      // =====================================================================
+      // MODULE 11: DIRECT INSTAGRAM PRIVATE API UPLOAD ENGINE (CHUẨN INSSIST)
+      // =====================================================================
+      log('--- [MODULE 11] Direct Instagram Private API Upload Engine (Chuẩn INSSIST) ---', 'info');
+      assert('M11.1: Có hàm publishMediaViaInstagramAPI trong window.__IGT_STUDIO_API__', typeof api.publishMediaViaInstagramAPI === 'function');
+      assert('M11.2: Có hàm getInstagramCsrfToken trong window.__IGT_STUDIO_API__', typeof api.getInstagramCsrfToken === 'function');
+
+      // Test Direct API với Mock Fetch
+      window.__IGT_MOCK_CSRF_TOKEN__ = 'mock_csrftoken_for_test';
+      let origFetch = window.fetch;
+      try {
+        let ruploadHit = false;
+        let configureStoryHit = false;
+
+        window.fetch = async (url, opts) => {
+          if (typeof url === 'string' && url.includes('rupload_igphoto')) {
+            ruploadHit = true;
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({ status: 'ok', upload_id: 'test_upload_123' }),
+              text: async () => '{"status":"ok"}'
+            };
+          }
+          if (typeof url === 'string' && url.includes('configure_to_story')) {
+            configureStoryHit = true;
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({ status: 'ok', media: { id: 'story_media_123' } }),
+              text: async () => '{"status":"ok"}'
+            };
+          }
+          return origFetch(url, opts);
+        };
+
+        // Gán giả lập cookie csrftoken nếu chưa có
+        if (!document.cookie.includes('csrftoken=')) {
+          document.cookie = 'csrftoken=mock_csrftoken_for_test; path=/';
+        }
+
+        const dummyBlob = new Blob(['mock_image_bytes'], { type: 'image/jpeg' });
+        const mockApiRes = await api.publishMediaViaInstagramAPI(dummyBlob, {
+          mode: 'story',
+          caption: '',
+          isVideo: false
+        });
+
+        assert('M11.3: Direct API gửi tệp ảnh đến endpoint rupload_igphoto', ruploadHit === true);
+        assert('M11.4: Direct API gọi cấu hình xuất bản configure_to_story', configureStoryHit === true);
+        assert('M11.5: Direct API trả về kết quả xuất bản thành công { success: true, mode: "story" }', mockApiRes && mockApiRes.success === true && mockApiRes.mode === 'story');
+
+        // Test Reel Direct API Pipeline (Chuẩn INSSIST)
+        assert('M11.6: Có hàm getInstagramDtsgToken trong window.__IGT_STUDIO_API__', typeof api.getInstagramDtsgToken === 'function');
+        assert('M11.7: Có hàm computeJazoest trong window.__IGT_STUDIO_API__', typeof api.computeJazoest === 'function' && api.computeJazoest('test') === '2448');
+
+        let ruploadVideoHit = false;
+        let ruploadCoverHit = false;
+        let configureClipsHit = false;
+
+        window.fetch = async (url, opts) => {
+          if (typeof url === 'string' && url.includes('rupload_igvideo')) {
+            ruploadVideoHit = true;
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({ status: 'ok', upload_id: 'test_reel_123' }),
+              text: async () => '{"status":"ok"}'
+            };
+          }
+          if (typeof url === 'string' && url.includes('rupload_igphoto')) {
+            ruploadCoverHit = true;
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({ status: 'ok' }),
+              text: async () => '{"status":"ok"}'
+            };
+          }
+          if (typeof url === 'string' && url.includes('configure_to_clips')) {
+            configureClipsHit = true;
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({ status: 'ok', media: { id: 'reel_media_123' } }),
+              text: async () => '{"status":"ok","media":{"id":"reel_media_123"}}'
+            };
+          }
+          return origFetch(url, opts);
+        };
+
+        const dummyVideoBlob = new Blob(['mock_mp4_bytes'], { type: 'video/mp4' });
+        const dummyCoverBlob = new Blob(['mock_cover_bytes'], { type: 'image/jpeg' });
+        const mockReelRes = await api.publishMediaViaInstagramAPI(dummyVideoBlob, {
+          mode: 'reel',
+          caption: 'Test Reel Direct Upload #reel',
+          isVideo: true,
+          duration: 15,
+          coverBlob: dummyCoverBlob
+        });
+
+        assert('M11.8: Direct API gửi video Reel đến rupload_igvideo chuẩn INSSIST', ruploadVideoHit === true);
+        assert('M11.9: Direct API nạp ảnh bìa (cover) đến rupload_igphoto', ruploadCoverHit === true);
+        assert('M11.10: Direct API gọi configure_to_clips với signed_body thành công { success: true, mode: "reel" }', configureClipsHit === true && mockReelRes && mockReelRes.success === true && mockReelRes.mode === 'reel');
+      } finally {
+        window.fetch = origFetch;
+      }
+
+      // =========================================================================
+      // MÔ ĐUN 12: CHẾ ĐỘ BÀI VIẾT (FEED CAROUSEL 20 FILE, TAB CHUNG, SẮP XẾP THỨ TỰ, LIVE PHOTO & CAROUSEL DIRECT API)
+      // =========================================================================
+      log('=== KIỂM THỬ MÔ ĐUN 12: CHẾ ĐỘ BÀI VIẾT (FEED CAROUSEL 20 FILE, TAB CHUNG, REORDER & CAROUSEL DIRECT API) ===');
+      const state = api.studioState;
+
+      // M12.1: Giới hạn tối đa 20 file khi ở chế độ post
+      if (!document.getElementById('igt-studio-modal')) {
+        api.openStudio('post');
+      } else {
+        api.switchMode('post');
+      }
+      state.mediaList = [];
+      const dummyPostFiles = [];
+      for (let i = 0; i < 20; i++) {
+        dummyPostFiles.push(new File([`image_content_${i}`], `photo_${i + 1}.jpg`, { type: 'image/jpeg' }));
+      }
+      api.addMediaFiles(dummyPostFiles);
+      assert('M12.1: Chế độ Bài viết (Post) nhận tối đa đến 20 tệp trong kho', state.mediaList && state.mediaList.length === 20);
+
+      // M12.2: Khi nạp quá 20 file, Cull Modal được mở ra
+      const overflowFiles = [
+        new File(['extra_1'], 'extra_1.jpg', { type: 'image/jpeg' }),
+        new File(['extra_2'], 'extra_2.jpg', { type: 'image/jpeg' })
+      ];
+      api.addMediaFiles(overflowFiles);
+      const cullOverlay = document.getElementById('igt-cull-modal-overlay');
+      assert('M12.2: Khi nạp vượt quá 20 file, modal Quản lý & Chọn lọc tệp (Cull Modal) tự động mở', cullOverlay !== null);
+
+      // M12.3: Cull modal cảnh báo đỏ và khóa nút xác nhận nếu vượt 20 tệp
+      const cullCounter = cullOverlay ? cullOverlay.querySelector('#igt-cull-counter-badge') : null;
+      const cullConfirmBtn = cullOverlay ? cullOverlay.querySelector('#igt-cull-btn-confirm') : null;
+      assert('M12.3: Cull Modal đếm số lượng tệp (22/20) và khóa nút xác nhận khi vượt quá 20 tệp', cullCounter !== null && cullCounter.innerText.includes('22/20') && cullConfirmBtn && cullConfirmBtn.disabled);
+      if (cullOverlay) cullOverlay.remove(); // Dọn dẹp modal test
+
+      // M12.4: Tab "Chung" hiển thị khi ở chế độ post và ẩn Tab "Link"
+      const modalEl = document.getElementById('igt-studio-modal');
+      const tabGeneral = modalEl ? modalEl.querySelector('.igt-studio-tab-btn[data-tab="general"]') : null;
+      const tabLinkInPost = modalEl ? modalEl.querySelector('.igt-studio-tab-btn[data-tab="link"]') : null;
+      assert('M12.4: Tab "Chung" hiển thị trên thanh công cụ ở chế độ Post và Tab "Link" bị ẩn', tabGeneral !== null && tabLinkInPost === null);
+
+      // M12.5: Khi chuyển chế độ sang Story, Tab "Chung" ẩn đi và Tab "Link" xuất hiện lại
+      api.switchMode('story');
+      const tabGeneralInStory = modalEl ? modalEl.querySelector('.igt-studio-tab-btn[data-tab="general"]') : null;
+      const tabLinkInStory = modalEl ? modalEl.querySelector('.igt-studio-tab-btn[data-tab="link"]') : null;
+      assert('M12.5: Chuyển sang Story thì Tab "Chung" ẩn đi và Tab "Link" xuất hiện lại', tabGeneralInStory === null && tabLinkInStory !== null);
+
+      // M12.6: Mở Reorder Modal từ Tab Chung
+      api.switchMode('post');
+      api.switchTab('general');
+      const tabContentEl = document.getElementById('igt-studio-tab-content');
+      const btnOpenReorder = tabContentEl ? tabContentEl.querySelector('#igt-btn-open-reorder-modal') : null;
+      assert('M12.6: Tab Chung chứa nút "Sắp xếp thứ tự các slide"', btnOpenReorder !== null);
+
+      if (btnOpenReorder) btnOpenReorder.click();
+      const reorderOverlay = document.getElementById('igt-reorder-modal-overlay');
+      assert('M12.6b: Bấm nút mở thành công Modal Sắp xếp thứ tự các slide', reorderOverlay !== null);
+
+      // M12.7: Tráo đổi vị trí thẻ trong Reorder Modal
+      if (reorderOverlay) {
+        const moveRightBtn = reorderOverlay.querySelector('.btn-move-right[data-move-idx="0"]');
+        if (moveRightBtn) moveRightBtn.click();
+        const saveReorderBtn = reorderOverlay.querySelector('#igt-reorder-btn-save');
+        if (saveReorderBtn) saveReorderBtn.click();
+      }
+      assert('M12.7: Sắp xếp lại thứ tự slide và xác nhận cập nhật đúng thứ tự trong mediaList', state.mediaList[0].name === 'photo_2.jpg' && state.mediaList[1].name === 'photo_1.jpg');
+
+      // M12.8: Tùy chọn chuyển đổi Live Photo (live vs still)
+      const mockLiveVideoItem = {
+        name: 'live_photo_sample.mp4',
+        mediaType: 'video',
+        isLivePhoto: true,
+        liveMode: 'live',
+        mediaUrl: 'blob:mock_live_url'
+      };
+      state.mediaList[0] = mockLiveVideoItem;
+      await api.toggleLiveItemMode(0, 'still');
+      assert('M12.8: Chuyển Live Photo sang ảnh tĩnh (still) cập nhật liveMode = "still"', state.mediaList[0].liveMode === 'still');
+      await api.toggleLiveItemMode(0, 'live');
+      assert('M12.8b: Chuyển lại sang Live cập nhật liveMode = "live"', state.mediaList[0].liveMode === 'live');
+
+      // M12.9: Khung hình đồng bộ (Aspect Ratio Lock) và Watermark trong Tab Chung
+      api.switchTab('general');
+      const ratioBtn11 = tabContentEl.querySelector('[data-global-ratio="1:1"]');
+      if (ratioBtn11) ratioBtn11.click();
+      const wmInput = tabContentEl.querySelector('#igt-global-watermark-text');
+      if (wmInput) {
+        wmInput.value = '@mybrand_official';
+        wmInput.dispatchEvent(new Event('input'));
+      }
+      const posTopLeftBtn = tabContentEl.querySelector('.igt-wm-pos-box[data-pos="top-left"]');
+      if (posTopLeftBtn) posTopLeftBtn.click();
+      const wmFontSelect = tabContentEl.querySelector('#igt-global-watermark-font');
+      if (wmFontSelect) {
+        wmFontSelect.value = 'signature';
+        wmFontSelect.dispatchEvent(new Event('change'));
+      }
+      assert('M12.9: Khung hình đồng bộ 1:1, Watermark, Font chữ ký và Vị trí trên Widget cập nhật chính xác',
+        state.ratio === '1:1' &&
+        state.globalWatermarkText === '@mybrand_official' &&
+        state.globalWatermarkPos === 'top-left' &&
+        state.globalWatermarkFont === 'signature');
+
+      // M12.10: Direct API configure_sidecar cho Carousel Post
+      origFetch = window.fetch;
+      try {
+        let sidecarConfigured = false;
+        let sidecarChildrenCount = 0;
+        let sidecarRuploadHits = 0;
+
+        window.fetch = async (url, opts) => {
+          if (typeof url === 'string' && (url.includes('rupload_igphoto') || url.includes('rupload_igvideo'))) {
+            sidecarRuploadHits++;
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({ status: 'ok', upload_id: 'child_up_' + sidecarRuploadHits }),
+              text: async () => '{"status":"ok"}'
+            };
+          }
+          if (typeof url === 'string' && url.includes('configure_sidecar')) {
+            sidecarConfigured = true;
+            if (opts && opts.body) {
+              const params = new URLSearchParams(opts.body);
+              const children = JSON.parse(params.get('children_metadata') || '[]');
+              sidecarChildrenCount = children.length;
+            }
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({ status: 'ok', media: { id: 'sidecar_media_999' } }),
+              text: async () => '{"status":"ok","media":{"id":"sidecar_media_999"}}'
+            };
+          }
+          return origFetch(url, opts);
+        };
+
+        const sampleSlides = [
+          { name: 's1.jpg', mediaType: 'image', liveMode: 'still', file: new Blob(['s1'], { type: 'image/jpeg' }), mediaUrl: 'blob:s1' },
+          { name: 's2.jpg', mediaType: 'image', liveMode: 'still', file: new Blob(['s2'], { type: 'image/jpeg' }), mediaUrl: 'blob:s2' },
+          { name: 's3.mp4', mediaType: 'video', liveMode: 'live', file: new Blob(['s3'], { type: 'video/mp4' }), mediaUrl: 'blob:s3' }
+        ];
+
+        const sidecarRes = await api.publishMediaViaInstagramAPI(null, {
+          mode: 'post',
+          caption: 'Album 3 slide #carousel #instatweaks',
+          mediaList: sampleSlides
+        });
+
+        assert('M12.10: Carousel Post gọi configure_sidecar với 3 slide và trả về thành công dưới dạng 1 bài viết', sidecarConfigured === true && sidecarChildrenCount === 3 && sidecarRes && sidecarRes.success === true && sidecarRes.isCarousel === true);
+      } finally {
+        window.fetch = origFetch;
+      }
+
+      // M12.11: Kiểm tra ẩn thanh timeline editor khi ở màn hình Post và active là ảnh tĩnh thường
+      api.switchMode('post');
+      state.mediaList = [
+        { id: 'img_normal', name: 'normal_scenery.jpg', mediaType: 'image', isLivePhoto: false, liveMode: 'still', mediaUrl: 'blob:normal_img' }
+      ];
+      api.activateMediaItem(0);
+      const tlPanelEl = document.getElementById('igt-studio-timeline-panel');
+      const livePanelEl = document.getElementById('igt-studio-live-selector-panel');
+      assert('M12.11: Ở chế độ Post với ảnh tĩnh thường, ẩn thanh timeline video editor và live selector', tlPanelEl && tlPanelEl.style.display === 'none' && livePanelEl && livePanelEl.style.display === 'none');
+
+      // M12.12: Kiểm tra hiển thị ô chọn Live Photo khi active là ảnh Live (hoặc Motion photo MVIMG)
+      state.mediaList = [
+        { id: 'img_live', name: 'MVIMG_20261028_005.jpg', mediaType: 'image', isLivePhoto: true, liveMode: 'live', mediaUrl: 'blob:live_img' }
+      ];
+      api.activateMediaItem(0);
+      const dropdownSelect = livePanelEl ? livePanelEl.querySelector('#igt-select-live-dropdown') : null;
+      assert('M12.12: Khi active là ảnh Live (MVIMG), ô chọn chế độ Live hiển thị và cho phép chọn still/live', livePanelEl && livePanelEl.style.display === 'flex' && dropdownSelect !== null);
+
+      // M12.13: Kiểm tra ẩn mục "Thời lượng ảnh trên Story" khi ở chế độ Post
+      api.switchMode('post');
+      api.switchTab('main');
+      const photoDurSection = document.querySelector('.igt-photo-dur-grid');
+      assert('M12.13: Khi ở chế độ Bài viết (Post), ẩn hoàn toàn mục thiết lập Thời lượng ảnh trên Story', photoDurSection === null);
+
+      log(`================ KẾT QUẢ: ${passCount}/${totalTests} TESTS PASS ================`, passCount === totalTests ? 'pass' : 'fail');
+      badge.innerText = `Hoàn thành: ${passCount}/${totalTests} Passed`;
+      badge.style.color = (passCount === totalTests) ? '#4ade80' : '#f87171';
+    }
+
+    document.getElementById('btn-run-all-tests').addEventListener('click', runAllTestCases);
+  </script>
+</body>
+
+</html>

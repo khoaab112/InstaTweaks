@@ -1647,6 +1647,48 @@ body[class*="dark"] .ig-profile-download-btn:hover,
    D. THANH ĐIỀU KHIỂN & THANH TRƯỢT MEDIA CHO VIDEO (v2.5.0)
    ======================================================== */
 
+/* Tuyệt đối cách ly Studio Pro và các Modal con khỏi Video Controls & Download Buttons */
+#igt-studio-modal .ig-video-controller,
+#igt-studio-modal .ig-vctl-mini-progress,
+#igt-studio-modal .ig-floating-download-btn,
+#igt-studio-modal .ig-story-download-btn,
+#igt-studio-modal .ig-feed-download-btn,
+#igt-reorder-modal-overlay .ig-video-controller,
+#igt-reorder-modal-overlay .ig-vctl-mini-progress,
+#igt-reorder-modal-overlay .ig-floating-download-btn,
+#igt-reorder-modal-overlay .ig-story-download-btn,
+#igt-reorder-modal-overlay .ig-feed-download-btn,
+.igt-reorder-overlay .ig-video-controller,
+.igt-reorder-overlay .ig-vctl-mini-progress,
+.igt-reorder-overlay .ig-floating-download-btn,
+.igt-reorder-overlay .ig-story-download-btn,
+.igt-reorder-overlay .ig-feed-download-btn,
+.igt-reorder-card .ig-video-controller,
+.igt-reorder-card .ig-vctl-mini-progress,
+.igt-reorder-card .ig-floating-download-btn,
+.igt-reorder-card .ig-story-download-btn,
+.igt-reorder-card .ig-feed-download-btn,
+#igt-publish-modal-overlay .ig-video-controller,
+#igt-publish-modal-overlay .ig-vctl-mini-progress,
+#igt-publish-modal-overlay .ig-floating-download-btn,
+#igt-publish-modal-overlay .ig-story-download-btn,
+#igt-publish-modal-overlay .ig-feed-download-btn,
+.igt-publish-modal-overlay .ig-video-controller,
+.igt-publish-modal-overlay .ig-vctl-mini-progress,
+.igt-publish-modal-overlay .ig-floating-download-btn,
+.igt-publish-modal-overlay .ig-story-download-btn,
+.igt-publish-modal-overlay .ig-feed-download-btn,
+#igt-cull-modal-overlay .ig-video-controller,
+#igt-cull-modal-overlay .ig-vctl-mini-progress,
+#igt-cull-modal-overlay .ig-floating-download-btn,
+#igt-cull-modal-overlay .ig-story-download-btn,
+#igt-cull-modal-overlay .ig-feed-download-btn {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+}
+
 [data-ig-vctl-container="true"] {
   position: relative !important;
   overflow: hidden !important;

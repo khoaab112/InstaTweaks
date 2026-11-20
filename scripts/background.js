@@ -69,4 +69,78 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
     return true;
   }
+
+  // Tải ảnh hoặc âm thanh ngoài dạng Data URL (vượt qua kiểm tra Content Security Policy của Instagram)
+  if (message.action === 'fetch_image_as_data_url' || message.action === 'fetch_audio_as_data_url') {
+    const { url } = message;
+    if (!url) {
+      sendResponse({ success: false, error: 'Empty URL' });
+      return false;
+    }
+    fetch(url)
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const cType = res.headers.get('content-type') || '';
+        return res.arrayBuffer().then(buf => ({ buf, cType }));
+      })
+      .then(({ buf, cType }) => {
+        let mime = 'audio/mp4';
+        if (message.action === 'fetch_image_as_data_url') {
+          mime = cType.includes('png') ? 'image/png' : (cType.includes('webp') ? 'image/webp' : 'image/jpeg');
+        } else {
+          // Chuẩn hóa mọi âm thanh Apple/iTunes (audio/x-m4p, audio/aac, audio/m4a) về audio/mp4 chuẩn để Chrome giải mã
+          if (cType.includes('mpeg') || cType.includes('mp3')) mime = 'audio/mpeg';
+          else if (cType.includes('wav')) mime = 'audio/wav';
+          else mime = 'audio/mp4';
+        }
+        const blob = new Blob([buf], { type: mime });
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          let dataUrl = reader.result;
+          if (typeof dataUrl === 'string' && dataUrl.startsWith('data:audio/x-m4p')) {
+            dataUrl = dataUrl.replace('data:audio/x-m4p', 'data:audio/mp4');
+          }
+          sendResponse({ success: true, dataUrl, mime });
+        };
+        reader.onerror = () => {
+          sendResponse({ success: false, error: 'FileReader error' });
+        };
+        reader.readAsDataURL(blob);
+      })
+      .catch(err => {
+        console.warn('[InstaTweaks Background] Fetch media error:', err.message, url);
+        sendResponse({ success: false, error: err.message });
+      });
+    return true;
+  }
+
+  // Proxy tìm kiếm bài hát Apple Music / iTunes API (hoàn toàn miễn nhiễm với CSP connect-src của Instagram)
+  if (message.action === 'proxy_itunes_search') {
+    const { term, limit = 50, entity = 'song', country = 'VN' } = message;
+    const apiUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(term || '')}&entity=${entity}&limit=${limit}&country=${country}`;
+    
+    fetch(apiUrl)
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then(data => {
+        if (data && Array.isArray(data.results) && data.results.length > 0) {
+          sendResponse({ success: true, results: data.results });
+        } else {
+          // Retry tìm kiếm toàn cầu nếu kho VN ít bài
+          return fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term || '')}&entity=${entity}&limit=${limit}`)
+            .then(r2 => r2.json())
+            .then(d2 => sendResponse({ success: true, results: (d2 && d2.results) || [] }));
+        }
+      })
+      .catch(err => {
+        // Fallback retry không kèm country code
+        fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term || '')}&entity=${entity}&limit=${limit}`)
+          .then(r => r.json())
+          .then(d => sendResponse({ success: true, results: (d && d.results) || [] }))
+          .catch(e => sendResponse({ success: false, error: e.message, results: [] }));
+      });
+    return true;
+  }
 });

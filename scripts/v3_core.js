@@ -311,6 +311,9 @@
 
   async function importDatabaseFromJSON(jsonText) {
     try {
+      if (!jsonText || typeof jsonText !== 'string' || !jsonText.trim().startsWith('{')) {
+        return;
+      }
       const parsed = JSON.parse(jsonText);
       if (!parsed || !parsed.data) {
         alert('File sao lưu không hợp lệ.');
@@ -1254,7 +1257,7 @@
           if (cover) hdUrl = cover;
         }
       }
-    } catch (_) {}
+    } catch (_) { }
 
     hdAvatarCache.set('hl_' + highlightId, hdUrl);
     return hdUrl;
@@ -1300,7 +1303,7 @@
           isVerified = Boolean(u.is_verified);
         }
       }
-    } catch (_) {}
+    } catch (_) { }
 
     const result = {
       username: cleanUname,
@@ -1315,6 +1318,11 @@
 
   function findAvatarElementAndInfo(target) {
     if (!target) return null;
+
+    // Tuyệt đối không can thiệp nếu URL đang là Story hoặc đang mở Story Viewer
+    if (window.location.pathname.includes('/stories/') || document.querySelector('section[role="region"]') || (target.closest && target.closest('section[role="region"]'))) {
+      return null;
+    }
 
     // 1. Chỉ thực thi trên trang Profile cá nhân
     const profileUsername = isUserProfilePage();
@@ -1394,10 +1402,10 @@
         const rect = avatarImg.getBoundingClientRect();
         if (rect.width >= 40 && rect.width <= 250 && rect.height >= 40 && rect.height <= 250) {
           const alt = (avatarImg.getAttribute('alt') || '').toLowerCase();
-          const isAvatar = /profile picture|ảnh đại diện|avatar|ảnh hồ sơ|'s photo/i.test(alt) || 
-                           Boolean(avatarImg.closest('header')) || 
-                           Boolean(target.closest('[aria-label*="Ảnh đại diện" i], [aria-label*="profile picture" i]'));
-          
+          const isAvatar = /profile picture|ảnh đại diện|avatar|ảnh hồ sơ|'s photo/i.test(alt) ||
+            Boolean(avatarImg.closest('header')) ||
+            Boolean(target.closest('[aria-label*="Ảnh đại diện" i], [aria-label*="profile picture" i]'));
+
           if (isAvatar) {
             const src = avatarImg.currentSrc || avatarImg.src || '';
             if (src && !src.includes('emoji.php') && !src.includes('/rsrc.php/')) {
@@ -1423,6 +1431,9 @@
 
   function showAvatarHoverPopover(info) {
     if (!info || !info.imgEl) return;
+    if (window.location.pathname.includes('/stories/') || document.querySelector('section[role="region"]')) {
+      return;
+    }
     currentTargetInfo = info;
 
     const labelText = info.isHighlight ? 'Xem ảnh bìa' : 'Xem ảnh';
@@ -1497,6 +1508,9 @@
 
   async function openHdAvatarModal(info) {
     if (!info) return;
+    if (window.location.pathname.includes('/stories/') || document.querySelector('section[role="region"]')) {
+      return;
+    }
 
     // Đóng và gỡ bỏ modal cũ nếu có
     const existing = document.getElementById('igt-hd-avatar-modal');
@@ -1686,14 +1700,14 @@
     hideAvatarHoverPopover(150);
   }, { passive: true });
 
-  // Lắng nghe sự kiện Click trực tiếp:
+  // Lắng nghe sự kiện Click & Double-Click vào Avatar / Highlight Cover:
   // 1. Click vào nút Popover "Xem ảnh" / "Xem ảnh bìa"
-  // 2. Click hoặc Double-click trực tiếp vào Avatar của Profile
+  // 2. Alt + Click hoặc Double-Click vào Avatar (Tránh đè lên hành vi bấm xem Story mặc định của Instagram)
   document.addEventListener('click', (e) => {
     if (!v3Settings.hdAvatar) return;
     if (e.target.closest('#igt-hd-avatar-modal')) return;
 
-    // Click vào popover
+    // 1. Click vào nút Popover nổi "Xem ảnh"
     const pop = e.target.closest('.igt-avatar-hover-popover');
     if (pop) {
       e.preventDefault();
@@ -1704,11 +1718,15 @@
       return;
     }
 
-    // Click trực tiếp vào avatar
-    const info = findAvatarElementAndInfo(e.target);
-    if (info && !info.isHighlight) {
-      hideAvatarHoverPopover(0);
-      openHdAvatarModal(info);
+    // 2. Alt + Click vào Avatar để xem Full HD (Không làm gián đoạn khi bấm bình thường để xem Story)
+    if (e.altKey) {
+      const info = findAvatarElementAndInfo(e.target);
+      if (info && !info.isHighlight) {
+        e.preventDefault();
+        e.stopPropagation();
+        hideAvatarHoverPopover(0);
+        openHdAvatarModal(info);
+      }
     }
   }, true);
 
@@ -2675,6 +2693,9 @@
     const icon5Backup = safeGetURL('icons/v3_backup_section.png');
     const icon6Export = safeGetURL('icons/v3_export_btn.png');
     const icon7Restore = safeGetURL('icons/v3_restore_btn.png');
+    const studioStoryIcon = safeGetURL('icons/studio_story.png');
+    const studioPostIcon = safeGetURL('icons/studio_post.png');
+    const studioReelIcon = safeGetURL('icons/studio_reel.png');
 
     // 1. Backdrop
     const backdrop = document.createElement('div');
@@ -2704,6 +2725,41 @@
       <!-- Scrollable Body -->
       <div class="igt-v3-drawer-body">
         
+        <!-- SECTION: STUDIO SÁNG TẠO & ĐĂNG BÀI (TẠM ẨN / COMMENT THEO YÊU CẦU) -->
+        <!--
+        <div class="igt-studio-banner-group">
+          <div class="igt-studio-grid">
+            <button type="button" class="igt-studio-card-btn" id="igt-studio-open-story" title="Đăng Tin (Story)">
+              <div class="igt-studio-btn-icon-wrap">
+                <img class="igt-studio-btn-icon" src="${studioStoryIcon}" alt="Story" />
+              </div>
+              <div class="igt-studio-btn-text">
+                <span class="igt-studio-btn-name">TIN</span>
+                <span class="igt-studio-btn-sub">Story</span>
+              </div>
+            </button>
+            <button type="button" class="igt-studio-card-btn" id="igt-studio-open-post" title="Đăng Bài viết (Post)">
+              <div class="igt-studio-btn-icon-wrap">
+                <img class="igt-studio-btn-icon" src="${studioPostIcon}" alt="Post" />
+              </div>
+              <div class="igt-studio-btn-text">
+                <span class="igt-studio-btn-name">BÀI VIẾT</span>
+                <span class="igt-studio-btn-sub">Post</span>
+              </div>
+            </button>
+            <button type="button" class="igt-studio-card-btn" id="igt-studio-open-reel" title="Đăng Thước phim (Reel)">
+              <div class="igt-studio-btn-icon-wrap">
+                <img class="igt-studio-btn-icon" src="${studioReelIcon}" alt="Reel" />
+              </div>
+              <div class="igt-studio-btn-text">
+                <span class="igt-studio-btn-name">REEL</span>
+                <span class="igt-studio-btn-sub">Video</span>
+              </div>
+            </button>
+          </div>
+        </div>
+        -->
+
         <!-- SECTION 1: CHẾ ĐỘ ẨN DANH -->
         <div class="igt-v3-section-group">
           <div class="igt-v3-section-title">
@@ -2923,31 +2979,6 @@
           </div>
         </div>
 
-        <!-- SECTION 5: LỘ TRÌNH PHÁT TRIỂN SERIES 3.0 -->
-        <div class="igt-v3-section-group">
-          <div class="igt-v3-section-title">🧭 Lộ Trình Nâng Cấp Series 3.0</div>
-          <div class="igt-v3-section">
-            <div class="igt-v3-roadmap-list">
-              <div class="igt-v3-roadmap-item completed">
-                <span>✅ v3.0.0: Privacy & Video HD</span>
-                <span>Hoàn thành</span>
-              </div>
-              <div class="igt-v3-roadmap-item completed">
-                <span>✅ v3.1.0: Watchlist & Bộ cào Follower an toàn</span>
-                <span>Hoàn thành</span>
-              </div>
-              <div class="igt-v3-roadmap-item active">
-                <span>⚡ v3.2.0: Diffing Engine (Follow/Unfollow)</span>
-                <span>Đang chạy</span>
-              </div>
-              <div class="igt-v3-roadmap-item">
-                <span>📊 v3.3.0: Profile History Audit & Growth Charts</span>
-                <span>Sắp tới</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
       </div>
     `;
 
@@ -2961,6 +2992,25 @@
   function setupDrawerEventListeners() {
     const closeBtn = document.getElementById('igt-v3-close-btn');
     if (closeBtn) closeBtn.addEventListener('click', closeV3Drawer);
+
+    // Nút mở Studio Sáng tạo (Tạm dừng / Comment theo yêu cầu)
+    /*
+    const sStory = document.getElementById('igt-studio-open-story');
+    if (sStory) sStory.addEventListener('click', () => {
+      closeV3Drawer();
+      window.dispatchEvent(new CustomEvent('__IGT_OPEN_STUDIO__', { detail: { mode: 'story' } }));
+    });
+    const sPost = document.getElementById('igt-studio-open-post');
+    if (sPost) sPost.addEventListener('click', () => {
+      closeV3Drawer();
+      window.dispatchEvent(new CustomEvent('__IGT_OPEN_STUDIO__', { detail: { mode: 'post' } }));
+    });
+    const sReel = document.getElementById('igt-studio-open-reel');
+    if (sReel) sReel.addEventListener('click', () => {
+      closeV3Drawer();
+      window.dispatchEvent(new CustomEvent('__IGT_OPEN_STUDIO__', { detail: { mode: 'reel' } }));
+    });
+    */
 
     // Toggle Switches
     const tStory = document.getElementById('igt-toggle-ghost-story');
@@ -3253,14 +3303,16 @@
     const btnRestore = document.getElementById('igt-btn-restore');
     const fileInput = document.getElementById('igt-file-input');
     if (btnRestore && fileInput) {
+      fileInput.accept = '.json,application/json';
       btnRestore.addEventListener('click', () => fileInput.click());
       fileInput.addEventListener('change', (e) => {
         const file = e.target.files?.[0];
-        if (file) {
+        if (file && (file.name.toLowerCase().endsWith('.json') || file.type === 'application/json')) {
           const reader = new FileReader();
           reader.onload = (evt) => importDatabaseFromJSON(evt.target.result);
           reader.readAsText(file);
         }
+        fileInput.value = '';
       });
     }
 
@@ -5002,6 +5054,11 @@
 
       if (window.location.pathname !== lastKnownPath) {
         lastKnownPath = window.location.pathname;
+        if (window.location.pathname.startsWith('/stories/')) {
+          const openAvatarModal = document.getElementById('igt-hd-avatar-modal');
+          if (openAvatarModal) openAvatarModal.remove();
+          hideAvatarHoverPopover(0);
+        }
         injectSidebarNavButton();
         updateGhostStatusBadge();
         scanAndAttachViewOnceButtons();
@@ -5031,6 +5088,11 @@
     // Lắng nghe chuyển trang SPA
     window.addEventListener('__IG_NAVIGATED__', () => {
       if (!isExtensionValid()) return;
+      if (window.location.pathname.startsWith('/stories/')) {
+        const m = document.getElementById('igt-hd-avatar-modal');
+        if (m) m.remove();
+        hideAvatarHoverPopover(0);
+      }
       setTimeout(() => {
         if (!isExtensionValid()) return;
         injectSidebarNavButton();
@@ -5042,6 +5104,11 @@
 
     window.addEventListener('popstate', () => {
       if (!isExtensionValid()) return;
+      if (window.location.pathname.startsWith('/stories/')) {
+        const m = document.getElementById('igt-hd-avatar-modal');
+        if (m) m.remove();
+        hideAvatarHoverPopover(0);
+      }
       setTimeout(() => {
         if (!isExtensionValid()) return;
         injectSidebarNavButton();

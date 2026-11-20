@@ -1,0 +1,6078 @@
+/* =========================================================================
+   INSTATWEAKS STUDIO PRO v3.3.0 - STYLESHEET
+   100% Decoupled Styles for Studio Modal, Vùng Đỏ Buttons, Canvas & Stickers
+   ========================================================================= */
+
+/* --- 1. VÙNG ĐỎ TRÊN DRAWER: 3 NÚT SÁNG TẠO TIN / BÀI VIẾT / REEL --- */
+.igt-studio-banner-group {
+  margin: 0 0 16px 0 !important;
+  padding: 0 0 16px 0 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.igt-studio-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 10px !important;
+  margin-top: 6px !important;
+}
+
+.igt-studio-card-btn {
+  background: linear-gradient(145deg, #1e2229 0%, #13161c 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.09) !important;
+  border-radius: 14px !important;
+  padding: 12px 6px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25) !important;
+  outline: none !important;
+  user-select: none !important;
+}
+
+.igt-studio-card-btn:hover {
+  transform: translateY(-2px) scale(1.03) !important;
+  border-color: rgba(225, 48, 108, 0.5) !important;
+  box-shadow: 0 8px 24px rgba(225, 48, 108, 0.22) !important;
+  background: linear-gradient(145deg, #252b35 0%, #181d24 100%) !important;
+}
+
+.igt-studio-card-btn:active {
+  transform: scale(0.97) !important;
+}
+
+.igt-studio-btn-icon-wrap {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-bottom: 7px !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  transition: all 0.2s ease !important;
+}
+
+.igt-studio-card-btn:hover .igt-studio-btn-icon-wrap {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.igt-studio-btn-icon {
+  width: 32px !important;
+  height: 32px !important;
+  object-fit: contain !important;
+  display: block !important;
+}
+
+.igt-studio-btn-text {
+  text-align: center !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 2px !important;
+}
+
+.igt-studio-btn-name {
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  color: #f1f5f9 !important;
+  letter-spacing: 0.6px !important;
+  text-transform: uppercase !important;
+}
+
+.igt-studio-btn-sub {
+  font-size: 10px !important;
+  color: #94a3b8 !important;
+  font-weight: 500 !important;
+}
+
+/* --- 2. STUDIO MODAL (TOÀN MÀN HÌNH CHUYÊN NGHIỆP) --- */
+.igt-studio-modal {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 99999999 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(8, 10, 14, 0.85) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  animation: igtStudioFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+}
+
+@keyframes igtStudioFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.igt-studio-dialog {
+  width: 98vw !important;
+  max-width: 1750px !important;
+  height: 96vh !important;
+  max-height: 1040px !important;
+  background: #111317 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 35px 100px rgba(0, 0, 0, 0.75) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+/* =========================================================================
+   SCROLLBAR CHUẨN INSTAGRAM STORY GRADIENT (NHỎ GỌN & NGHỆ THUẬT)
+   Màu sắc: Gradient đặc trưng 5 màu viền Story Instagram:
+   Tím (#833ab4) -> Hồng tím (#c13584) -> Hồng cánh sen (#e1306c) -> Đỏ cam (#fd1d1d) -> Cam (#f77737) -> Vàng nắng (#ffc837)
+   ========================================================================= */
+.igt-studio-modal *::-webkit-scrollbar,
+#igt-studio-modal *::-webkit-scrollbar,
+.igt-studio-dialog *::-webkit-scrollbar,
+.igt-studio-tab-content::-webkit-scrollbar,
+.igt-google-stickers-grid::-webkit-scrollbar,
+.igt-sticker-filter-pills::-webkit-scrollbar,
+.igt-studio-media-list::-webkit-scrollbar,
+.igt-emoji-grid::-webkit-scrollbar,
+.igt-timeline-body::-webkit-scrollbar {
+  width: 5px !important;
+  height: 5px !important;
+}
+
+.igt-studio-modal *::-webkit-scrollbar-track,
+#igt-studio-modal *::-webkit-scrollbar-track,
+.igt-studio-dialog *::-webkit-scrollbar-track,
+.igt-studio-tab-content::-webkit-scrollbar-track,
+.igt-google-stickers-grid::-webkit-scrollbar-track,
+.igt-sticker-filter-pills::-webkit-scrollbar-track,
+.igt-studio-media-list::-webkit-scrollbar-track,
+.igt-emoji-grid::-webkit-scrollbar-track,
+.igt-timeline-body::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-radius: 999px !important;
+}
+
+/* Thanh cuộn Dọc: Gradient chuẩn Story Instagram 5 màu: Vàng -> Cam -> Hồng cánh sen -> Tím -> Xanh tím */
+.igt-studio-modal *::-webkit-scrollbar-thumb,
+#igt-studio-modal *::-webkit-scrollbar-thumb,
+.igt-studio-dialog *::-webkit-scrollbar-thumb,
+.igt-studio-tab-content::-webkit-scrollbar-thumb,
+.igt-google-stickers-grid::-webkit-scrollbar-thumb,
+.igt-sticker-filter-pills::-webkit-scrollbar-thumb,
+.igt-studio-media-list::-webkit-scrollbar-thumb,
+.igt-emoji-grid::-webkit-scrollbar-thumb,
+.igt-timeline-body::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #feda75 0%, #fa7e1e 25%, #d62976 50%, #962fbf 75%, #4f5bd5 100%) !important;
+  border-radius: 999px !important;
+  box-shadow: 0 0 6px rgba(214, 41, 118, 0.45) !important;
+}
+
+/* Thanh cuộn Ngang: Gradient chuẩn Story Instagram 5 màu */
+.igt-studio-modal *::-webkit-scrollbar-thumb:horizontal,
+#igt-studio-modal *::-webkit-scrollbar-thumb:horizontal,
+.igt-studio-dialog *::-webkit-scrollbar-thumb:horizontal,
+.igt-sticker-filter-pills::-webkit-scrollbar-thumb,
+.igt-timeline-body::-webkit-scrollbar-thumb:horizontal {
+  background: linear-gradient(90deg, #feda75 0%, #fa7e1e 25%, #d62976 50%, #962fbf 75%, #4f5bd5 100%) !important;
+  border-radius: 999px !important;
+  box-shadow: 0 0 6px rgba(214, 41, 118, 0.45) !important;
+}
+
+/* Hiệu ứng rê chuột (Hover): Tăng độ sáng và rực rỡ */
+.igt-studio-modal *::-webkit-scrollbar-thumb:hover,
+#igt-studio-modal *::-webkit-scrollbar-thumb:hover,
+.igt-studio-dialog *::-webkit-scrollbar-thumb:hover,
+.igt-studio-tab-content::-webkit-scrollbar-thumb:hover,
+.igt-google-stickers-grid::-webkit-scrollbar-thumb:hover,
+.igt-sticker-filter-pills::-webkit-scrollbar-thumb:hover,
+.igt-studio-media-list::-webkit-scrollbar-thumb:hover,
+.igt-emoji-grid::-webkit-scrollbar-thumb:hover,
+.igt-timeline-body::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #ffe082 0%, #ff8f00 25%, #e91e63 50%, #ab47bc 75%, #5c6bc0 100%) !important;
+  box-shadow: 0 0 10px rgba(233, 30, 99, 0.75) !important;
+}
+
+.igt-studio-modal *::-webkit-scrollbar-thumb:horizontal:hover,
+#igt-studio-modal *::-webkit-scrollbar-thumb:horizontal:hover,
+.igt-studio-dialog *::-webkit-scrollbar-thumb:horizontal:hover,
+.igt-sticker-filter-pills::-webkit-scrollbar-thumb:hover,
+.igt-timeline-body::-webkit-scrollbar-thumb:horizontal:hover {
+  background: linear-gradient(90deg, #ffe082 0%, #ff8f00 25%, #e91e63 50%, #ab47bc 75%, #5c6bc0 100%) !important;
+  box-shadow: 0 0 10px rgba(233, 30, 99, 0.75) !important;
+}
+
+.igt-studio-modal *::-webkit-scrollbar-button,
+#igt-studio-modal *::-webkit-scrollbar-button,
+.igt-studio-dialog *::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.igt-studio-modal *::-webkit-scrollbar-corner,
+#igt-studio-modal *::-webkit-scrollbar-corner,
+.igt-studio-dialog *::-webkit-scrollbar-corner {
+  background: transparent !important;
+}
+
+/* =========================================================================
+   HIỆU ỨNG CHUYỂN ĐỘNG CHO STICKER (ANIMATIONS CHO STICKER ĐỘNG)
+   ========================================================================= */
+@keyframes igtAnimPulse {
+
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(var(--stk-scale, 1));
+  }
+
+  50% {
+    transform: translate(-50%, -50%) scale(calc(var(--stk-scale, 1) * 1.14));
+  }
+}
+
+@keyframes igtAnimBounce {
+
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(var(--stk-scale, 1));
+  }
+
+  50% {
+    transform: translate(-50%, calc(-50% - 12px)) scale(var(--stk-scale, 1));
+  }
+}
+
+@keyframes igtAnimWiggle {
+
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(var(--stk-scale, 1)) rotate(0deg);
+  }
+
+  25% {
+    transform: translate(-50%, -50%) scale(var(--stk-scale, 1)) rotate(-10deg);
+  }
+
+  75% {
+    transform: translate(-50%, -50%) scale(var(--stk-scale, 1)) rotate(10deg);
+  }
+}
+
+@keyframes igtAnimFloat {
+
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(var(--stk-scale, 1));
+  }
+
+  50% {
+    transform: translate(-50%, calc(-50% - 8px)) scale(calc(var(--stk-scale, 1) * 1.03));
+  }
+}
+
+@keyframes igtAnimGlow {
+
+  0%,
+  100% {
+    filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.4));
+  }
+
+  50% {
+    filter: drop-shadow(0 0 14px #ff007f) drop-shadow(0 0 22px #00f0ff);
+  }
+}
+
+@keyframes igtAnimSpin {
+  from {
+    transform: translate(-50%, -50%) scale(var(--stk-scale, 1)) rotate(0deg);
+  }
+
+  to {
+    transform: translate(-50%, -50%) scale(var(--stk-scale, 1)) rotate(360deg);
+  }
+}
+
+.igt-studio-sticker-item.anim-pulse {
+  animation: igtAnimPulse 1.2s infinite ease-in-out !important;
+}
+
+.igt-studio-sticker-item.anim-bounce {
+  animation: igtAnimBounce 0.85s infinite ease-in-out !important;
+}
+
+.igt-studio-sticker-item.anim-wiggle {
+  animation: igtAnimWiggle 0.7s infinite ease-in-out !important;
+}
+
+.igt-studio-sticker-item.anim-float {
+  animation: igtAnimFloat 2s infinite ease-in-out !important;
+}
+
+.igt-studio-sticker-item.anim-glow {
+  animation: igtAnimGlow 1.3s infinite ease-in-out !important;
+}
+
+.igt-studio-sticker-item.anim-spin {
+  animation: igtAnimSpin 4s infinite linear !important;
+}
+
+/* Nút Tải lên Sticker GIF động */
+.igt-btn-upload-gif {
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  padding: 8px 12px !important;
+  margin-bottom: 12px !important;
+  border-radius: 9px !important;
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.22), rgba(168, 85, 247, 0.22)) !important;
+  border: 1.5px dashed rgba(236, 72, 153, 0.5) !important;
+  color: #f472b6 !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: all 0.16s ease !important;
+}
+
+.igt-btn-upload-gif:hover {
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.35), rgba(168, 85, 247, 0.35)) !important;
+  border-color: #ec4899 !important;
+  color: #ffffff !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 14px rgba(236, 72, 153, 0.3) !important;
+}
+
+/* Thanh chọn hiệu ứng động cho Sticker đang chọn */
+.igt-sticker-anim-selector {
+  display: flex !important;
+  gap: 4px !important;
+  overflow-x: auto !important;
+  padding-bottom: 4px !important;
+  margin-top: 6px !important;
+}
+
+.igt-anim-chip {
+  padding: 3px 8px !important;
+  border-radius: 6px !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #cbd5e1 !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  transition: all 0.12s ease !important;
+}
+
+.igt-anim-chip:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+}
+
+.igt-anim-chip.active {
+  background: rgba(236, 72, 153, 0.25) !important;
+  border-color: #ec4899 !important;
+  color: #f472b6 !important;
+  font-weight: 700 !important;
+}
+
+/* Thẻ Sticker động */
+.igt-google-sticker-btn .igt-gif-badge {
+  position: absolute !important;
+  top: 3px !important;
+  right: 4px !important;
+  font-size: 7.5px !important;
+  font-weight: 800 !important;
+  padding: 1px 3px !important;
+  border-radius: 3px !important;
+  background: #ec4899 !important;
+  color: #ffffff !important;
+  line-height: 1 !important;
+  letter-spacing: 0.3px !important;
+}
+
+.igt-google-sticker-btn {
+  position: relative !important;
+}
+
+/* OVERLAY TIẾN TRÌNH KẾT XUẤT VIDEO ULTRA HD */
+.igt-render-progress-overlay {
+  position: absolute !important;
+  inset: 0 !important;
+  background: rgba(10, 14, 23, 0.92) !important;
+  backdrop-filter: blur(12px) !important;
+  z-index: 9999 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 16px !important;
+  color: #ffffff !important;
+  text-align: center !important;
+  user-select: none !important;
+}
+
+.igt-render-card {
+  width: 320px !important;
+  background: rgba(15, 23, 42, 0.96) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.14) !important;
+  border-radius: 16px !important;
+  padding: 24px 20px 20px !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 24px rgba(0, 149, 246, 0.25) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 12px !important;
+  box-sizing: border-box !important;
+}
+
+.igt-render-loading-wrap {
+  width: 54px !important;
+  height: 54px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 auto 2px !important;
+}
+
+.igt-render-loading-gif {
+  width: 48px !important;
+  height: 48px !important;
+  object-fit: contain !important;
+  animation: igtRotateLoading 1.5s infinite linear !important;
+  display: block !important;
+  user-select: none !important;
+  pointer-events: none !important;
+}
+
+@keyframes igtRotateLoading {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.igt-render-title {
+  font-size: 14.5px !important;
+  font-weight: 800 !important;
+  color: #f8fafc !important;
+  text-align: center !important;
+}
+
+.igt-render-bar-track {
+  width: 100% !important;
+  height: 8px !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-radius: 999px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-sizing: border-box !important;
+}
+
+.igt-render-bar-fill {
+  height: 100% !important;
+  width: 0%;
+  background: linear-gradient(90deg, #ffc837, #f77737, #fd1d1d, #e1306c, #833ab4) !important;
+  border-radius: 999px !important;
+  transition: width 0.1s linear !important;
+}
+
+.igt-render-pct {
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  color: #38bdf8 !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+.igt-render-cancel-btn {
+  padding: 6px 18px !important;
+  border-radius: 8px !important;
+  background: rgba(239, 68, 68, 0.15) !important;
+  border: 1px solid rgba(239, 68, 68, 0.35) !important;
+  color: #f87171 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  margin-top: 2px !important;
+}
+
+.igt-render-cancel-btn:hover {
+  background: rgba(239, 68, 68, 0.28) !important;
+  color: #ffffff !important;
+}
+
+/* Header */
+.igt-studio-header {
+  height: 60px !important;
+  padding: 0 22px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  background: #161920 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.igt-studio-header-left {
+  display: flex !important;
+  align-items: center !important;
+  gap: 16px !important;
+}
+
+.igt-studio-brand-badge {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-weight: 800 !important;
+  font-size: 14px !important;
+  color: #ffffff !important;
+  letter-spacing: 0.5px !important;
+}
+
+.igt-studio-mode-pills {
+  display: flex !important;
+  align-items: center !important;
+  background: rgba(0, 0, 0, 0.45) !important;
+  padding: 3px !important;
+  border-radius: 24px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  gap: 3px !important;
+}
+
+.igt-studio-mode-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 5px 13px !important;
+  border-radius: 20px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: #94a3b8 !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: all 0.18s ease !important;
+  user-select: none !important;
+}
+
+.igt-studio-mode-icon {
+  width: 17px !important;
+  height: 17px !important;
+  object-fit: contain !important;
+  display: block !important;
+  flex-shrink: 0 !important;
+  border-radius: 4px !important;
+  pointer-events: none !important;
+  transition: transform 0.18s ease !important;
+}
+
+.igt-studio-mode-pill:hover {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.igt-studio-mode-pill:hover .igt-studio-mode-icon {
+  transform: scale(1.12) !important;
+}
+
+.igt-studio-mode-pill.active {
+  background: #0095f6 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(0, 149, 246, 0.4) !important;
+}
+
+.igt-studio-mode-pill.active .igt-studio-mode-icon {
+  transform: scale(1.05) !important;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5)) !important;
+}
+
+/* Cụm công cụ Lịch sử Hoàn tác (Undo / Redo) & Làm mới (Reset All) tại Header Vùng Đỏ */
+.igt-studio-history-tools {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  padding: 3px 6px !important;
+  border-radius: 12px !important;
+  margin-left: 10px !important;
+}
+
+.igt-studio-header-action-btn {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  background: transparent !important;
+  border: none !important;
+  color: #e2e8f0 !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  padding: 5px 10px !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  user-select: none !important;
+}
+
+.igt-studio-header-action-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+.igt-studio-header-action-btn:active:not(:disabled) {
+  transform: scale(0.96) !important;
+}
+
+.igt-studio-header-action-btn:disabled,
+.igt-studio-header-action-btn.disabled {
+  opacity: 0.32 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+}
+
+.igt-studio-header-action-btn.danger {
+  color: #f87171 !important;
+}
+
+.igt-studio-header-action-btn.danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.18) !important;
+  color: #fca5a5 !important;
+}
+
+.igt-studio-header-action-btn.danger-trash {
+  color: #fb7185 !important;
+}
+
+.igt-studio-header-action-btn.danger-trash:hover:not(:disabled) {
+  background: rgba(244, 63, 94, 0.2) !important;
+  color: #fda4af !important;
+}
+
+.igt-studio-header-divider {
+  width: 1px !important;
+  height: 18px !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+  margin: 0 3px !important;
+}
+
+.igt-studio-close-btn {
+  background: transparent !important;
+  border: none !important;
+  color: #94a3b8 !important;
+  font-size: 18px !important;
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.igt-studio-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+/* Layout 3 Cột */
+.igt-studio-workspace {
+  flex: 1 !important;
+  display: grid !important;
+  grid-template-columns: 280px 1fr 360px !important;
+  overflow: hidden !important;
+}
+
+/* CỘT 1: BẢNG QUẢN LÝ TỆP & PUBLISH */
+.igt-studio-sidebar-left {
+  background: #14171d !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.07) !important;
+  padding: 18px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  overflow-y: auto !important;
+}
+
+.igt-studio-dropzone {
+  border: 2px dashed rgba(255, 255, 255, 0.18) !important;
+  border-radius: 16px !important;
+  padding: 24px 14px !important;
+  text-align: center !important;
+  cursor: pointer !important;
+  transition: all 0.22s ease !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+
+.igt-studio-dropzone:hover,
+.igt-studio-dropzone.dragover {
+  border-color: #0095f6 !important;
+  background: rgba(0, 149, 246, 0.06) !important;
+  transform: scale(1.01) !important;
+}
+
+.igt-studio-drop-icon {
+  width: 44px !important;
+  height: 44px !important;
+  margin: 0 auto 10px auto !important;
+  color: #0095f6 !important;
+}
+
+.igt-studio-drop-title {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #f8fafc !important;
+  margin-bottom: 4px !important;
+}
+
+.igt-studio-drop-sub {
+  font-size: 11px !important;
+  color: #64748b !important;
+  line-height: 1.4 !important;
+}
+
+.igt-studio-file-info-card {
+  margin-top: 14px !important;
+  padding: 12px !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  display: none !important;
+  /* Mặc định ẩn hoàn toàn khi chưa có file */
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.igt-studio-file-info-card.visible {
+  display: flex !important;
+}
+
+/* Danh sách tệp tải lên (Media Queue) cho Story & Post */
+.igt-studio-media-list {
+  margin-top: 14px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.igt-media-queue-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #94a3b8 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  margin-bottom: 2px !important;
+}
+
+.igt-media-queue-add-btn {
+  background: rgba(0, 149, 246, 0.15) !important;
+  border: 1px solid rgba(0, 149, 246, 0.35) !important;
+  color: #38bdf8 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  border-radius: 6px !important;
+  padding: 2px 8px !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.igt-media-queue-add-btn:hover {
+  background: #0095f6 !important;
+  color: #ffffff !important;
+}
+
+.igt-media-queue-items {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 7px !important;
+  max-height: 380px !important;
+  overflow-y: auto !important;
+  padding-right: 2px !important;
+}
+
+.igt-media-queue-card {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 8px 10px !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 10px !important;
+  cursor: grab !important;
+  user-select: none !important;
+  transition: all 0.18s ease !important;
+  position: relative !important;
+}
+
+.igt-media-queue-card:active {
+  cursor: grabbing !important;
+}
+
+.igt-media-queue-card.igt-card-dragging {
+  opacity: 0.45 !important;
+  border: 1.5px dashed #38bdf8 !important;
+  transform: scale(0.97) !important;
+}
+
+.igt-media-queue-card:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+.igt-media-queue-card.active {
+  background: rgba(0, 149, 246, 0.12) !important;
+  border-color: #0095f6 !important;
+  box-shadow: 0 0 12px rgba(0, 149, 246, 0.25) !important;
+}
+
+.igt-media-queue-thumb-wrap {
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 8px !important;
+  background: #181d24 !important;
+  overflow: hidden !important;
+  position: relative !important;
+  flex-shrink: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.igt-media-queue-thumb {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.igt-media-queue-placeholder {
+  font-size: 18px !important;
+  user-select: none !important;
+}
+
+.igt-media-queue-badge {
+  position: absolute !important;
+  top: 2px !important;
+  left: 2px !important;
+  background: rgba(0, 0, 0, 0.75) !important;
+  color: #38bdf8 !important;
+  font-size: 9px !important;
+  font-weight: 800 !important;
+  padding: 1px 4px !important;
+  border-radius: 4px !important;
+  z-index: 2 !important;
+  line-height: 1.2 !important;
+}
+
+.igt-media-queue-info {
+  flex: 1 !important;
+  overflow: hidden !important;
+}
+
+.igt-media-queue-name {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: #f1f5f9 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  margin-bottom: 2px !important;
+}
+
+.igt-media-queue-card.active .igt-media-queue-name {
+  color: #38bdf8 !important;
+}
+
+.igt-media-queue-meta {
+  font-size: 10.5px !important;
+  color: #64748b !important;
+}
+
+.igt-media-queue-del-btn {
+  background: transparent !important;
+  border: none !important;
+  color: #64748b !important;
+  font-size: 13px !important;
+  padding: 4px 6px !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  opacity: 0.7 !important;
+}
+
+.igt-media-queue-del-btn:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #ef4444 !important;
+  opacity: 1 !important;
+}
+
+/* Nút dấu + trên từng thẻ video/ảnh trong khay chứa */
+.igt-media-queue-add-clip-btn {
+  position: absolute !important;
+  right: 2px !important;
+  bottom: 2px !important;
+  width: 18px !important;
+  height: 18px !important;
+  border-radius: 50% !important;
+  background: #0284c7 !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.45) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6) !important;
+  transition: transform 0.15s ease, background 0.15s ease !important;
+  z-index: 3 !important;
+}
+
+.igt-media-queue-add-clip-btn:hover {
+  transform: scale(1.2) !important;
+  background: #0095f6 !important;
+}
+
+/* Vùng nhận diện Kéo & Thả (Drag & Drop) */
+.igt-timeline-body.igt-timeline-drop-target,
+.igt-timeline-lanes-area.igt-timeline-drop-target,
+.igt-media-track-row.igt-timeline-drop-target {
+  background: rgba(2, 132, 199, 0.18) !important;
+  outline: 2px dashed #38bdf8 !important;
+  outline-offset: -2px !important;
+  transition: background 0.15s ease, outline 0.15s ease !important;
+}
+
+.igt-studio-screen.igt-canvas-drop-active {
+  outline: 3px dashed #38bdf8 !important;
+  outline-offset: -3px !important;
+  box-shadow: 0 0 25px rgba(56, 189, 248, 0.4) inset !important;
+  transition: all 0.15s ease !important;
+}
+
+.igt-studio-dropzone.compact {
+  padding: 12px 10px !important;
+}
+
+.igt-studio-dropzone.compact .igt-studio-drop-icon {
+  width: 24px !important;
+  height: 24px !important;
+  margin-bottom: 4px !important;
+}
+
+/* Card gợi ý Ghép nối nhiều video ở Sidebar trái */
+.igt-sequence-option-card {
+  margin-top: 10px !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 10px !important;
+  padding: 10px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  transition: all 0.2s ease !important;
+}
+
+.igt-sequence-option-card.active {
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.18), rgba(0, 149, 246, 0.14)) !important;
+  border-color: #0095f6 !important;
+  box-shadow: 0 0 16px rgba(0, 149, 246, 0.35) !important;
+}
+
+/* Cảnh báo thời lượng Story vượt quá 60s */
+.igt-story-duration-warning {
+  background: rgba(239, 68, 68, 0.14) !important;
+  border: 1.5px solid rgba(239, 68, 68, 0.4) !important;
+  border-radius: 9px !important;
+  padding: 8px 10px !important;
+  margin-bottom: 10px !important;
+  display: flex !important;
+  gap: 8px !important;
+  align-items: flex-start !important;
+  animation: igtPulseAlert 1.6s infinite ease-in-out !important;
+}
+
+@keyframes igtPulseAlert {
+
+  0%,
+  100% {
+    border-color: rgba(239, 68, 68, 0.4);
+  }
+
+  50% {
+    border-color: rgba(239, 68, 68, 0.85);
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.35);
+  }
+}
+
+/* Hộp cài đặt tự động chia nhỏ Story */
+.igt-story-split-box {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 9px !important;
+  padding: 10px !important;
+  margin-top: 10px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.igt-story-split-pills {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+}
+
+.igt-story-split-btn {
+  padding: 5px 0 !important;
+  border-radius: 6px !important;
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #cbd5e1 !important;
+  cursor: pointer !important;
+  text-align: center !important;
+  transition: all 0.14s ease !important;
+}
+
+.igt-story-split-btn:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+}
+
+.igt-story-split-btn.active {
+  background: rgba(0, 149, 246, 0.25) !important;
+  border-color: #0095f6 !important;
+  color: #38bdf8 !important;
+}
+
+.igt-studio-dropzone.compact .igt-studio-drop-icon svg {
+  width: 24px !important;
+  height: 24px !important;
+}
+
+.igt-studio-dropzone.compact .igt-studio-drop-title {
+  font-size: 12px !important;
+}
+
+.igt-studio-dropzone.compact .igt-studio-drop-sub {
+  font-size: 10px !important;
+}
+
+.igt-studio-file-thumb-wrap {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 8px !important;
+  background: #181d24 !important;
+  overflow: hidden !important;
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}
+
+.igt-studio-file-thumb-placeholder {
+  font-size: 20px !important;
+  user-select: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.igt-studio-file-thumb {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 8px !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.igt-studio-file-thumb:not([src]),
+.igt-studio-file-thumb[src=""] {
+  display: none !important;
+}
+
+.igt-studio-file-meta {
+  flex: 1 !important;
+  overflow: hidden !important;
+}
+
+.igt-studio-file-name {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: #f1f5f9 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.igt-studio-file-res {
+  font-size: 10.5px !important;
+  color: #10b981 !important;
+  margin-top: 2px !important;
+}
+
+.igt-studio-actions-group {
+  margin-top: 20px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+}
+
+.igt-studio-btn-publish {
+  width: 100% !important;
+  background: #0095f6 !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 12px !important;
+  padding: 14px 0 !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.5px !important;
+  cursor: pointer !important;
+  box-shadow: 0 4px 18px rgba(0, 149, 246, 0.35) !important;
+  transition: all 0.2s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+}
+
+.igt-studio-btn-publish:hover {
+  background: #1877f2 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 24px rgba(0, 149, 246, 0.45) !important;
+}
+
+.igt-studio-btn-download-hd {
+  width: 100% !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #e2e8f0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 12px !important;
+  padding: 11px 0 !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+}
+
+.igt-studio-btn-download-hd:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+}
+
+/* CỘT 2: KHUNG PREVIEW CANVAS MOBILE */
+.igt-studio-canvas-center {
+  background: #090b0e !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 16px 20px !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+/* Thanh chọn tỉ lệ nhanh trên đỉnh Canvas */
+.igt-studio-ratio-bar {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  background: rgba(22, 26, 33, 0.85) !important;
+  backdrop-filter: blur(10px) !important;
+  padding: 4px 6px !important;
+  border-radius: 30px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  z-index: 10 !important;
+}
+
+.igt-studio-ratio-btn {
+  background: transparent !important;
+  border: none !important;
+  color: #94a3b8 !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  padding: 5px 12px !important;
+  border-radius: 20px !important;
+  cursor: pointer !important;
+  transition: all 0.18s ease !important;
+}
+
+.igt-studio-ratio-btn:hover {
+  color: #f8fafc !important;
+}
+
+.igt-studio-ratio-btn.active {
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+/* Ô tỉ lệ được KHUYẾN NGHỊ chuẩn Instagram (Tô màu nổi bật khác biệt) */
+.igt-studio-ratio-btn.is-recommended {
+  color: #38bdf8 !important;
+  font-weight: 700 !important;
+  position: relative !important;
+  background: rgba(56, 189, 248, 0.1) !important;
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.25) !important;
+}
+
+.igt-studio-ratio-btn.is-recommended::after {
+  content: '★' !important;
+  font-size: 8.5px !important;
+  color: #38bdf8 !important;
+  margin-left: 3px !important;
+  vertical-align: super !important;
+  display: inline-block !important;
+}
+
+.igt-studio-ratio-btn.is-recommended:hover {
+  background: rgba(56, 189, 248, 0.22) !important;
+  color: #ffffff !important;
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.45) !important;
+}
+
+/* Khi ô khuyến nghị đang được chọn (Active) */
+.igt-studio-ratio-btn.is-recommended.active {
+  background: linear-gradient(135deg, #0284c7, #0095f6) !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+  box-shadow: 0 0 16px rgba(0, 149, 246, 0.7), 0 2px 6px rgba(0, 0, 0, 0.4) !important;
+}
+
+.igt-studio-ratio-btn.is-recommended.active::after {
+  color: #fef08a !important; /* Ngôi sao vàng sáng rực khi active */
+}
+
+/* Khung màn hình điện thoại (Phone Mockup) */
+.igt-studio-phone-frame {
+  position: relative !important;
+  background: #000000 !important;
+  border: 4px solid #232730 !important;
+  border-radius: 36px !important;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8) !important;
+  overflow: hidden !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: width 0.28s cubic-bezier(0.16, 1, 0.3, 1), height 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  /* Kích thước mặc định Story 9:16 (cho phép JS setRatio linh hoạt) */
+  width: 315px;
+  height: 560px;
+  max-width: 95% !important;
+  max-height: calc(100% - 70px) !important;
+}
+
+/* Lớp nền mờ nghệ thuật (Blurred Backdrop) */
+.igt-studio-blur-bg {
+  position: absolute !important;
+  inset: -20px !important;
+  background-size: cover !important;
+  background-position: center !important;
+  filter: blur(28px) brightness(0.65) saturate(1.4) !important;
+  transform: scale(1.15) !important;
+  z-index: 1 !important;
+  pointer-events: none !important;
+}
+
+/* Lớp tương tác Media (Pan & Zoom) */
+.igt-studio-media-container {
+  position: relative !important;
+  z-index: 2 !important;
+  width: 100% !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+  cursor: grab !important;
+}
+
+.igt-studio-media-container:active {
+  cursor: grabbing !important;
+}
+
+.igt-studio-active-media {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  user-select: none !important;
+  pointer-events: none !important;
+  /* Phản hồi tức thời 1:1 theo chuột, triệt tiêu hoàn toàn giật khựng */
+  transition: none !important;
+  transform-origin: center center !important;
+  -webkit-transform-origin: center center !important;
+  will-change: transform !important;
+  display: block !important;
+}
+
+.igt-studio-active-media.smooth-animate {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.igt-studio-media-container video,
+.igt-studio-media-container img {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  user-select: none !important;
+  pointer-events: none !important;
+  transform-origin: center center !important;
+  -webkit-transform-origin: center center !important;
+  will-change: transform !important;
+  display: block !important;
+}
+
+/* Ngăn hoàn toàn thanh player ngoài của Instagram chui vào Studio */
+#igt-studio-modal .ig-video-controller,
+#igt-studio-modal .ig-vctl-mini-progress {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+/* Lớp chứa Sticker kéo thả trên Canvas */
+.igt-studio-stickers-layer {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 15 !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+}
+
+/* Từng phần tử Sticker có thể kéo thả */
+.igt-studio-sticker-item {
+  position: absolute !important;
+  width: max-content !important;
+  min-width: max-content !important;
+  max-width: none !important;
+  white-space: nowrap !important;
+  cursor: grab !important;
+  user-select: none !important;
+  pointer-events: auto !important;
+  touch-action: none !important;
+  transition: box-shadow 0.15s ease, outline 0.15s ease !important;
+  z-index: 20 !important;
+  box-sizing: border-box !important;
+  outline: none !important;
+}
+
+.igt-studio-sticker-item:active {
+  cursor: grabbing !important;
+}
+
+/* Sticker không thuộc Tab đang kích hoạt: hoàn toàn trong suốt với chuột, không hiện viền/vùng chọn */
+.igt-studio-sticker-item.igt-stk-inactive-tab {
+  pointer-events: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  animation: none !important;
+  cursor: default !important;
+}
+
+.igt-studio-sticker-item.igt-stk-inactive-tab .igt-sticker-del-btn,
+.igt-studio-sticker-item.igt-stk-inactive-tab .igt-sticker-resize-handle,
+.igt-studio-sticker-item.igt-stk-inactive-tab .igt-sticker-scale-toolbar {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Khi nhãn dán thuộc Tab đang kích hoạt:
+   Mặc định sạch sẽ không có bất kỳ viền hay nút công cụ nào.
+   CHỈ KHI HOVER hoặc ĐANG KÉO (DRAGGING) thì mới hiển thị viền thao tác và thanh điều khiển */
+.igt-studio-sticker-item:not(.igt-stk-inactive-tab):hover,
+.igt-studio-sticker-item:not(.igt-stk-inactive-tab).is-dragging {
+  outline: 1.5px dashed rgba(0, 149, 246, 0.85) !important;
+  outline-offset: 3px !important;
+  border-radius: 8px !important;
+}
+
+.igt-studio-sticker-item:not(.igt-stk-inactive-tab).selected {
+  outline: none !important;
+}
+
+/* Sticker / Tag đang ở trạng thái chỉnh sửa (Active Editing) */
+.igt-studio-sticker-item:not(.igt-stk-inactive-tab).is-active-editing {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Kiểu dáng gõ chữ trực tiếp trên nhãn dán (Inline Editable) */
+.igt-studio-sticker-item [contenteditable="true"] {
+  outline: none !important;
+  cursor: text !important;
+  transition: background 0.15s ease, box-shadow 0.15s ease !important;
+  border-radius: 4px !important;
+}
+
+.igt-studio-sticker-item:not(.igt-stk-inactive-tab) [contenteditable="true"]:hover {
+  background: rgba(56, 189, 248, 0.12) !important;
+}
+
+.igt-studio-sticker-item:not(.igt-stk-inactive-tab) [contenteditable="true"]:focus,
+.igt-studio-sticker-item:not(.igt-stk-inactive-tab) [contenteditable="true"].igt-inline-editing {
+  background: rgba(56, 189, 248, 0.22) !important;
+  box-shadow: 0 0 0 1.5px #38bdf8, 0 0 10px rgba(56, 189, 248, 0.5) !important;
+}
+
+.igt-studio-sticker-item:not(.igt-stk-inactive-tab):hover .igt-sticker-del-btn,
+.igt-studio-sticker-item:not(.igt-stk-inactive-tab).is-dragging .igt-sticker-del-btn,
+.igt-studio-sticker-item:not(.igt-stk-inactive-tab):hover .igt-sticker-resize-handle,
+.igt-studio-sticker-item:not(.igt-stk-inactive-tab).is-dragging .igt-sticker-resize-handle,
+.igt-studio-sticker-item:not(.igt-stk-inactive-tab):hover .igt-sticker-scale-toolbar,
+.igt-studio-sticker-item:not(.igt-stk-inactive-tab).is-dragging .igt-sticker-scale-toolbar {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+@keyframes igt-pulse-editing {
+
+  0%,
+  100% {
+    box-shadow: 0 0 10px rgba(0, 149, 246, 0.35);
+    outline-color: #0095f6;
+  }
+
+  50% {
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.65);
+    outline-color: #38bdf8;
+  }
+}
+
+.igt-sticker-del-btn {
+  position: absolute !important;
+  top: -7px !important;
+  left: -7px !important;
+  /* Đặt ở góc trên bên trái để tách biệt hoàn toàn */
+  width: 16px !important;
+  height: 16px !important;
+  border-radius: 50% !important;
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  font-size: 8px !important;
+  font-weight: 800 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  border: 1.5px solid #ffffff !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4) !important;
+  z-index: 30 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 0.15s ease, transform 0.15s ease !important;
+}
+
+/* Nút kéo góc để thu phóng nhãn dán */
+.igt-sticker-resize-handle {
+  position: absolute !important;
+  bottom: -7px !important;
+  right: -7px !important;
+  /* Đặt ở góc dưới bên phải */
+  width: 16px !important;
+  height: 16px !important;
+  border-radius: 50% !important;
+  background: #0095f6 !important;
+  color: #ffffff !important;
+  font-size: 9px !important;
+  font-weight: 800 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: nwse-resize !important;
+  border: 1.5px solid #ffffff !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4) !important;
+  z-index: 30 !important;
+  line-height: 1 !important;
+  user-select: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 0.15s ease, transform 0.15s ease !important;
+}
+
+.igt-studio-sticker-item:not(.igt-stk-inactive-tab):hover .igt-sticker-del-btn,
+.igt-studio-sticker-item:not(.igt-stk-inactive-tab).is-dragging .igt-sticker-del-btn,
+.igt-studio-sticker-item:not(.igt-stk-inactive-tab):hover .igt-sticker-resize-handle,
+.igt-studio-sticker-item:not(.igt-stk-inactive-tab).is-dragging .igt-sticker-resize-handle {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+.igt-sticker-del-btn:hover,
+.igt-sticker-resize-handle:hover {
+  transform: scale(1.18) !important;
+}
+
+/* Thanh công cụ zoom mini nổi phía trên nhãn dán */
+.igt-sticker-scale-toolbar {
+  position: absolute !important;
+  top: -30px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 2px !important;
+  background: rgba(15, 23, 42, 0.94) !important;
+  padding: 2px 5px !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 0.15s ease !important;
+  z-index: 35 !important;
+  white-space: nowrap !important;
+}
+
+.igt-studio-sticker-item:not(.igt-stk-inactive-tab):hover .igt-sticker-scale-toolbar,
+.igt-studio-sticker-item:not(.igt-stk-inactive-tab).is-dragging .igt-sticker-scale-toolbar {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+.igt-sticker-scale-btn {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border: none !important;
+  color: #ffffff !important;
+  width: 16px !important;
+  height: 16px !important;
+  border-radius: 4px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  transition: background 0.15s ease !important;
+}
+
+.igt-sticker-scale-btn:hover {
+  background: #0095f6 !important;
+}
+
+.igt-sticker-scale-text {
+  font-size: 9.5px !important;
+  color: #38bdf8 !important;
+  font-weight: 700 !important;
+  padding: 0 3px !important;
+  min-width: 28px !important;
+  text-align: center !important;
+  cursor: pointer !important;
+}
+
+.igt-sticker-scale-text:hover {
+  text-decoration: underline !important;
+}
+
+/* Kiểu dáng Link Sticker */
+.igt-sticker-link-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 7px 14px !important;
+  border-radius: 24px !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35) !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  width: max-content !important;
+  min-width: max-content !important;
+}
+
+/* =========================================================================
+   BỘ WIDGET STICKER TƯƠNG TÁC CHUẨN INSTAGRAM & FACEBOOK STORY
+   ========================================================================= */
+/* 1. Bình chọn (Poll) */
+.igt-sticker-poll-card {
+  background: #ffffff !important;
+  color: #1e293b !important;
+  border-radius: 16px !important;
+  padding: 10px 14px !important;
+  min-width: 170px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+  text-align: center !important;
+  user-select: none !important;
+}
+
+.igt-poll-question {
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  margin-bottom: 8px !important;
+  color: #0f172a !important;
+}
+
+.igt-poll-options {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.igt-poll-opt {
+  flex: 1 !important;
+  padding: 6px 10px !important;
+  border-radius: 10px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  border: 1.5px solid rgba(0, 0, 0, 0.1) !important;
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+
+.igt-poll-opt.opt-a {
+  color: #0284c7 !important;
+  border-color: rgba(2, 132, 199, 0.3) !important;
+  background: rgba(2, 132, 199, 0.08) !important;
+}
+
+.igt-poll-opt.opt-b {
+  color: #e11d48 !important;
+  border-color: rgba(225, 29, 72, 0.3) !important;
+  background: rgba(225, 29, 72, 0.08) !important;
+}
+
+/* 2. Hộp câu hỏi (Question Box) */
+.igt-sticker-question-card {
+  background: #ffffff !important;
+  color: #1e293b !important;
+  border-radius: 16px !important;
+  padding: 12px 16px !important;
+  min-width: 180px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+  text-align: center !important;
+}
+
+.igt-qbox-header {
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  color: #0f172a !important;
+  margin-bottom: 8px !important;
+}
+
+.igt-qbox-body {
+  background: #f1f5f9 !important;
+  border-radius: 10px !important;
+  padding: 8px 12px !important;
+  color: #94a3b8 !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+}
+
+/* 3. Đếm ngược (Countdown) */
+.igt-sticker-countdown-card {
+  background: linear-gradient(135deg, #1e1b4b, #312e81) !important;
+  color: #ffffff !important;
+  border-radius: 16px !important;
+  padding: 10px 14px !important;
+  min-width: 180px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+  text-align: center !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.igt-countdown-title {
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  margin-bottom: 6px !important;
+  color: #e0e7ff !important;
+}
+
+.igt-countdown-timer {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+}
+
+.igt-cd-unit {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+  padding: 4px 6px !important;
+  border-radius: 6px !important;
+  min-width: 32px !important;
+}
+
+.igt-cd-unit b {
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+}
+
+.igt-cd-unit span {
+  font-size: 7.5px !important;
+  opacity: 0.8 !important;
+  margin-top: 2px !important;
+}
+
+.igt-cd-sep {
+  font-weight: 900 !important;
+  font-size: 13px !important;
+  color: #a5b4fc !important;
+}
+
+/* 4. Khung bài hát (Music Player) */
+.igt-sticker-music-card {
+  background: rgba(15, 23, 42, 0.9) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+  border-radius: 14px !important;
+  padding: 7px 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 180px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+}
+
+.igt-music-stk-icon {
+  font-size: 16px !important;
+}
+
+.igt-music-stk-info {
+  flex: 1 !important;
+  text-align: left !important;
+  overflow: hidden !important;
+}
+
+.igt-music-stk-song {
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.igt-music-stk-artist {
+  font-size: 9.5px !important;
+  color: #94a3b8 !important;
+  white-space: nowrap !important;
+}
+
+.igt-music-stk-disc {
+  font-size: 18px !important;
+  animation: igt-spin 4s linear infinite !important;
+}
+
+@keyframes igt-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 5. Thước đo cảm xúc (Emoji Slider) */
+.igt-sticker-slider-card {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-radius: 16px !important;
+  padding: 10px 14px !important;
+  min-width: 170px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+  text-align: center !important;
+}
+
+.igt-slider-stk-question {
+  font-size: 12.5px !important;
+  font-weight: 800 !important;
+  margin-bottom: 8px !important;
+}
+
+.igt-slider-stk-track {
+  height: 8px !important;
+  background: linear-gradient(90deg, #f09433, #dc2743, #bc1888) !important;
+  border-radius: 999px !important;
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.igt-slider-stk-thumb {
+  position: absolute !important;
+  left: 65% !important;
+  transform: translate(-50%, -50%) !important;
+  top: 50% !important;
+  font-size: 20px !important;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3)) !important;
+}
+
+/* 6. Lượt tiếp theo (Add Yours) */
+.igt-sticker-addyours-card {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-radius: 16px !important;
+  padding: 9px 14px !important;
+  min-width: 170px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+  text-align: center !important;
+  border: 2px solid #0095f6 !important;
+}
+
+.igt-ay-top {
+  font-size: 10px !important;
+  color: #0095f6 !important;
+  letter-spacing: 0.5px !important;
+  margin-bottom: 3px !important;
+}
+
+.igt-ay-prompt {
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  color: #0f172a !important;
+}
+
+/* Thẻ mẫu Widget trong danh sách Sidebar */
+.igt-ig-widget-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 8px !important;
+  margin-bottom: 12px !important;
+}
+
+.igt-ig-widget-card {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 10px !important;
+  padding: 8px 10px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  cursor: pointer !important;
+  transition: all 0.18s ease !important;
+  text-align: center !important;
+}
+
+.igt-ig-widget-card:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: #0095f6 !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(0, 149, 246, 0.3) !important;
+}
+
+.igt-ig-widget-icon {
+  font-size: 20px !important;
+}
+
+.igt-ig-widget-name {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #f1f5f9 !important;
+}
+
+.igt-ig-widget-sub {
+  font-size: 9px !important;
+  color: #94a3b8 !important;
+}
+
+.igt-sticker-link-pill.default {
+  background: #ffffff !important;
+  color: #1e293b !important;
+}
+
+.igt-sticker-link-pill.blue {
+  background: #0095f6 !important;
+  color: #ffffff !important;
+}
+
+.igt-sticker-link-pill.dark {
+  background: rgba(15, 23, 42, 0.9) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.igt-sticker-link-pill.gradient {
+  background: linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%) !important;
+  color: #ffffff !important;
+}
+
+/* Kiểu dáng Text Sticker */
+.igt-sticker-text-item {
+  padding: 6px 12px !important;
+  font-weight: 700 !important;
+  line-height: 1.3 !important;
+  white-space: pre !important;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6) !important;
+  width: max-content !important;
+  min-width: max-content !important;
+  max-width: none !important;
+  flex-shrink: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.igt-sticker-text-item.box {
+  border-radius: 8px !important;
+  text-shadow: none !important;
+}
+
+/* Hiệu ứng Typography cho chữ Instagram (Effects) */
+.igt-sticker-text-item.effect-glow {
+  text-shadow: 0 0 8px var(--igt-text-glow-color, #38bdf8),
+    0 0 18px var(--igt-text-glow-color, #38bdf8),
+    0 0 30px var(--igt-text-glow-color, #38bdf8) !important;
+}
+
+.igt-sticker-text-item.effect-neon {
+  color: #ffffff !important;
+  text-shadow: 0 0 3px #ffffff,
+    0 0 8px var(--igt-text-glow-color, #ec4899),
+    0 0 18px var(--igt-text-glow-color, #ec4899),
+    0 0 32px var(--igt-text-glow-color, #ec4899),
+    0 0 48px var(--igt-text-glow-color, #ec4899) !important;
+}
+
+.igt-sticker-text-item.effect-gradient_stroke {
+  text-shadow: -1.5px -1.5px 0 #f43f5e,
+    1.5px -1.5px 0 #8b5cf6,
+    -1.5px 1.5px 0 #06b6d4,
+    1.5px 1.5px 0 #10b981,
+    0 3px 12px rgba(0, 0, 0, 0.7) !important;
+}
+
+.igt-sticker-text-item.effect-shadow_3d {
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.9),
+    2px 2px 0 rgba(0, 0, 0, 0.85),
+    3px 3px 0 rgba(0, 0, 0, 0.75),
+    4px 4px 0 rgba(0, 0, 0, 0.65),
+    5px 5px 10px rgba(0, 0, 0, 0.5) !important;
+}
+
+.igt-sticker-text-item.effect-glitch {
+  text-shadow: -2px 0 #00ffff,
+    2px 0 #ff0055,
+    0 2px 8px rgba(0, 0, 0, 0.7) !important;
+}
+
+.igt-sticker-text-item.box.effect-glow {
+  text-shadow: 0 0 10px var(--igt-text-glow-color, #38bdf8),
+    0 0 22px var(--igt-text-glow-color, #38bdf8) !important;
+}
+
+.igt-sticker-text-item.box.effect-neon {
+  color: #ffffff !important;
+  text-shadow: 0 0 3px #ffffff,
+    0 0 10px var(--igt-text-glow-color, #ec4899),
+    0 0 24px var(--igt-text-glow-color, #ec4899) !important;
+}
+
+.igt-sticker-text-item.box.effect-gradient_stroke {
+  text-shadow: -1.5px -1.5px 0 #f43f5e,
+    1.5px -1.5px 0 #8b5cf6,
+    -1.5px 1.5px 0 #06b6d4,
+    1.5px 1.5px 0 #10b981 !important;
+}
+
+.igt-sticker-text-item.box.effect-shadow_3d {
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.8),
+    2px 2px 0 rgba(0, 0, 0, 0.7),
+    3px 3px 6px rgba(0, 0, 0, 0.5) !important;
+}
+
+.igt-sticker-text-item.box.effect-glitch {
+  text-shadow: -2px 0 #00ffff,
+    2px 0 #ff0055 !important;
+}
+
+/* Các loại Font chữ Instagram */
+.igt-sticker-text-item.font-system {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+}
+
+.igt-sticker-text-item.font-serif {
+  font-family: Georgia, "Times New Roman", serif !important;
+  font-style: italic !important;
+}
+
+.igt-sticker-text-item.font-monospace {
+  font-family: "Courier New", Courier, monospace !important;
+  letter-spacing: -0.5px !important;
+}
+
+.igt-sticker-text-item.font-cursive {
+  font-family: "Brush Script MT", "Caveat", "Dancing Script", cursive !important;
+  font-size: 1.18em !important;
+}
+
+.igt-sticker-text-item.font-impact {
+  font-family: Impact, "Arial Black", sans-serif !important;
+  letter-spacing: 0.8px !important;
+  text-transform: uppercase !important;
+}
+
+/* Kiểu dáng Emoji Sticker */
+.igt-sticker-emoji-item {
+  font-size: 38px !important;
+  line-height: 1 !important;
+  user-select: none !important;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45)) !important;
+  transition: transform 0.15s ease !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  width: max-content !important;
+  min-width: max-content !important;
+}
+
+/* Kiểu dáng Story Badge Pill */
+.igt-sticker-badge-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  padding: 6px 14px !important;
+  border-radius: 20px !important;
+  font-weight: 800 !important;
+  font-size: 12px !important;
+  letter-spacing: 0.6px !important;
+  text-transform: uppercase !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+  user-select: none !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  width: max-content !important;
+  min-width: max-content !important;
+}
+
+.igt-sticker-badge-pill.gradient {
+  background: linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%) !important;
+  color: #ffffff !important;
+}
+
+.igt-sticker-badge-pill.neon {
+  background: #000000 !important;
+  color: #22c55e !important;
+  border: 1.5px solid #22c55e !important;
+  box-shadow: 0 0 14px rgba(34, 197, 94, 0.4) !important;
+}
+
+.igt-sticker-badge-pill.gold {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+  color: #000000 !important;
+}
+
+.igt-sticker-badge-pill.dark {
+  background: rgba(15, 23, 42, 0.92) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Tab Stickers: Grid Emojis & Badges */
+.igt-emoji-grid {
+  display: grid !important;
+  grid-template-columns: repeat(6, 1fr) !important;
+  gap: 6px !important;
+  max-height: 200px !important;
+  overflow-y: auto !important;
+  padding: 6px !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+.igt-emoji-btn {
+  font-size: 22px !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  padding: 6px 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.15s ease !important;
+}
+
+.igt-emoji-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  transform: scale(1.25) !important;
+}
+
+.igt-badge-grid {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  margin-top: 6px !important;
+}
+
+.igt-badge-btn {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 16px !important;
+  color: #f1f5f9 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  padding: 5px 11px !important;
+  cursor: pointer !important;
+  transition: all 0.18s ease !important;
+}
+
+.igt-badge-btn:hover {
+  background: rgba(0, 149, 246, 0.25) !important;
+  border-color: #0095f6 !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Kiểu dáng Mention Sticker */
+.igt-sticker-mention-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: #0f172a !important;
+  padding: 5px 12px !important;
+  border-radius: 20px !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  width: max-content !important;
+  min-width: max-content !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* 1. Trắng sáng */
+.igt-sticker-mention-pill.style-white {
+  background: rgba(255, 255, 255, 0.96) !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(255, 255, 255, 0.8) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+}
+
+.igt-sticker-mention-pill.style-white .igt-mention-at {
+  color: #0095f6 !important;
+}
+
+/* 2. Kính mờ Frosted Glass */
+.igt-sticker-mention-pill.style-frosted {
+  background: rgba(255, 255, 255, 0.34) !important;
+  backdrop-filter: blur(14px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(180%) !important;
+  color: #ffffff !important;
+  border: 1.2px solid rgba(255, 255, 255, 0.55) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28), inset 0 1px 1px rgba(255, 255, 255, 0.6) !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5) !important;
+}
+
+.igt-sticker-mention-pill.style-frosted .igt-mention-at {
+  color: #38bdf8 !important;
+}
+
+/* 3. Trong suốt viền trắng */
+.igt-sticker-mention-pill.style-transparent {
+  background: rgba(0, 0, 0, 0.16) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  color: #ffffff !important;
+  border: 1.8px solid rgba(255, 255, 255, 0.88) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3) !important;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7) !important;
+}
+
+.igt-sticker-mention-pill.style-transparent .igt-mention-at {
+  color: #ffffff !important;
+}
+
+/* 4. Xám nhẹ tối giản */
+.igt-sticker-mention-pill.style-light_gray {
+  background: rgba(226, 232, 240, 0.9) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  color: #1e293b !important;
+  border: 1px solid rgba(203, 213, 225, 0.75) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+}
+
+.igt-sticker-mention-pill.style-light_gray .igt-mention-at {
+  color: #475569 !important;
+}
+
+/* 5. Kính tối Dark Glass */
+.igt-sticker-mention-pill.style-dark_glass {
+  background: rgba(15, 23, 42, 0.78) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(255, 255, 255, 0.24) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6) !important;
+}
+
+.igt-sticker-mention-pill.style-dark_glass .igt-mention-at {
+  color: #38bdf8 !important;
+}
+
+/* 6. Gradient Hoàng hôn Instagram */
+.igt-sticker-mention-pill.style-gradient {
+  background: linear-gradient(135deg, rgba(245, 133, 41, 0.92), rgba(221, 42, 123, 0.92), rgba(129, 52, 175, 0.92)) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+  box-shadow: 0 6px 20px rgba(221, 42, 123, 0.35) !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+.igt-sticker-mention-pill.style-gradient .igt-mention-at {
+  color: #fef08a !important;
+}
+
+/* Grid lựa chọn Kiểu dáng nền Mention */
+.igt-mention-styles-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 5px !important;
+}
+
+.igt-mention-style-chip {
+  padding: 6px 4px !important;
+  border-radius: 6px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  border: 1.2px solid rgba(255, 255, 255, 0.08) !important;
+  transition: all 0.16s ease !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: #cbd5e1 !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+}
+
+.igt-mention-style-chip:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+.igt-mention-style-chip.active {
+  border-color: #0095f6 !important;
+  background: rgba(0, 149, 246, 0.22) !important;
+  color: #38bdf8 !important;
+}
+
+.igt-mention-avatar-thumb {
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  flex-shrink: 0 !important;
+}
+
+.igt-sticker-image-item {
+  width: 76px !important;
+  height: 76px !important;
+  object-fit: contain !important;
+  display: block !important;
+  pointer-events: none !important;
+  user-select: none !important;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.45)) !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+/* Autocomplete Dropdown Gợi ý Nhắc tên */
+.igt-mention-suggestions-box {
+  margin-top: 4px !important;
+  margin-bottom: 12px !important;
+  display: none;
+}
+
+.igt-mention-suggestions-box.visible {
+  display: block !important;
+}
+
+.igt-mention-suggestions-list {
+  background: #151b23 !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6) !important;
+  max-height: 220px !important;
+  overflow-y: auto !important;
+  padding: 4px !important;
+}
+
+.igt-mention-suggest-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 8px 10px !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  transition: background 0.15s ease !important;
+}
+
+.igt-mention-suggest-item:hover {
+  background: rgba(0, 149, 246, 0.2) !important;
+}
+
+.igt-mention-suggest-avatar {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  background: #334155 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  flex-shrink: 0 !important;
+}
+
+.igt-mention-suggest-info {
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+.igt-mention-suggest-uname {
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  color: #f8fafc !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.igt-mention-suggest-fname {
+  font-size: 11px !important;
+  color: #94a3b8 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Bộ Sticker Google & Danh mục */
+.igt-sticker-search-box {
+  margin-bottom: 8px !important;
+}
+
+.igt-sticker-filter-pills {
+  display: flex !important;
+  gap: 5px !important;
+  overflow-x: auto !important;
+  padding-bottom: 5px !important;
+  margin-bottom: 8px !important;
+}
+
+.igt-sticker-filter-pills::-webkit-scrollbar {
+  height: 4px !important;
+}
+
+.igt-sticker-filter-pill {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 20px !important;
+  padding: 4px 10px !important;
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
+  color: #cbd5e1 !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  transition: all 0.15s ease !important;
+}
+
+.igt-sticker-filter-pill:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+}
+
+.igt-sticker-filter-pill.active {
+  background: #0095f6 !important;
+  color: #ffffff !important;
+  border-color: #0095f6 !important;
+}
+
+.igt-google-stickers-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 8px !important;
+  max-height: 220px !important;
+  overflow-y: auto !important;
+  padding: 6px !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+.igt-google-sticker-btn {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-radius: 10px !important;
+  padding: 6px 4px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.16s ease !important;
+  min-height: 54px !important;
+}
+
+.igt-google-sticker-btn:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(0, 149, 246, 0.5) !important;
+  transform: scale(1.08) !important;
+}
+
+.igt-google-sticker-emoji {
+  font-size: 28px !important;
+  line-height: 1.1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  user-select: none !important;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.4)) !important;
+}
+
+.igt-google-sticker-thumb {
+  width: 32px !important;
+  height: 32px !important;
+  object-fit: contain !important;
+  pointer-events: none !important;
+}
+
+.igt-google-sticker-name {
+  font-size: 9px !important;
+  color: #94a3b8 !important;
+  margin-top: 3px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: 58px !important;
+  text-align: center !important;
+}
+
+/* Kiểu dáng Location Sticker */
+.igt-sticker-location-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: #0f172a !important;
+  padding: 6px 14px !important;
+  border-radius: 20px !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  width: max-content !important;
+  min-width: max-content !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* 1. Trắng sáng */
+.igt-sticker-location-pill.style-white {
+  background: rgba(255, 255, 255, 0.96) !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(255, 255, 255, 0.8) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* 2. Kính mờ Frosted Glass */
+.igt-sticker-location-pill.style-frosted {
+  background: rgba(255, 255, 255, 0.34) !important;
+  backdrop-filter: blur(14px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(180%) !important;
+  color: #ffffff !important;
+  border: 1.2px solid rgba(255, 255, 255, 0.55) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28), inset 0 1px 1px rgba(255, 255, 255, 0.6) !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* 3. Trong suốt viền trắng */
+.igt-sticker-location-pill.style-transparent {
+  background: rgba(0, 0, 0, 0.16) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  color: #ffffff !important;
+  border: 1.8px solid rgba(255, 255, 255, 0.88) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3) !important;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7) !important;
+}
+
+/* 4. Xám nhẹ tối giản */
+.igt-sticker-location-pill.style-light_gray {
+  background: rgba(226, 232, 240, 0.9) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  color: #1e293b !important;
+  border: 1px solid rgba(203, 213, 225, 0.75) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* 5. Kính tối Dark Glass */
+.igt-sticker-location-pill.style-dark_glass {
+  background: rgba(15, 23, 42, 0.78) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(255, 255, 255, 0.24) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* 6. Gradient Hoàng hôn Instagram */
+.igt-sticker-location-pill.style-gradient {
+  background: linear-gradient(135deg, rgba(245, 133, 41, 0.92), rgba(221, 42, 123, 0.92), rgba(129, 52, 175, 0.92)) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+  box-shadow: 0 6px 20px rgba(221, 42, 123, 0.35) !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Grid lựa chọn Kiểu dáng nền Vị trí */
+.igt-location-styles-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 5px !important;
+}
+
+.igt-location-style-chip {
+  padding: 6px 4px !important;
+  border-radius: 6px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  border: 1.2px solid rgba(255, 255, 255, 0.08) !important;
+  transition: all 0.16s ease !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: #cbd5e1 !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+}
+
+.igt-location-style-chip:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+.igt-location-style-chip.active {
+  border-color: #0095f6 !important;
+  background: rgba(0, 149, 246, 0.22) !important;
+  color: #38bdf8 !important;
+}
+
+/* Thanh điều khiển Zoom dưới đáy Canvas */
+.igt-studio-canvas-controls {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  background: rgba(22, 26, 33, 0.85) !important;
+  backdrop-filter: blur(10px) !important;
+  padding: 2px 10px !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  border-radius: 20px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  z-index: 10 !important;
+  margin: 2px 0 4px 0 !important;
+  box-sizing: border-box !important;
+}
+
+.igt-studio-zoom-label {
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
+  color: #94a3b8 !important;
+  line-height: 1 !important;
+}
+
+.igt-studio-zoom-slider {
+  width: 85px !important;
+  height: 4px !important;
+  accent-color: #0095f6 !important;
+  cursor: pointer !important;
+}
+
+.igt-studio-btn-reset-center {
+  background: transparent !important;
+  border: none !important;
+  color: #38bdf8 !important;
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  padding: 0 4px !important;
+  line-height: 1 !important;
+}
+
+.igt-studio-btn-reset-center:hover {
+  text-decoration: underline !important;
+}
+
+/* CỘT 3: TOOLBOX & TABS THUỘC TÍNH */
+.igt-studio-sidebar-right {
+  background: #14171d !important;
+  border-left: 1px solid rgba(255, 255, 255, 0.07) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+/* Thanh Tabs đầu Toolbox */
+.igt-studio-tabs-nav {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 10px 12px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  overflow: visible !important;
+}
+
+.igt-studio-tab-btn {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  color: #94a3b8 !important;
+  padding: 6px 8px !important;
+  border-radius: 9px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  flex: 1 1 calc(25% - 6px) !important;
+  min-width: 62px !important;
+  box-sizing: border-box !important;
+  white-space: nowrap !important;
+  transition: all 0.18s ease !important;
+}
+
+.igt-studio-tab-btn:hover {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.igt-studio-tab-btn.active {
+  background: rgba(0, 149, 246, 0.18) !important;
+  border-color: #0095f6 !important;
+  color: #0095f6 !important;
+  font-weight: 700 !important;
+}
+
+/* Nội dung từng Tab */
+.igt-studio-tab-content {
+  flex: 1 !important;
+  padding: 16px !important;
+  overflow-y: auto !important;
+}
+
+.igt-studio-setting-group {
+  margin-bottom: 16px !important;
+}
+
+.igt-studio-setting-title {
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  color: #e2e8f0 !important;
+  margin-bottom: 7px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+}
+
+.igt-studio-fit-options {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 8px !important;
+}
+
+.igt-studio-fit-btn {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.09) !important;
+  border-radius: 10px !important;
+  padding: 9px !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  color: #cbd5e1 !important;
+  cursor: pointer !important;
+  text-align: center !important;
+  transition: all 0.2s ease !important;
+}
+
+.igt-studio-fit-btn:hover {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+}
+
+.igt-studio-fit-btn.active {
+  background: rgba(0, 149, 246, 0.16) !important;
+  border-color: #0095f6 !important;
+  color: #0095f6 !important;
+  font-weight: 700 !important;
+}
+
+/* Nút chọn thời lượng ảnh trên Story (Đồng bộ kiểu dáng với Kiểu hiển thị khung hình) */
+.igt-photo-dur-grid {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 8px !important;
+}
+
+.igt-photo-dur-pill {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.09) !important;
+  border-radius: 10px !important;
+  padding: 9px !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  color: #cbd5e1 !important;
+  cursor: pointer !important;
+  text-align: center !important;
+  transition: all 0.2s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+}
+
+.igt-photo-dur-pill:hover {
+  background: rgba(255, 255, 255, 0.09) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+}
+
+.igt-photo-dur-pill.active {
+  background: rgba(0, 149, 246, 0.16) !important;
+  border-color: #0095f6 !important;
+  color: #38bdf8 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 0 10px rgba(0, 149, 246, 0.25) !important;
+}
+
+/* Form Controls (Inputs, Select, Button thêm) */
+.igt-studio-input {
+  width: 100% !important;
+  box-sizing: border-box !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 10px !important;
+  padding: 9px 12px !important;
+  color: #ffffff !important;
+  font-size: 12px !important;
+  outline: none !important;
+  margin-bottom: 10px !important;
+  transition: border-color 0.2s !important;
+}
+
+.igt-studio-input:focus {
+  border-color: #0095f6 !important;
+  background: rgba(255, 255, 255, 0.09) !important;
+}
+
+.igt-studio-select {
+  width: 100% !important;
+  box-sizing: border-box !important;
+  background: #1b1e26 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 10px !important;
+  padding: 9px 12px !important;
+  color: #ffffff !important;
+  font-size: 12px !important;
+  outline: none !important;
+  margin-bottom: 12px !important;
+  cursor: pointer !important;
+}
+
+.igt-studio-color-palette {
+  display: flex !important;
+  gap: 8px !important;
+  margin-bottom: 12px !important;
+}
+
+.igt-studio-color-dot {
+  width: 24px !important;
+  height: 24px !important;
+  border-radius: 50% !important;
+  cursor: pointer !important;
+  border: 2px solid transparent !important;
+  transition: transform 0.15s, border-color 0.15s !important;
+}
+
+.igt-studio-color-dot:hover {
+  transform: scale(1.15) !important;
+}
+
+.igt-studio-color-dot.active {
+  border-color: #ffffff !important;
+  transform: scale(1.15) !important;
+}
+
+/* Instagram Text Effects Selector Grid */
+.igt-text-effects-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  margin-bottom: 14px !important;
+}
+
+.igt-text-effect-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 8px 4px !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 8px !important;
+  color: #cbd5e1 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  user-select: none !important;
+  outline: none !important;
+}
+
+.igt-text-effect-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  color: #ffffff !important;
+  transform: translateY(-1px) !important;
+}
+
+.igt-text-effect-btn.active {
+  background: linear-gradient(135deg, rgba(0, 149, 246, 0.25), rgba(168, 85, 247, 0.25)) !important;
+  border-color: #0095f6 !important;
+  color: #38bdf8 !important;
+  box-shadow: 0 0 12px rgba(0, 149, 246, 0.3) !important;
+}
+
+.fx-preview-glow {
+  text-shadow: 0 0 6px #38bdf8 !important;
+}
+
+.fx-preview-neon {
+  color: #ffffff !important;
+  text-shadow: 0 0 2px #fff, 0 0 8px #ec4899, 0 0 14px #ec4899 !important;
+}
+
+.fx-preview-gradient {
+  text-shadow: -1px -1px 0 #f43f5e, 1px -1px 0 #8b5cf6, -1px 1px 0 #06b6d4, 1px 1px 0 #10b981 !important;
+}
+
+.fx-preview-3d {
+  text-shadow: 1px 1px 0 #000, 2px 2px 0 rgba(0, 0, 0, 0.7) !important;
+}
+
+.fx-preview-glitch {
+  text-shadow: -1.5px 0 #00ffff, 1.5px 0 #ff0055 !important;
+}
+
+.igt-studio-btn-add {
+  width: 100% !important;
+  background: #0095f6 !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 10px !important;
+  padding: 10px 0 !important;
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  margin-top: 6px !important;
+}
+
+.igt-studio-btn-add:hover {
+  background: #1877f2 !important;
+}
+
+/* --- 6. VIDEO TRIMMER & MINI PLAYER CONTROLS --- */
+.igt-trim-preset-btn {
+  flex: 1 !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 8px !important;
+  color: #cbd5e1 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 6px 4px !important;
+  cursor: pointer !important;
+  text-align: center !important;
+  transition: all 0.18s ease !important;
+}
+
+.igt-trim-preset-btn:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+.igt-trim-preset-btn.active {
+  background: rgba(0, 149, 246, 0.2) !important;
+  border-color: #0095f6 !important;
+  color: #38bdf8 !important;
+  font-weight: 700 !important;
+}
+
+.igt-trim-header-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 8px !important;
+  gap: 8px !important;
+}
+
+.igt-trim-header-actions {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  flex-shrink: 0 !important;
+}
+
+.igt-trim-cancel-btn {
+  height: 22px !important;
+  padding: 0 8px !important;
+  border-radius: 5px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  color: #cbd5e1 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 3px !important;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  user-select: none !important;
+}
+
+/* Hiệu ứng ACTIVE rực rỡ khi chế độ TỰ DO được chọn (mặc định hoặc tùy chỉnh) */
+.igt-trim-cancel-btn.active,
+.igt-trim-cancel-btn.is-free,
+.igt-trim-cancel-btn.is-none {
+  background: linear-gradient(135deg, rgba(0, 149, 246, 0.25), rgba(56, 189, 248, 0.15)) !important;
+  border: 1px solid #0095f6 !important;
+  color: #38bdf8 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 0 10px rgba(0, 149, 246, 0.35) !important;
+}
+
+.igt-trim-cancel-btn.active:hover,
+.igt-trim-cancel-btn.is-free:hover,
+.igt-trim-cancel-btn.is-none:hover {
+  background: linear-gradient(135deg, rgba(0, 149, 246, 0.35), rgba(56, 189, 248, 0.25)) !important;
+  border-color: #38bdf8 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 14px rgba(0, 149, 246, 0.5) !important;
+}
+
+/* Khi đang áp dụng một Template Preset (15s, 30s...), nút chuyển thành nút HỦY màu đỏ */
+.igt-trim-cancel-btn.is-canceling {
+  background: rgba(239, 68, 68, 0.16) !important;
+  border: 1px solid rgba(239, 68, 68, 0.45) !important;
+  color: #f87171 !important;
+  font-weight: 600 !important;
+}
+
+.igt-trim-cancel-btn.is-canceling:hover {
+  background: rgba(239, 68, 68, 0.28) !important;
+  border-color: #f87171 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.3) !important;
+}
+
+.igt-trim-dur-badge {
+  height: 22px !important;
+  padding: 0 8px !important;
+  border-radius: 5px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(56, 189, 248, 0.1) !important;
+  border: 1px solid rgba(56, 189, 248, 0.28) !important;
+  color: #38bdf8 !important;
+}
+
+/* BỘ CHỈNH SỬA DÒNG THỜI GIAN TIMELINE VIDEO & STORY (MULTI-TRACK EDITOR) */
+.igt-studio-timeline-panel {
+  display: flex;
+  flex-direction: column !important;
+  background: rgba(18, 22, 30, 0.96) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 16px !important;
+  padding: 10px 14px !important;
+  margin-top: 6px !important;
+  width: 100% !important;
+  max-width: 880px !important;
+  box-sizing: border-box !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+  z-index: 12 !important;
+}
+
+/* INSSIST INSTAGRAM MUSIC PICKER */
+.igt-inssist-music-container {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+}
+
+.igt-inssist-search-box {
+  position: relative !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.igt-inssist-search-input {
+  width: 100% !important;
+  box-sizing: border-box !important;
+  background: #0f172a !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.14) !important;
+  border-radius: 22px !important;
+  padding: 8px 36px 8px 34px !important;
+  color: #f8fafc !important;
+  font-size: 12px !important;
+  outline: none !important;
+  transition: all 0.2s ease !important;
+}
+
+.igt-inssist-search-input:focus {
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.3) !important;
+}
+
+.igt-inssist-search-icon {
+  position: absolute !important;
+  left: 12px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  font-size: 13px !important;
+  color: #94a3b8 !important;
+  pointer-events: none !important;
+}
+
+.igt-inssist-help-icon {
+  position: absolute !important;
+  right: 12px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  font-size: 12px !important;
+  color: #64748b !important;
+  cursor: pointer !important;
+}
+
+.igt-inssist-tabs-nav {
+  display: flex !important;
+  align-items: center !important;
+  gap: 14px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  padding: 0 4px 6px 4px !important;
+  overflow-x: auto !important;
+}
+
+.igt-inssist-tab-btn {
+  background: transparent !important;
+  border: none !important;
+  color: #94a3b8 !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  padding: 4px 2px !important;
+  position: relative !important;
+  white-space: nowrap !important;
+  transition: color 0.18s ease !important;
+}
+
+.igt-inssist-tab-btn:hover {
+  color: #f1f5f9 !important;
+}
+
+.igt-inssist-tab-btn.active {
+  color: #f8fafc !important;
+  font-weight: 700 !important;
+}
+
+.igt-inssist-tab-btn.active::after {
+  content: '' !important;
+  position: absolute !important;
+  bottom: -7px !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 2.5px !important;
+  background: #38bdf8 !important;
+  border-radius: 2px !important;
+}
+
+.igt-inssist-song-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  max-height: 380px !important;
+  overflow-y: auto !important;
+  padding-right: 4px !important;
+}
+
+.igt-inssist-song-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 7px 10px !important;
+  border-radius: 10px !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid transparent !important;
+  transition: all 0.18s ease !important;
+  cursor: pointer !important;
+}
+
+.igt-inssist-song-item:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.igt-inssist-song-item.is-playing {
+  background: rgba(56, 189, 248, 0.12) !important;
+  border-color: rgba(56, 189, 248, 0.4) !important;
+}
+
+.igt-inssist-cover-wrap {
+  position: relative !important;
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  flex-shrink: 0 !important;
+  cursor: pointer !important;
+  background: #1e293b !important;
+}
+
+.igt-inssist-cover-wrap .igt-inssist-song-cover {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 8px !important;
+  object-fit: cover !important;
+  display: block !important;
+  transition: filter 0.18s ease, transform 0.18s ease !important;
+}
+
+.igt-inssist-cover-wrap:hover .igt-inssist-song-cover {
+  filter: brightness(0.65) !important;
+  transform: scale(1.06) !important;
+}
+
+.igt-inssist-cover-play-badge {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(0, 0, 0, 0.35) !important;
+  color: #ffffff !important;
+  font-size: 15px !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8) !important;
+  transition: all 0.18s ease !important;
+  pointer-events: none !important;
+}
+
+.igt-inssist-cover-wrap:hover .igt-inssist-cover-play-badge {
+  background: rgba(0, 0, 0, 0.55) !important;
+  transform: scale(1.1) !important;
+}
+
+.igt-inssist-song-item.is-playing .igt-inssist-cover-play-badge {
+  background: rgba(2, 132, 199, 0.65) !important;
+  color: #fff !important;
+}
+
+.igt-inssist-song-cover {
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 8px !important;
+  object-fit: cover !important;
+  background: #1e293b !important;
+  flex-shrink: 0 !important;
+}
+
+/* KHỐI BÀI HÁT ĐANG NẠP VÀO TIMELINE (CHUẨN THIẾT KẾ INSTAGRAM GỌN GÀNG) */
+.igt-active-music-bar {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 12px !important;
+  padding: 8px 12px !important;
+  margin-bottom: 8px !important;
+  transition: all 0.2s ease !important;
+}
+
+.igt-active-music-left {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-width: 0 !important;
+  flex: 1 !important;
+}
+
+.igt-active-music-cover-wrap {
+  position: relative !important;
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  flex-shrink: 0 !important;
+  cursor: pointer !important;
+  background: #1e293b !important;
+}
+
+.igt-active-music-cover {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+  transition: filter 0.18s ease, transform 0.18s ease !important;
+}
+
+.igt-active-music-cover-wrap:hover .igt-active-music-cover {
+  filter: brightness(0.65) !important;
+  transform: scale(1.06) !important;
+}
+
+.igt-active-music-play-badge {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(0, 0, 0, 0.35) !important;
+  color: #ffffff !important;
+  font-size: 15px !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8) !important;
+  pointer-events: none !important;
+  transition: all 0.18s ease !important;
+}
+
+.igt-active-music-cover-wrap:hover .igt-active-music-play-badge {
+  background: rgba(0, 0, 0, 0.55) !important;
+  transform: scale(1.1) !important;
+}
+
+.igt-active-music-cover-wrap.is-playing .igt-active-music-play-badge {
+  background: rgba(2, 132, 199, 0.65) !important;
+}
+
+.igt-active-music-info {
+  min-width: 0 !important;
+  flex: 1 !important;
+}
+
+.igt-active-music-title {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #f8fafc !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  line-height: 1.3 !important;
+}
+
+.igt-active-music-artist {
+  font-size: 11px !important;
+  color: #94a3b8 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  margin-top: 2px !important;
+  line-height: 1.25 !important;
+}
+
+.igt-active-music-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  flex-shrink: 0 !important;
+}
+
+.igt-active-music-icon-btn {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #cbd5e1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  padding: 0 !important;
+}
+
+.igt-active-music-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
+  color: #fff !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  transform: scale(1.05) !important;
+}
+
+.igt-active-music-icon-btn.is-muted {
+  color: #f87171 !important;
+  background: rgba(239, 68, 68, 0.12) !important;
+  border-color: rgba(239, 68, 68, 0.25) !important;
+}
+
+.igt-music-vol-panel {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 6px 12px 10px !important;
+  margin-top: -6px !important;
+  margin-bottom: 8px !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-top: none !important;
+  border-radius: 0 0 12px 12px !important;
+}
+
+/* CÁC NÚT ĐIỆP KHÚC HAY (PART 1, PART 2, PART 3, CUSTOM) */
+.igt-music-part-pill {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.3px !important;
+  padding: 3px 9px !important;
+  border-radius: 5px !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  color: #cbd5e1 !important;
+  cursor: pointer !important;
+  transition: all 0.16s ease !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.igt-music-part-pill:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.igt-music-part-pill.active {
+  background: #0095f6 !important;
+  border-color: #0095f6 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(0, 149, 246, 0.4) !important;
+}
+
+.btn-toggle-save-song:hover svg {
+  transform: scale(1.18);
+  stroke: #38bdf8;
+}
+
+.igt-inssist-song-meta {
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.igt-inssist-song-title {
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: #f8fafc !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.igt-inssist-song-artist {
+  font-size: 10.5px !important;
+  color: #94a3b8 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  margin-top: 2px !important;
+}
+
+.igt-inssist-song-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.igt-inssist-btn-play {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 50% !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #fff !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.igt-inssist-btn-play:hover {
+  background: #38bdf8 !important;
+  border-color: #38bdf8 !important;
+  color: #0f172a !important;
+  transform: scale(1.08) !important;
+}
+
+.igt-inssist-btn-use {
+  background: rgba(56, 189, 248, 0.15) !important;
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+  color: #38bdf8 !important;
+  border-radius: 6px !important;
+  padding: 4px 8px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.igt-inssist-btn-use:hover {
+  background: #0284c7 !important;
+  color: #fff !important;
+  border-color: #0284c7 !important;
+}
+
+/* WIDGET CĂN VỊ TRÍ CHỮ KÝ THEO BẢN VẼ NGƯỜI DÙNG (RED FRAME & 5 GREEN BOXES) */
+.igt-watermark-card-group {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 14px !important;
+  padding: 14px 16px !important;
+}
+
+.igt-wm-screen-grid {
+  display: flex !important;
+  justify-content: center !important;
+  margin-top: 6px !important;
+}
+
+.igt-wm-screen-frame {
+  width: 100% !important;
+  height: 155px !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-radius: 10px !important;
+  background: rgba(15, 23, 42, 0.6) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  padding: 10px !important;
+  box-sizing: border-box !important;
+  position: relative !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3) !important;
+}
+
+.igt-wm-pos-row {
+  display: flex !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+}
+
+.igt-wm-pos-row.center-row {
+  justify-content: center !important;
+}
+
+.igt-wm-pos-box {
+  width: 82px !important;
+  height: 30px !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border-radius: 6px !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #94a3b8 !important;
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.18s ease !important;
+  user-select: none !important;
+  padding: 0 4px !important;
+}
+
+.igt-wm-pos-box:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.28) !important;
+  color: #fff !important;
+  transform: translateY(-1px) !important;
+}
+
+.igt-wm-pos-box.active {
+  background: #0095f6 !important;
+  border-color: #0095f6 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 0 10px rgba(0, 149, 246, 0.45) !important;
+  transform: translateY(-1px) !important;
+}
+
+.igt-studio-timeline-panel.igt-hidden,
+#igt-studio-timeline-panel.igt-hidden {
+  display: none !important;
+}
+
+.igt-studio-live-selector-panel {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 6px 0 !important;
+  margin-top: 6px !important;
+  width: auto !important;
+  z-index: 12 !important;
+}
+
+.igt-studio-live-selector-panel.igt-hidden,
+#igt-studio-live-selector-panel.igt-hidden {
+  display: none !important;
+}
+
+.igt-live-pill-wrap {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  background: #0f172a !important;
+  border: 1.5px solid #0095f6 !important;
+  border-radius: 9999px !important;
+  padding: 5px 12px 5px 10px !important;
+  gap: 8px !important;
+  box-shadow: 0 4px 14px rgba(0, 149, 246, 0.25) !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.igt-live-pill-wrap:hover {
+  border-color: #38bdf8 !important;
+  box-shadow: 0 6px 18px rgba(56, 189, 248, 0.35) !important;
+  transform: translateY(-1px) !important;
+}
+
+.igt-live-pill-dot {
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 50% !important;
+  flex-shrink: 0 !important;
+  background: #ef4444 !important;
+  box-shadow: 0 0 8px #ef4444 !important;
+}
+
+.igt-live-pill-dot.still {
+  background: #38bdf8 !important;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.6) !important;
+}
+
+.igt-live-pill-select {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  background: transparent !important;
+  border: none !important;
+  color: #ffffff !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  outline: none !important;
+  padding-right: 18px !important;
+  font-family: inherit !important;
+}
+
+.igt-live-pill-select option {
+  background: #0f172a !important;
+  color: #ffffff !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  padding: 8px 12px !important;
+}
+
+.igt-live-pill-chevron {
+  position: absolute !important;
+  right: 12px !important;
+  pointer-events: none !important;
+  color: #ffffff !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  transition: transform 0.2s ease !important;
+}
+
+.igt-live-selector-top {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 12px !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+}
+
+.igt-live-selector-title {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  color: #f8fafc !important;
+}
+
+.igt-live-badge-pulsing {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  background: rgba(239, 68, 68, 0.15) !important;
+  border: 1px solid rgba(239, 68, 68, 0.4) !important;
+  color: #f87171 !important;
+  padding: 2px 8px !important;
+  border-radius: 6px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.3px !important;
+}
+
+.igt-live-pulse-circle {
+  width: 7px !important;
+  height: 7px !important;
+  background: #ef4444 !important;
+  border-radius: 50% !important;
+  animation: igtPulseDot 1.4s infinite !important;
+}
+
+@keyframes igtPulseDot {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.8;
+  }
+
+  50% {
+    transform: scale(1.3);
+    opacity: 1;
+    box-shadow: 0 0 8px #ef4444;
+  }
+
+  100% {
+    transform: scale(0.9);
+    opacity: 0.8;
+  }
+}
+
+.igt-live-select-dropdown {
+  background: #0f172a !important;
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+  color: #f1f5f9 !important;
+  border-radius: 8px !important;
+  padding: 7px 12px !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  outline: none !important;
+  transition: all 0.2s ease !important;
+}
+
+.igt-live-select-dropdown:hover,
+.igt-live-select-dropdown:focus {
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.3) !important;
+}
+
+.igt-live-toggle-cards {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 12px !important;
+  margin-bottom: 10px !important;
+}
+
+.igt-live-toggle-card {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 10px !important;
+  padding: 10px 14px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.igt-live-toggle-card:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+.igt-live-toggle-card.active {
+  background: rgba(56, 189, 248, 0.12) !important;
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.2) !important;
+}
+
+.igt-live-toggle-icon {
+  font-size: 22px !important;
+}
+
+.igt-live-toggle-label {
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  color: #f8fafc !important;
+}
+
+.igt-live-toggle-desc {
+  font-size: 11px !important;
+  color: #94a3b8 !important;
+  margin-top: 2px !important;
+}
+
+.igt-live-diff-notice {
+  background: rgba(15, 23, 42, 0.6) !important;
+  border-left: 3px solid #38bdf8 !important;
+  border-radius: 4px 8px 8px 4px !important;
+  padding: 8px 12px !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 8px !important;
+  font-size: 11.5px !important;
+  color: #cbd5e1 !important;
+  line-height: 1.45 !important;
+}
+
+.igt-timeline-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  margin-bottom: 8px !important;
+}
+
+.igt-timeline-controls-left {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.igt-timeline-play-btn {
+  background: #0095f6 !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 50% !important;
+  width: 28px !important;
+  height: 28px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  font-size: 11px !important;
+  transition: transform 0.15s ease, background 0.15s ease !important;
+}
+
+.igt-timeline-play-btn:hover {
+  transform: scale(1.08) !important;
+  background: #1877f2 !important;
+}
+
+.igt-timeline-time-display {
+  font-size: 11.5px !important;
+  color: #e2e8f0 !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums !important;
+  white-space: nowrap !important;
+}
+
+.igt-timeline-controls-right {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.igt-timeline-tool-btn {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #cbd5e1 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 5px 9px !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  transition: all 0.16s ease !important;
+}
+
+.igt-timeline-tool-btn:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+}
+
+.igt-timeline-tool-btn.active {
+  background: rgba(0, 149, 246, 0.2) !important;
+  border-color: #0095f6 !important;
+  color: #38bdf8 !important;
+}
+
+/* Dropdown Select Tốc độ phát (Speed) trên Timeline Toolbar */
+.igt-timeline-speed-select-wrap {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 6px !important;
+  padding: 0 4px 0 6px !important;
+  height: 25px !important;
+  transition: all 0.16s ease !important;
+}
+
+.igt-timeline-speed-select-wrap:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+  border-color: rgba(56, 189, 248, 0.5) !important;
+}
+
+.igt-timeline-speed-select-wrap.is-changed {
+  background: rgba(234, 88, 12, 0.2) !important;
+  border-color: #f97316 !important;
+}
+
+.igt-speed-icon {
+  font-size: 11px !important;
+  color: #f59e0b !important;
+  margin-right: 3px !important;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
+.igt-timeline-speed-select {
+  background: transparent !important;
+  border: none !important;
+  color: #cbd5e1 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  outline: none !important;
+  padding: 2px 2px !important;
+  font-family: inherit !important;
+}
+
+.igt-timeline-speed-select:focus {
+  color: #38bdf8 !important;
+}
+
+.igt-timeline-speed-select option {
+  background: #1e293b !important;
+  color: #ffffff !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 4px 8px !important;
+}
+
+/* Bộ điều khiển Zoom Timeline (CapCut style: 50% min, 100% tại 1/3, 200% max) */
+.igt-timeline-zoom-group {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  background: rgba(15, 23, 42, 0.65) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  padding: 2px 8px !important;
+  border-radius: 20px !important;
+  margin-left: 6px !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35) !important;
+}
+
+.igt-timeline-zoom-btn {
+  background: transparent !important;
+  border: none !important;
+  color: #94a3b8 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 20px !important;
+  height: 20px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  line-height: 1 !important;
+  transition: all 0.15s ease !important;
+}
+
+.igt-timeline-zoom-btn:hover {
+  color: #38bdf8 !important;
+  background: rgba(56, 189, 248, 0.15) !important;
+  transform: scale(1.08) !important;
+}
+
+.igt-timeline-zoom-btn:active {
+  transform: scale(0.94) !important;
+}
+
+.igt-tl-zoom-track-wrap {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  width: 76px !important;
+  height: 18px !important;
+  margin: 0 4px !important;
+}
+
+.igt-tl-zoom-notch-100 {
+  position: absolute !important;
+  left: 33.333% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  width: 2px !important;
+  height: 9px !important;
+  background: rgba(255, 255, 255, 0.6) !important;
+  border-radius: 1px !important;
+  pointer-events: none !important;
+  z-index: 2 !important;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.7) !important;
+}
+
+.igt-timeline-zoom-slider {
+  width: 100% !important;
+  height: 3px !important;
+  background: rgba(255, 255, 255, 0.22) !important;
+  border-radius: 2px !important;
+  outline: none !important;
+  cursor: pointer !important;
+  margin: 0 !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  position: relative !important;
+  z-index: 3 !important;
+}
+
+.igt-timeline-zoom-slider::-webkit-slider-thumb {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 11px !important;
+  height: 11px !important;
+  border-radius: 50% !important;
+  background: #38bdf8 !important;
+  border: 1.5px solid #ffffff !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5), 0 0 5px rgba(56, 189, 248, 0.6) !important;
+  cursor: grab !important;
+  transition: transform 0.12s ease, background 0.12s ease !important;
+}
+
+.igt-timeline-zoom-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.22) !important;
+  background: #0ea5e9 !important;
+}
+
+.igt-timeline-zoom-slider::-webkit-slider-thumb:active {
+  cursor: grabbing !important;
+  transform: scale(1.3) !important;
+}
+
+.igt-timeline-zoom-slider::-moz-range-thumb {
+  width: 11px !important;
+  height: 11px !important;
+  border-radius: 50% !important;
+  background: #38bdf8 !important;
+  border: 1.5px solid #ffffff !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5), 0 0 5px rgba(56, 189, 248, 0.6) !important;
+  cursor: grab !important;
+}
+
+.igt-timeline-zoom-val {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #e2e8f0 !important;
+  min-width: 38px !important;
+  text-align: right !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  transition: color 0.15s ease, transform 0.15s ease !important;
+}
+
+.igt-timeline-zoom-val:hover {
+  color: #38bdf8 !important;
+  transform: scale(1.05) !important;
+}
+
+/* Vùng hiển thị cuộn Timeline */
+.igt-timeline-body {
+  position: relative !important;
+  background: #090c10 !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding: 6px 10px 10px 10px !important;
+  user-select: none !important;
+  overflow-x: hidden !important;
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 8px !important;
+}
+
+/* Cột điều khiển Track (Ô âm thanh) bên trái */
+.igt-timeline-track-headers {
+  width: 44px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  flex-shrink: 0 !important;
+  user-select: none !important;
+}
+
+.igt-timeline-ruler-header {
+  height: 24px !important;
+  box-sizing: border-box !important;
+  border-bottom: 1px solid transparent !important;
+  margin-bottom: 6px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 9px !important;
+  color: #64748b !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.5px !important;
+}
+
+.igt-timeline-header-tracks {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+
+.igt-track-header-box {
+  height: 34px !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  position: relative !important;
+}
+
+.igt-track-header-box:hover,
+.igt-track-header-box.active,
+#igt-header-box-audio.active {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.igt-track-audio-btn {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 6px !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.1) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: #f1f5f9 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.18s ease !important;
+  padding: 0 !important;
+  gap: 1px !important;
+}
+
+.igt-track-vol-label {
+  font-size: 7.5px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  color: #94a3b8 !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+.igt-track-audio-btn.muted .igt-track-vol-label {
+  color: #ef4444 !important;
+}
+
+.igt-track-audio-btn.active-sound .igt-track-vol-label {
+  color: #38bdf8 !important;
+}
+
+.igt-track-audio-btn.active-music .igt-track-vol-label {
+  color: #06b6d4 !important;
+}
+
+.igt-track-audio-btn:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+.igt-track-audio-btn.muted {
+  color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.14) !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+}
+
+.igt-track-header-box.active .igt-track-audio-btn,
+.igt-track-audio-btn.active-sound {
+  color: #38bdf8 !important;
+  background: rgba(0, 149, 246, 0.15) !important;
+  border-color: #0095f6 !important;
+  box-shadow: 0 0 10px rgba(0, 149, 246, 0.35) !important;
+}
+
+#igt-header-box-audio.active .igt-track-audio-btn,
+.igt-track-audio-btn.active-music {
+  color: #06b6d4 !important;
+  background: rgba(6, 182, 212, 0.16) !important;
+  border-color: #06b6d4 !important;
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.35) !important;
+}
+
+/* BẢNG ĐIỀU CHỈNH ÂM LƯỢNG NỔI (VOLUME SLIDER POPOVER - GỌN GÀNG CHỈ CÓ THANH TIẾN TRÌNH) */
+.igt-volume-popover {
+  position: absolute !important;
+  left: 48px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 95px !important;
+  height: 24px !important;
+  background: rgba(15, 23, 42, 0.95) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border-radius: 12px !important;
+  padding: 0 8px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6) !important;
+  z-index: 100 !important;
+  display: none;
+  align-items: center !important;
+  justify-content: center !important;
+  user-select: none !important;
+}
+
+.igt-track-header-box:hover .igt-volume-popover,
+.igt-volume-popover.show {
+  display: flex !important;
+}
+
+.igt-volume-popover::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  left: -12px !important;
+  width: 14px !important;
+}
+
+.igt-vol-slider {
+  width: 100% !important;
+  height: 4px !important;
+  cursor: pointer !important;
+  accent-color: #0095f6 !important;
+}
+
+#igt-audio-vol-slider {
+  accent-color: #06b6d4 !important;
+}
+
+/* Vùng hiển thị Ruler, Needle và Tracks chính (Hỗ trợ cuộn ngang khi Zoom > 1) */
+.igt-timeline-lanes-area {
+  flex: 1 !important;
+  position: relative !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scroll-behavior: smooth;
+}
+
+.igt-timeline-lanes-area::-webkit-scrollbar {
+  height: 5px !important;
+}
+
+.igt-timeline-lanes-area::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6) !important;
+}
+
+.igt-timeline-lanes-area::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22) !important;
+  border-radius: 4px !important;
+}
+
+.igt-timeline-lanes-area::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 189, 248, 0.6) !important;
+}
+
+/* Khung inner giãn rộng khi Zoom */
+.igt-timeline-lanes-inner {
+  position: relative !important;
+  width: 100%;
+  min-width: 100% !important;
+  height: 100% !important;
+  transition: width 0.1s ease-out;
+}
+
+/* Vùng mở rộng khi thu nhỏ (Zoom Out Extended Capacity Slot) */
+.igt-timeline-ext-slot {
+  position: absolute !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  border: 1.5px dashed rgba(56, 189, 248, 0.45) !important;
+  background: rgba(14, 165, 233, 0.08) !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  color: #38bdf8 !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  user-select: none !important;
+  z-index: 5 !important;
+  box-sizing: border-box !important;
+  padding: 0 12px !important;
+}
+
+.igt-timeline-ext-slot:hover {
+  background: rgba(14, 165, 233, 0.18) !important;
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.3) !important;
+  color: #e0f2fe !important;
+}
+
+.igt-timeline-ext-add-btn {
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  background: #0284c7 !important;
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  font-size: 14px !important;
+  line-height: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: transform 0.15s, background 0.15s !important;
+}
+
+.igt-timeline-ext-slot:hover .igt-timeline-ext-add-btn {
+  transform: scale(1.15) !important;
+  background: #38bdf8 !important;
+}
+
+.igt-timeline-ext-text {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.igt-timeline-audio-ext-slot {
+  position: absolute !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  border: 1.5px dashed rgba(6, 182, 212, 0.4) !important;
+  background: rgba(6, 182, 212, 0.06) !important;
+  border-radius: 999px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #22d3ee !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  user-select: none !important;
+  z-index: 5 !important;
+  box-sizing: border-box !important;
+  padding: 0 12px !important;
+}
+
+.igt-timeline-audio-ext-slot:hover {
+  background: rgba(6, 182, 212, 0.15) !important;
+  border-color: #06b6d4 !important;
+  color: #e0f2fe !important;
+}
+
+/* Thước đo thời gian (Ruler) */
+.igt-timeline-ruler {
+  height: 24px !important;
+  position: relative !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  cursor: pointer !important;
+  margin-bottom: 6px !important;
+}
+
+.igt-timeline-ruler-tick {
+  position: absolute !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  transform: translateX(-50%) !important;
+  pointer-events: none !important;
+}
+
+.igt-timeline-ruler-tick.first-tick {
+  transform: translateX(0) !important;
+  align-items: flex-start !important;
+}
+
+.igt-timeline-ruler-tick.last-tick {
+  transform: translateX(-100%) !important;
+  align-items: flex-end !important;
+}
+
+.igt-ruler-label {
+  font-size: 9.5px !important;
+  font-weight: 600 !important;
+  color: #94a3b8 !important;
+  line-height: 1 !important;
+  margin-top: 3px !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+.igt-ruler-mark {
+  width: 1px !important;
+  height: 5px !important;
+  background: rgba(255, 255, 255, 0.25) !important;
+}
+
+.igt-ruler-mark.major {
+  height: 8px !important;
+  background: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Kim thời gian (Scrubber Needle) */
+.igt-timeline-needle {
+  position: absolute !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  width: 1.5px !important;
+  background: #ffffff !important;
+  z-index: 30 !important;
+  cursor: ew-resize !important;
+  pointer-events: none !important;
+  /* Không chặn click vào các clip âm thanh / video bên dưới */
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.75) !important;
+}
+
+.igt-needle-head {
+  position: absolute !important;
+  top: 0 !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: 10px !important;
+  height: 12px !important;
+  background: #ffffff !important;
+  border: 1.5px solid #0095f6 !important;
+  border-radius: 3px 3px 1px 1px !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.65) !important;
+  cursor: ew-resize !important;
+  pointer-events: auto !important;
+  /* Cho phép nắm kéo kim tại đầu kim trên Ruler */
+}
+
+.igt-needle-line {
+  width: 100% !important;
+  height: 100% !important;
+  background: #ffffff !important;
+  pointer-events: none !important;
+}
+
+/* KHUNG CẮT TEMPLATE DÒNG THỜI GIAN (15s, 30s, 60s TRIM OVERLAY WINDOW - VIỀN MẢNH VÀ MỜ HƠN) */
+.igt-timeline-trim-window {
+  position: absolute !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  background: rgba(239, 68, 68, 0.05) !important;
+  border-top: 1px solid rgba(239, 68, 68, 0.45) !important;
+  border-bottom: 1px solid rgba(239, 68, 68, 0.45) !important;
+  box-shadow: none !important;
+  z-index: 22 !important;
+  user-select: none !important;
+  pointer-events: none !important;
+  /* Không chặn click chuột vào các clip âm thanh / video bên dưới */
+  border-radius: 4px !important;
+  transition: background 0.15s ease !important;
+}
+
+.igt-timeline-trim-window:hover {
+  background: rgba(239, 68, 68, 0.09) !important;
+}
+
+.igt-timeline-trim-window.dragging {
+  background: rgba(239, 68, 68, 0.14) !important;
+}
+
+/* 2 Line tương ứng kéo dài từ thước đo xuống hết các tracks: nhỏ, thanh mảnh và mờ hơn */
+.igt-trim-line-left,
+.igt-trim-line-right {
+  position: absolute !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  width: 1px !important;
+  background: rgba(239, 68, 68, 0.55) !important;
+  box-shadow: none !important;
+  z-index: 25 !important;
+  pointer-events: none !important;
+}
+
+.igt-trim-line-left {
+  left: 0 !important;
+}
+
+.igt-trim-line-right {
+  right: 0 !important;
+}
+
+/* Đầu kéo Handle trái & phải trên Ruler: nhỏ và mảnh hơn */
+.igt-trim-handle-left,
+.igt-trim-handle-right {
+  position: absolute !important;
+  top: 2px !important;
+  height: 20px !important;
+  width: 12px !important;
+  background: rgba(239, 68, 68, 0.9) !important;
+  color: #ffffff !important;
+  font-size: 9px !important;
+  font-weight: 800 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 3px !important;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.5) !important;
+  cursor: ew-resize !important;
+  z-index: 26 !important;
+  pointer-events: auto !important;
+  /* Cho phép nắm kéo mốc cắt trên Ruler */
+  user-select: none !important;
+}
+
+.igt-trim-handle-left::before,
+.igt-trim-handle-right::before {
+  content: '' !important;
+  position: absolute !important;
+  top: -8px !important;
+  bottom: -8px !important;
+  left: -8px !important;
+  right: -8px !important;
+  cursor: ew-resize !important;
+  z-index: 30 !important;
+}
+
+.igt-trim-handle-left {
+  left: -6px !important;
+}
+
+.igt-trim-handle-right {
+  right: -6px !important;
+}
+
+/* Huy hiệu hiển thị thời lượng ở giữa thước đo: mờ và thanh mảnh hơn */
+.igt-trim-window-badge {
+  position: absolute !important;
+  top: 3px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  background: rgba(239, 68, 68, 0.6) !important;
+  color: #ffffff !important;
+  font-size: 8.5px !important;
+  font-weight: 700 !important;
+  padding: 1px 6px !important;
+  border-radius: 999px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  white-space: nowrap !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35) !important;
+  cursor: grab !important;
+  z-index: 26 !important;
+  pointer-events: auto !important;
+  /* Cho phép nắm kéo di chuyển cả khung 15s/30s trên Ruler */
+}
+
+/* Danh sách Tracks */
+.igt-timeline-tracks {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+
+.igt-timeline-track-row {
+  height: 34px !important;
+  box-sizing: border-box !important;
+  position: relative !important;
+  border-radius: 6px !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  display: flex !important;
+  align-items: center !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.08) !important;
+  overflow: hidden !important;
+  cursor: pointer !important;
+  transition: border-color 0.16s ease, background 0.16s ease !important;
+}
+
+.igt-timeline-track-row:hover {
+  border-color: rgba(255, 255, 255, 0.22) !important;
+}
+
+.igt-timeline-track-row.active-track {
+  border-color: rgba(0, 149, 246, 0.55) !important;
+  background: rgba(0, 149, 246, 0.07) !important;
+}
+
+#igt-audio-track-row.active-track {
+  border-color: rgba(6, 182, 212, 0.6) !important;
+  background: rgba(6, 182, 212, 0.08) !important;
+}
+
+/* Trạng thái trống của Track (Empty State) */
+.igt-track-empty-media,
+.igt-track-empty-audio {
+  width: 100% !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  color: #64748b !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  border: 1px dashed rgba(255, 255, 255, 0.15) !important;
+  border-radius: 6px !important;
+  background: rgba(255, 255, 255, 0.015) !important;
+  transition: all 0.18s ease !important;
+}
+
+.igt-track-empty-media:hover,
+.igt-track-empty-audio:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #cbd5e1 !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Track 1: Media Clip */
+.igt-media-clip-box {
+  position: absolute !important;
+  top: 2px !important;
+  bottom: 2px !important;
+  min-width: 54px !important;
+  border-radius: 6px !important;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95)) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  overflow: visible !important;
+  cursor: pointer !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.igt-media-clip-box.active {
+  border: 2px solid #0095f6 !important;
+  box-shadow: 0 0 12px rgba(0, 149, 246, 0.5) !important;
+  z-index: 5 !important;
+}
+
+.igt-clip-speed-badge {
+  background: #f59e0b !important;
+  color: #000000 !important;
+  font-size: 8.5px !important;
+  font-weight: 800 !important;
+  padding: 1px 3px !important;
+  border-radius: 3px !important;
+  margin-left: 3px !important;
+  display: inline-block !important;
+}
+
+.igt-timeline-tool-btn.danger {
+  color: #f87171 !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}
+
+.igt-timeline-tool-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #ffffff !important;
+  border-color: #ef4444 !important;
+}
+
+.igt-media-clip-info {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 0 20px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  pointer-events: none !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.igt-media-clip-name {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #f1f5f9 !important;
+}
+
+.igt-media-clip-dur {
+  background: rgba(0, 0, 0, 0.6) !important;
+  color: #38bdf8 !important;
+  padding: 1px 5px !important;
+  border-radius: 4px !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+}
+
+/* Track 2: Audio Clip Teal Capsule (Giống ảnh mẫu 100%) */
+.igt-audio-clip-capsule {
+  position: absolute !important;
+  top: 2px !important;
+  bottom: 2px !important;
+  min-width: 54px !important;
+  border-radius: 7px !important;
+  background: rgba(13, 148, 136, 0.4) !important;
+  border: 1.5px solid #06b6d4 !important;
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.3) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  overflow: visible !important;
+  cursor: grab !important;
+  z-index: 5 !important;
+}
+
+.igt-audio-clip-capsule.active {
+  border: 2px solid #22d3ee !important;
+  box-shadow: 0 0 16px rgba(34, 211, 238, 0.6) !important;
+  z-index: 6 !important;
+}
+
+.igt-audio-meta-info {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding-left: 20px !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  pointer-events: none !important;
+}
+
+.igt-audio-title {
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  max-width: 130px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.igt-audio-pill-dur {
+  background: rgba(0, 0, 0, 0.65) !important;
+  color: #f8fafc !important;
+  padding: 1px 5px !important;
+  border-radius: 4px !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+/* Thanh sóng âm Waveform */
+.igt-audio-waveform-bars {
+  flex: 1 !important;
+  height: 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 1.5px !important;
+  overflow: hidden !important;
+  margin: 0 5px 0 5px !important;
+  padding-right: 18px !important;
+  pointer-events: none !important;
+}
+
+.igt-waveform-bar {
+  width: 1.5px !important;
+  border-radius: 1px !important;
+  background: linear-gradient(to top, #059669 0%, #10b981 60%, #f97316 85%, #ef4444 100%) !important;
+  flex-shrink: 0 !important;
+}
+
+/* Nút kéo cắt đoạn 2 đầu (CapCut / NLE Pro Handle) */
+.igt-timeline-handle {
+  position: absolute !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  width: 16px !important;
+  height: 100% !important;
+  background: #0095f6 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: ew-resize !important;
+  user-select: none !important;
+  transition: background 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease !important;
+  z-index: 20 !important;
+}
+
+.igt-timeline-handle.left {
+  left: 0 !important;
+  border-radius: 5px 0 0 5px !important;
+}
+
+.igt-timeline-handle.right {
+  right: 0 !important;
+  border-radius: 0 5px 5px 0 !important;
+}
+
+/* Vùng cảm ứng vô hình mở rộng (Invisible Extended Hitbox) giúp click kéo cực nhạy */
+.igt-timeline-handle::before {
+  content: '' !important;
+  position: absolute !important;
+  top: -10px !important;
+  bottom: -10px !important;
+  left: -12px !important;
+  right: -12px !important;
+  cursor: ew-resize !important;
+  z-index: 25 !important;
+}
+
+/* 2 vạch gân cầm nắm chuyên nghiệp (Grip Bars) */
+.igt-handle-bar {
+  width: 2px !important;
+  height: 14px !important;
+  background: #ffffff !important;
+  border-radius: 1px !important;
+  box-shadow: 4px 0 0 #ffffff !important;
+  margin-right: 4px !important;
+  pointer-events: none !important;
+}
+
+.igt-timeline-handle:hover,
+.igt-timeline-handle.dragging {
+  background: #38bdf8 !important;
+  filter: brightness(1.2) !important;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.95) !important;
+}
+
+/* Audio Track Handles */
+.igt-audio-clip-capsule .igt-timeline-handle {
+  background: #06b6d4 !important;
+}
+
+.igt-audio-clip-capsule .igt-timeline-handle .igt-handle-bar {
+  background: #042f2e !important;
+  box-shadow: 4px 0 0 #042f2e !important;
+}
+
+.igt-audio-clip-capsule .igt-timeline-handle:hover,
+.igt-audio-clip-capsule .igt-timeline-handle.dragging {
+  background: #22d3ee !important;
+  filter: brightness(1.25) !important;
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.95) !important;
+}
+
+/* Tab Music Presets Cards */
+.igt-music-preset-card {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 10px !important;
+  padding: 8px 12px !important;
+  margin-bottom: 8px !important;
+  transition: all 0.18s ease !important;
+}
+
+.igt-music-preset-card:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(6, 182, 212, 0.4) !important;
+}
+
+.igt-music-preset-card.active {
+  border-color: #06b6d4 !important;
+  background: rgba(6, 182, 212, 0.12) !important;
+}
+
+/* ========================================================
+   Gợi ý vị trí phát hiện từ Metadata File & Địa điểm phổ biến
+   ======================================================== */
+.igt-location-detected-card {
+  margin-top: 12px !important;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(59, 130, 246, 0.08)) !important;
+  border: 1.5px solid rgba(56, 189, 248, 0.45) !important;
+  border-radius: 10px !important;
+  padding: 10px 12px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 5px !important;
+  animation: igtPulseDetected 2.4s infinite ease-in-out !important;
+}
+
+@keyframes igtPulseDetected {
+
+  0%,
+  100% {
+    border-color: rgba(56, 189, 248, 0.4);
+  }
+
+  50% {
+    border-color: rgba(56, 189, 248, 0.9);
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+  }
+}
+
+.igt-loc-detected-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  color: #38bdf8 !important;
+  letter-spacing: 0.5px !important;
+  text-transform: uppercase !important;
+}
+
+.igt-loc-detected-name {
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+}
+
+.igt-loc-detected-meta {
+  font-size: 10.5px !important;
+  color: #94a3b8 !important;
+  line-height: 1.3 !important;
+}
+
+.igt-btn-apply-detected {
+  margin-top: 4px !important;
+  background: #0095f6 !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 6px !important;
+  padding: 6px 10px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  transition: all 0.15s ease !important;
+}
+
+.igt-btn-apply-detected:hover {
+  background: #1d9bf0 !important;
+  transform: translateY(-1px) !important;
+}
+
+.igt-location-suggestions-group {
+  margin-top: 14px !important;
+}
+
+.igt-location-suggestions-title {
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  color: #94a3b8 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  margin-bottom: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.igt-location-pills-wrap {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+}
+
+.igt-location-chip {
+  padding: 4px 9px !important;
+  border-radius: 14px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #e2e8f0 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  transition: all 0.15s ease !important;
+}
+
+.igt-location-chip:hover {
+  background: rgba(0, 149, 246, 0.25) !important;
+  border-color: #0095f6 !important;
+  color: #38bdf8 !important;
+  transform: translateY(-1px) !important;
+}
+
+.igt-btn-gps-device {
+  width: 100% !important;
+  margin-top: 10px !important;
+  padding: 6px 10px !important;
+  border-radius: 6px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px dashed rgba(255, 255, 255, 0.2) !important;
+  color: #94a3b8 !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  transition: all 0.15s ease !important;
+}
+
+.igt-btn-gps-device:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* ========================================================
+   Publish Modal & Direct Publish Engine Styles
+   ======================================================== */
+.igt-publish-modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 100000005 !important;
+  background: rgba(0, 0, 0, 0.85) !important;
+  backdrop-filter: blur(12px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 20px !important;
+  animation: igtFadeIn 0.2s ease !important;
+}
+
+.igt-publish-modal-card {
+  width: 840px !important;
+  max-width: 95vw !important;
+  max-height: 90vh !important;
+  background: #11141a !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 16px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7) !important;
+  overflow: hidden !important;
+}
+
+.igt-publish-modal-header {
+  padding: 14px 20px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+
+.igt-publish-modal-title {
+  font-size: 14.5px !important;
+  font-weight: 700 !important;
+  color: #f8fafc !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.igt-publish-modal-close {
+  background: transparent !important;
+  border: none !important;
+  color: #94a3b8 !important;
+  font-size: 18px !important;
+  cursor: pointer !important;
+  padding: 4px 8px !important;
+  border-radius: 6px !important;
+  transition: all 0.15s ease !important;
+}
+
+.igt-publish-modal-close:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+.igt-publish-modal-body {
+  display: grid !important;
+  grid-template-columns: 320px 1fr !important;
+  gap: 20px !important;
+  padding: 20px !important;
+  overflow: hidden !important;
+  /* Loại bỏ toàn bộ thanh cuộn scroll */
+}
+
+/* Ẩn triệt để thanh cuộn scrollbar trên toàn bộ Modal Xuất bản */
+.igt-publish-modal-overlay::-webkit-scrollbar,
+.igt-publish-modal-card::-webkit-scrollbar,
+.igt-publish-modal-body::-webkit-scrollbar,
+.igt-publish-modal-overlay *::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.igt-publish-modal-overlay,
+.igt-publish-modal-card,
+.igt-publish-modal-body,
+.igt-publish-modal-overlay * {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  overflow-x: hidden !important;
+}
+
+.is-hidden {
+  display: none !important;
+}
+
+.igt-publish-preview-col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+}
+
+.igt-publish-preview-box {
+  width: 100% !important;
+  height: 380px !important;
+  background: #000000 !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.igt-publish-preview-box img,
+.igt-publish-preview-box video {
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-fit: contain !important;
+}
+
+.igt-publish-cover-slider-wrap {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 10px !important;
+  padding: 10px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+
+.igt-publish-info-col {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 14px !important;
+}
+
+.igt-publish-target-selector {
+  display: flex !important;
+  gap: 8px !important;
+}
+
+.igt-publish-target-btn {
+  flex: 1 !important;
+  padding: 8px 10px !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #cbd5e1 !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  transition: all 0.15s ease !important;
+}
+
+.igt-publish-target-btn.active {
+  background: rgba(0, 149, 246, 0.2) !important;
+  border-color: #0095f6 !important;
+  color: #38bdf8 !important;
+}
+
+.igt-publish-caption-box {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+
+.igt-publish-caption-textarea {
+  width: 100% !important;
+  height: 120px !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 10px !important;
+  padding: 10px !important;
+  font-size: 13px !important;
+  color: #f8fafc !important;
+  resize: vertical !important;
+  outline: none !important;
+  font-family: inherit !important;
+}
+
+.igt-publish-caption-textarea:focus {
+  border-color: #0095f6 !important;
+  box-shadow: 0 0 10px rgba(0, 149, 246, 0.25) !important;
+}
+
+.igt-publish-quick-tags {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 5px !important;
+}
+
+.igt-publish-tag-pill {
+  padding: 3px 8px !important;
+  border-radius: 12px !important;
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #94a3b8 !important;
+  cursor: pointer !important;
+  transition: all 0.12s ease !important;
+}
+
+.igt-publish-tag-pill:hover {
+  background: rgba(0, 149, 246, 0.2) !important;
+  color: #38bdf8 !important;
+  border-color: #0095f6 !important;
+}
+
+.igt-publish-tag-pill.active {
+  background: #0284c7 !important;
+  color: #ffffff !important;
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.4) !important;
+}
+
+/* Cách ly toàn bộ Video Controller và Nút Download khỏi các modal Studio */
+#igt-reorder-modal-overlay .ig-video-controller,
+#igt-reorder-modal-overlay .ig-vctl-mini-progress,
+#igt-reorder-modal-overlay .ig-story-download-btn,
+#igt-reorder-modal-overlay .ig-floating-download-btn,
+#igt-reorder-modal-overlay .ig-feed-download-btn,
+.igt-reorder-overlay .ig-video-controller,
+.igt-reorder-overlay .ig-vctl-mini-progress,
+.igt-reorder-overlay .ig-story-download-btn,
+.igt-reorder-overlay .ig-floating-download-btn,
+.igt-reorder-overlay .ig-feed-download-btn,
+.igt-reorder-card .ig-video-controller,
+.igt-reorder-card .ig-vctl-mini-progress,
+.igt-reorder-card .ig-story-download-btn,
+.igt-reorder-card .ig-floating-download-btn,
+.igt-reorder-card .ig-feed-download-btn,
+#igt-publish-modal-overlay .ig-video-controller,
+#igt-publish-modal-overlay .ig-vctl-mini-progress,
+#igt-publish-modal-overlay .ig-story-download-btn,
+#igt-publish-modal-overlay .ig-floating-download-btn,
+#igt-publish-modal-overlay .ig-feed-download-btn {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+}
+
+.igt-publish-modal-footer {
+  padding: 14px 20px !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+
+/* =====================================================================
+   BỘ CÔNG CỤ CHỈNH SỬA ẢNH & BỘ LỌC HIỆU ỨNG (PHOTO STUDIO TOOLS)
+   ===================================================================== */
+
+/* Lớp Hiệu ứng FX Overlay trên Phone Frame */
+.igt-studio-fx-overlay {
+  position: absolute !important;
+  inset: 0 !important;
+  pointer-events: none !important;
+  z-index: 15 !important;
+  border-radius: inherit !important;
+  transition: opacity 0.2s ease !important;
+}
+
+.igt-fx-pill {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.igt-fx-pill:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+.igt-fx-pill.active {
+  background: #0095f6 !important;
+  border-color: #0095f6 !important;
+  box-shadow: 0 0 10px rgba(0, 149, 246, 0.45) !important;
+}
+
+.igt-studio-fx-overlay.fx-grain {
+  background-repeat: repeat !important;
+  background-size: 120px 120px !important;
+  mix-blend-mode: overlay !important;
+  opacity: 0.85 !important;
+}
+
+.igt-studio-fx-overlay.fx-sparkle {
+  background-repeat: repeat !important;
+  background-size: 160px 160px !important;
+  mix-blend-mode: screen !important;
+  animation: igt-sparkle-twinkle 1.8s infinite alternate ease-in-out !important;
+}
+
+.igt-studio-fx-overlay.fx-lightleak {
+  background: linear-gradient(135deg, rgba(255, 110, 0, 0.45) 0%, rgba(255, 30, 130, 0.28) 25%, rgba(255, 215, 0, 0.2) 45%, transparent 70%) !important;
+  mix-blend-mode: screen !important;
+}
+
+.igt-studio-fx-overlay.fx-vignette-heavy {
+  background: radial-gradient(circle at center, transparent 30%, rgba(0, 0, 0, 0.6) 70%, rgba(0, 0, 0, 0.95) 100%) !important;
+  mix-blend-mode: normal !important;
+}
+
+@keyframes igt-sparkle-twinkle {
+  0% {
+    opacity: 0.35;
+    transform: scale(0.99);
+  }
+
+  100% {
+    opacity: 0.95;
+    transform: scale(1.01);
+  }
+}
+
+/* Lưới Bộ lọc màu Instagram (Filter chips) */
+.igt-filter-chips-grid {
+  display: grid !important;
+  grid-template-columns: repeat(5, 1fr) !important;
+  gap: 6px !important;
+  margin-bottom: 10px !important;
+}
+
+.igt-filter-chip {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 8px !important;
+  padding: 6px 4px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 3px !important;
+  cursor: pointer !important;
+  transition: all 0.16s ease !important;
+  text-align: center !important;
+}
+
+.igt-filter-chip:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: #0095f6 !important;
+  transform: translateY(-1px) !important;
+}
+
+.igt-filter-chip.active {
+  background: rgba(0, 149, 246, 0.22) !important;
+  border-color: #0095f6 !important;
+  box-shadow: 0 0 8px rgba(0, 149, 246, 0.35) !important;
+}
+
+.igt-filter-icon {
+  font-size: 15px !important;
+  line-height: 1 !important;
+}
+
+.igt-filter-name {
+  font-size: 9.5px !important;
+  font-weight: 700 !important;
+  color: #f1f5f9 !important;
+  white-space: nowrap !important;
+}
+
+/* Hàng nút Xoay & Lật ảnh */
+.igt-photo-transform-row {
+  display: flex !important;
+  gap: 6px !important;
+  margin-bottom: 8px !important;
+}
+
+.igt-photo-tool-btn {
+  flex: 1 !important;
+  padding: 6px 8px !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #e2e8f0 !important;
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  transition: all 0.16s ease !important;
+}
+
+.igt-photo-tool-btn:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: #0095f6 !important;
+  color: #38bdf8 !important;
+}
+
+.igt-photo-tool-btn.active {
+  background: rgba(0, 149, 246, 0.2) !important;
+  border-color: #0095f6 !important;
+  color: #38bdf8 !important;
+}
+
+/* Dòng thanh trượt Tinh chỉnh màu sắc */
+.igt-adj-row {
+  margin-bottom: 8px !important;
+}
+
+.igt-adj-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 3px !important;
+  font-size: 10.5px !important;
+  color: #94a3b8 !important;
+}
+
+.igt-adj-val {
+  font-weight: 700 !important;
+  color: #38bdf8 !important;
+}
+
+.igt-adj-slider {
+  width: 100% !important;
+  accent-color: #0095f6 !important;
+  cursor: pointer !important;
+  height: 4px !important;
+}
+
+/* Photo capsule trên Timeline Track 1 */
+.igt-media-clip-box.image-clip {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.35), rgba(236, 72, 153, 0.35)) !important;
+  border: 1.5px solid #ec4899 !important;
+  box-shadow: 0 0 10px rgba(236, 72, 153, 0.25) !important;
+}
+
+/* ========================================================
+   HIỆU ỨNG CHUYỂN CẢNH VIDEO (CAPCUT / REELS TRANSITIONS)
+   ======================================================== */
+.igt-timeline-transition-node {
+  position: absolute !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  width: 18px !important;
+  height: 18px !important;
+  border-radius: 4px !important;
+  background: rgba(15, 23, 42, 0.95) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.35) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  z-index: 22 !important;
+  font-size: 9px !important;
+  color: #94a3b8 !important;
+  transition: all 0.15s ease !important;
+  user-select: none !important;
+}
+
+.igt-timeline-transition-node:hover {
+  border-color: #0095f6 !important;
+  color: #ffffff !important;
+  background: #0095f6 !important;
+  transform: translate(-50%, -50%) scale(1.2) !important;
+  box-shadow: 0 0 10px rgba(0, 149, 246, 0.8) !important;
+  z-index: 28 !important;
+}
+
+.igt-timeline-transition-node.active {
+  background: linear-gradient(135deg, #0095f6, #06b6d4) !important;
+  border-color: #ffffff !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 10px rgba(0, 149, 246, 0.7) !important;
+}
+
+.igt-timeline-transition-node::before {
+  content: '' !important;
+  position: absolute !important;
+  inset: -6px !important;
+  cursor: pointer !important;
+}
+
+/* Nút '+' nối video ở đuôi mỗi clip trên Timeline */
+.igt-timeline-tail-add-btn {
+  position: absolute !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  background: rgba(0, 149, 246, 0.22) !important;
+  border: 1.5px solid #0095f6 !important;
+  color: #38bdf8 !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  z-index: 25 !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  box-shadow: 0 0 10px rgba(0, 149, 246, 0.4) !important;
+  user-select: none !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+}
+
+.igt-timeline-tail-add-btn:hover {
+  background: #0095f6 !important;
+  color: #ffffff !important;
+  transform: translateY(-50%) scale(1.2) !important;
+  box-shadow: 0 0 16px rgba(0, 149, 246, 0.8) !important;
+}
+
+/* Popover danh sách video để nối vào timeline */
+.igt-timeline-add-popover {
+  position: absolute !important;
+  bottom: calc(100% + 10px) !important;
+  width: 260px !important;
+  background: rgba(15, 23, 42, 0.96) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border-radius: 12px !important;
+  padding: 10px !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.65) !important;
+  z-index: 99 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  animation: igt-popover-in 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+@keyframes igt-popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.igt-add-popover-title {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #94a3b8 !important;
+  margin-bottom: 2px !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+}
+
+.igt-add-popover-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 6px 8px !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #f1f5f9 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.16s ease !important;
+}
+
+.igt-add-popover-item:hover {
+  background: rgba(0, 149, 246, 0.2) !important;
+  border-color: #0095f6 !important;
+  color: #38bdf8 !important;
+}
+
+.igt-add-popover-upload-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  padding: 8px 10px !important;
+  border-radius: 8px !important;
+  background: linear-gradient(135deg, rgba(0, 149, 246, 0.3), rgba(56, 189, 248, 0.2)) !important;
+  border: 1px dashed rgba(56, 189, 248, 0.5) !important;
+  color: #38bdf8 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  margin-top: 4px !important;
+  transition: all 0.16s ease !important;
+}
+
+.igt-add-popover-upload-btn:hover {
+  background: linear-gradient(135deg, rgba(0, 149, 246, 0.45), rgba(56, 189, 248, 0.35)) !important;
+  color: #ffffff !important;
+  border-color: #38bdf8 !important;
+}
+
+/* Modal chọn hiệu ứng chuyển cảnh */
+.igt-transition-modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(0, 0, 0, 0.72) !important;
+  backdrop-filter: blur(8px) !important;
+  z-index: 999999 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  animation: igtFadeIn 0.2s ease !important;
+}
+
+.igt-transition-card {
+  width: 440px !important;
+  max-width: 92vw !important;
+  background: #0f172a !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+.igt-transition-header {
+  padding: 14px 18px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.igt-transition-close {
+  background: transparent !important;
+  border: none !important;
+  color: #94a3b8 !important;
+  font-size: 15px !important;
+  cursor: pointer !important;
+  padding: 4px 8px !important;
+  border-radius: 6px !important;
+  transition: all 0.15s ease !important;
+}
+
+.igt-transition-close:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+.igt-transition-body {
+  padding: 16px 18px !important;
+  max-height: 60vh !important;
+  overflow-y: auto !important;
+}
+
+.igt-transition-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 10px !important;
+}
+
+.igt-transition-item {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 10px !important;
+  padding: 10px 12px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  cursor: pointer !important;
+  transition: all 0.18s ease !important;
+}
+
+.igt-transition-item:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(0, 149, 246, 0.5) !important;
+  transform: translateY(-1px) !important;
+}
+
+.igt-transition-item.active {
+  background: rgba(0, 149, 246, 0.14) !important;
+  border-color: #0095f6 !important;
+  box-shadow: 0 0 14px rgba(0, 149, 246, 0.3) !important;
+}
+
+.igt-trans-item-icon {
+  font-size: 15px !important;
+}
+
+.igt-trans-item-name {
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: #f8fafc !important;
+}
+
+.igt-trans-item-desc {
+  font-size: 9.5px !important;
+  color: #94a3b8 !important;
+  line-height: 1.3 !important;
+}
+
+.igt-transition-footer {
+  padding: 12px 18px !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  background: rgba(0, 0, 0, 0.25) !important;
+}
+
+/* ==========================================================================
+   FEED POST / CAROUSEL & ALBUM ENHANCEMENTS (VER 3.0)
+   ========================================================================== */
+
+/* 1. Modal Quản lý & Chọn lọc tệp (Cull Modal - Tối đa 20 tệp) */
+.igt-cull-overlay,
+.igt-reorder-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(0, 0, 0, 0.8) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 2147483647 !important;
+  animation: igtFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.igt-cull-modal,
+.igt-reorder-modal {
+  width: 820px !important;
+  max-width: 95vw !important;
+  max-height: 88vh !important;
+  background: #0f172a !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-radius: 18px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6) !important;
+  overflow: hidden !important;
+}
+
+.igt-cull-header,
+.igt-reorder-header {
+  padding: 18px 24px !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.igt-cull-title,
+.igt-reorder-title {
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  color: #f8fafc !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.igt-cull-subtitle,
+.igt-reorder-subtitle {
+  font-size: 12px !important;
+  color: #94a3b8 !important;
+  margin-top: 3px !important;
+}
+
+.igt-cull-body,
+.igt-reorder-body {
+  padding: 20px 24px !important;
+  overflow-y: auto !important;
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.igt-cull-grid,
+.igt-reorder-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important;
+  gap: 14px !important;
+}
+
+.igt-cull-card,
+.igt-reorder-card {
+  position: relative !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 2px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  transition: all 0.2s ease !important;
+  cursor: pointer !important;
+  display: flex !important;
+  flex-direction: column !important;
+  aspect-ratio: 4 / 5 !important;
+}
+
+.igt-cull-card:hover,
+.igt-reorder-card:hover {
+  border-color: rgba(0, 149, 246, 0.5) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35) !important;
+}
+
+.igt-cull-card.selected {
+  border-color: #0095f6 !important;
+  background: rgba(0, 149, 246, 0.08) !important;
+}
+
+.igt-cull-card.unselected {
+  opacity: 0.45 !important;
+  filter: grayscale(0.6) !important;
+}
+
+.igt-cull-thumb {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.igt-reorder-thumb {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+  pointer-events: none !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -webkit-user-drag: none !important;
+}
+
+.igt-cull-badge,
+.igt-reorder-badge {
+  position: absolute !important;
+  top: 8px !important;
+  left: 8px !important;
+  background: rgba(0, 0, 0, 0.75) !important;
+  color: #38bdf8 !important;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+  padding: 2px 7px !important;
+  border-radius: 6px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+.igt-cull-checkbox {
+  position: absolute !important;
+  top: 8px !important;
+  right: 8px !important;
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 50% !important;
+  background: rgba(0, 0, 0, 0.7) !important;
+  border: 2px solid #94a3b8 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #ffffff !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  transition: all 0.15s ease !important;
+}
+
+.igt-cull-card.selected .igt-cull-checkbox {
+  background: #0095f6 !important;
+  border-color: #0095f6 !important;
+}
+
+.igt-cull-meta,
+.igt-reorder-meta {
+  position: absolute !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  padding: 8px 10px !important;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.4) 70%, transparent 100%) !important;
+  font-size: 10.5px !important;
+  color: #f1f5f9 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.igt-cull-warning {
+  background: rgba(239, 68, 68, 0.12) !important;
+  border: 1px solid rgba(239, 68, 68, 0.4) !important;
+  border-radius: 10px !important;
+  padding: 10px 14px !important;
+  color: #fca5a5 !important;
+  font-size: 12.5px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.igt-cull-footer,
+.igt-reorder-footer {
+  padding: 16px 24px !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+/* 2. Drag & Drop Reorder Cards */
+.igt-reorder-card {
+  cursor: grab !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+.igt-reorder-card:active {
+  cursor: grabbing !important;
+}
+
+.igt-reorder-card.igt-card-dragging {
+  opacity: 0.25 !important;
+  border: 2px dashed rgba(56, 189, 248, 0.7) !important;
+  background: rgba(56, 189, 248, 0.05) !important;
+  transform: scale(0.97) !important;
+}
+
+.igt-reorder-card.igt-drag-over {
+  border: 2px dashed #38bdf8 !important;
+  background: rgba(56, 189, 248, 0.15) !important;
+  transform: scale(1.05) translateY(-3px) !important;
+  box-shadow: 0 10px 24px rgba(56, 189, 248, 0.4) !important;
+}
+
+.igt-reorder-actions {
+  position: absolute !important;
+  top: 8px !important;
+  right: 8px !important;
+  display: flex !important;
+  gap: 4px !important;
+}
+
+.igt-reorder-btn {
+  background: rgba(0, 0, 0, 0.7) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #f1f5f9 !important;
+  border-radius: 6px !important;
+  width: 24px !important;
+  height: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.igt-reorder-btn:hover {
+  background: #0095f6 !important;
+  border-color: #0095f6 !important;
+  color: #fff !important;
+}
+
+/* 3. Tab "Chung" Styling */
+.igt-general-action-btn {
+  width: 100% !important;
+  padding: 10px 14px !important;
+  border-radius: 10px !important;
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  background: linear-gradient(135deg, #0284c7 0%, #0095f6 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 4px 14px rgba(0, 149, 246, 0.25) !important;
+}
+
+.igt-general-action-btn:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 20px rgba(0, 149, 246, 0.4) !important;
+  filter: brightness(1.08) !important;
+}
+
+.igt-general-ratios {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 8px !important;
+}
+
+.igt-filter-chips {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 8px !important;
+  margin-top: 6px !important;
+}
+
+.igt-filter-chip {
+  padding: 7px 10px !important;
+  border-radius: 8px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #cbd5e1 !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.igt-filter-chip:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+.igt-filter-chip.active {
+  background: rgba(0, 149, 246, 0.2) !important;
+  border-color: #0095f6 !important;
+  color: #38bdf8 !important;
+  font-weight: 700 !important;
+}
+
+/* 4. Live Photo Switcher Pill */
+.igt-live-toggle {
+  display: inline-flex !important;
+  align-items: center !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 20px !important;
+  padding: 2px !important;
+  gap: 2px !important;
+}
+
+.igt-live-btn {
+  padding: 3px 8px !important;
+  border-radius: 16px !important;
+  border: none !important;
+  background: transparent !important;
+  color: #94a3b8 !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.igt-live-btn.active {
+  background: #0095f6 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 6px rgba(0, 149, 246, 0.4) !important;
+}
+
+/* Nút bấm đổi loại Slide (Ảnh / Live / Video) trong Popup Reorder */
+.igt-reorder-type-btn {
+  border: 1px solid rgba(56, 189, 248, 0.45) !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  padding: 2.5px 8px !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+  transition: all 0.15s ease !important;
+  user-select: none !important;
+}
+
+.igt-reorder-type-btn:hover {
+  transform: scale(1.08) !important;
+  filter: brightness(1.25) !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* Preview Video đè lên card khi hover */
+.igt-card-hover-preview {
+  pointer-events: none !important;
+  object-fit: cover !important;
+  transition: opacity 0.2s ease !important;
+}

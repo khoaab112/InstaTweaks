@@ -84,21 +84,32 @@ flowchart TD
 ```
 
 ### 📌 Giai đoạn 1: Dựng nút tại Vùng Đỏ & Khung Studio Canvas (Tỉ lệ & Kéo thả)
-- [ ] Khởi tạo 2 tệp độc lập mới: `scripts/studio_core.js` và `styles/studio.css`.
-- [ ] Khai báo 2 file mới trong `manifest.json` để tải song song, không phụ thuộc vào `v3_core.js`.
-- [ ] Trong `scripts/v3_core.js`: Chỉ thêm mã HTML hiển thị 3 nút bấm tại Vùng Đỏ (Story, Post, Reel) kèm sự kiện phát tín hiệu `__IGT_OPEN_STUDIO__`.
-- [ ] Trong `scripts/studio_core.js`: Xây dựng cấu trúc `Studio Modal` toàn màn hình với:
-  - Cột trái: Khung Canvas Preview với các mốc tỉ lệ (9:16, 4:5, 1:1, 16:9, Original).
+- [x] Khởi tạo 2 tệp độc lập mới: `scripts/studio_core.js` và `styles/studio.css`.
+- [x] Khai báo 2 file mới trong `manifest.json` để tải song song, không phụ thuộc vào `v3_core.js`.
+- [x] Trong `scripts/v3_core.js`: Chỉ thêm mã HTML hiển thị 3 nút bấm tại Vùng Đỏ (Story, Post, Reel) kèm sự kiện phát tín hiệu `__IGT_OPEN_STUDIO__`.
+- [x] Trong `scripts/studio_core.js`: Xây dựng cấu trúc `Studio Modal` toàn màn hình với:
+  - Cột giữa: Khung Canvas Preview với các mốc tỉ lệ (9:16, 4:5, 1:1, 16:9, Original).
+  - Cột trái: Tải tệp, thumbnail & nút xuất bản/tải về.
   - Cột phải: Thanh công cụ lựa chọn thuộc tính.
-- [ ] Tích hợp tính năng kéo thả ảnh/video từ máy tính vào Canvas.
-- [ ] Lập trình cơ chế Pan (kéo rê vị trí) và Zoom (lăn chuột phóng to/thu nhỏ) mượt mà.
+- [x] Tích hợp tính năng kéo thả ảnh/video từ máy tính vào Canvas (hoặc click chọn tệp).
+- [x] Lập trình cơ chế Pan (kéo rê vị trí) và Zoom (lăn chuột phóng to/thu nhỏ) mượt mà.
+- [x] Tự động tạo nền mờ nghệ thuật (Blurred Backdrop) cho ảnh không lấp đầy khung tỉ lệ.
+- [x] Nút "Tải về Ultra HD" trích xuất canvas ở độ phân giải cao nhất (1080p).
 
-### 📌 Giai đoạn 2: Bộ công cụ Sticker, Link, Text & Mention
-- [ ] Xây dựng toàn bộ trong `scripts/studio_core.js`.
-- [ ] Tích hợp lớp Draggable Sticker Overlay: Cho phép click và kéo thả các phần tử sticker trên bề mặt ảnh/video.
-- [ ] **Tab Link**: Nhập URL + Custom Sticker Text, hỗ trợ đổi kiểu dáng (Default, Minimalist, Colorful).
-- [ ] **Tab Text**: Bộ gõ văn bản đè lên ảnh/video với bảng chọn màu và cỡ chữ.
-- [ ] **Tab Mentions & Location**: Ô nhập @username và gán địa điểm.
+### 📌 Giai đoạn 2: Bộ công cụ Sticker, Link, Text, Mentions & Stickers Tab
+- [x] Xây dựng toàn bộ trong `scripts/studio_core.js` và `styles/studio.css` (Bảo toàn 100% không đụng chạm logic cũ).
+- [x] Tích hợp lớp Draggable Sticker Overlay: Cho phép click và kéo thả tự do các sticker trên Canvas màn hình, nút `✕` xóa nhãn dán, nút kéo thu phóng `↘` và phím lăn chuột (Wheel) điều chỉnh tỉ lệ sticker tức thì.
+- [x] **Tab Link**: Nhập URL + Tên nhãn hiển thị, chọn 4 kiểu dáng (Default, Blue, Dark, Gradient), tự động tính toán kích thước.
+- [x] **Tab Text**:
+  - Hỗ trợ click vào text đang có trên Canvas để chuyển sang chế độ chỉnh sửa (Edit mode).
+  - Tự động đồng bộ nội dung, màu sắc, cỡ chữ, nền box và phông chữ theo thời gian thực (Live preview).
+  - Hỗ trợ 5 phong cách phông chữ: Hiện đại (Modern Sans-serif), Cổ điển (Classic Serif), Máy đánh chữ (Typewriter), Viết tay (Cursive/Handwriting), Poster đậm (Impact/Bold).
+  - Cung cấp nút `✓ Hoàn tất chỉnh sửa` và `+ Soạn chữ mới`.
+- [x] **Tab Sticker** (Mới):
+  - 12 Huy hiệu Story (Badges) thiết kế sẵn: `⚡ NEW POST`, `🔗 LINK IN BIO`, `🔊 SOUND ON`, `🎁 GIVEAWAY`, `🔥 HOT DEAL`, `✨ COMING SOON`, v.v. với hiệu ứng màu Gradient / Neon / Gold / Dark.
+  - Bảng 36 Biểu tượng Emojis Hot dạng lưới, click là chèn ngay lập tức vào Canvas.
+- [x] **Tab Mentions & Location**: Ô nhập @username và gán vị trí địa lý (📍 Location).
+- [x] Tích hợp bộ vẽ Canvas Sticker Export trong "Tải về Ultra HD": Xuất ảnh 1080p sắc nét mang trọn vẹn toàn bộ các nhãn dán Text (đa phông chữ), Emojis, Badges, Links, Mentions, Locations vừa thiết kế.
 
 ### 📌 Giai đoạn 3: Kho nhạc bản quyền Meta & Thanh cắt nhạc theo đoạn
 - [ ] Xây dựng Background Handler trong `scripts/background.js` (không đụng vào logic cũ):
@@ -110,9 +121,9 @@ flowchart TD
   - Gắn nhãn Sticker âm nhạc lên khung hình.
 
 ### 📌 Giai đoạn 4: Bộ đóng gói Ultra HD & Xuất bản trực tiếp (Publish Engine)
-- [ ] Xây dựng bộ Transcoder trong `scripts/studio_core.js`: Sử dụng Canvas API & MediaRecorder/WebAudio đóng gói ảnh/video + nhạc thành tệp MP4 chuẩn nén tối ưu.
-- [ ] Nút **"Tải về Ultra HD"**: Cho phép tải file sạch hoàn chỉnh (không watermark) về máy tính.
-- [ ] Nút **"PUBLISH"**: Kết nối với luồng upload của Instagram để đăng trực tiếp lên tài khoản.
+- [x] Xây dựng bộ Transcoder trong `scripts/studio_core.js`: Sử dụng Canvas API & MediaRecorder/WebAudio đóng gói ảnh/video + nhạc thành tệp MP4 chuẩn nén tối ưu (1080p 60fps 16Mbps).
+- [x] Nút **"Tải về Ultra HD"**: Cho phép tải file sạch hoàn chỉnh (không watermark) về máy tính, tự động hỗ trợ chia nhỏ Story (Auto-Split Stories 15s/30s/60s).
+- [x] Nút **"ĐẨY" (PUBLISH)**: Mở Modal Xuất bản trực tiếp (`.igt-publish-modal`), hỗ trợ chọn ảnh bìa (Cover), soạn Chú thích (Caption), chèn nhanh Hashtags thịnh hành và kích hoạt trực tiếp luồng đăng bài chính thức của Instagram.
 
 ---
 

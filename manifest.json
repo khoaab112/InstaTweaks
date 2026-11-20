@@ -27,8 +27,15 @@
   },
   "host_permissions": [
     "https://www.instagram.com/*",
+    "https://*.instagram.com/*",
     "https://*.cdninstagram.com/*",
-    "https://*.fbcdn.net/*"
+    "https://*.fbcdn.net/*",
+    "https://fonts.gstatic.com/*",
+    "https://*.gstatic.com/*",
+    "https://itunes.apple.com/*",
+    "https://*.apple.com/*",
+    "https://*.mzstatic.com/*",
+    "https://*.itunes.apple.com/*"
   ],
   "content_scripts": [
     {
@@ -41,11 +48,13 @@
       "matches": ["https://www.instagram.com/*"],
       "js": [
         "scripts/v3_core.js",
-        "scripts/content.js"
+        "scripts/content.js",
+        "scripts/studio_core.js"
       ],
       "css": [
         "styles/v3_sidebar.css",
-        "styles/player.css"
+        "styles/player.css",
+        "styles/studio.css"
       ],
       "run_at": "document_idle"
     }
