@@ -2958,7 +2958,8 @@
         </div>
         -->
 
-        <!-- SECTION 4: SAO LƯU (INDEXEDDB) -->
+        <!-- SECTION 4: SAO LƯU (INDEXEDDB) - TẠM ẨN THEO YÊU CẦU -->
+        <!--
         <div class="igt-v3-section-group">
           <div class="igt-v3-section-title">
             <img class="igt-v3-sec-icon" src="${icon5Backup}" alt="" />
@@ -2978,6 +2979,7 @@
             </div>
           </div>
         </div>
+        -->
 
       </div>
     `;
@@ -3296,7 +3298,8 @@
       });
     }
 
-    // Backup & Restore Buttons
+    // Backup & Restore Buttons (Tạm ẩn theo yêu cầu)
+    /*
     const btnBackup = document.getElementById('igt-btn-backup');
     if (btnBackup) btnBackup.addEventListener('click', exportDatabaseToJSON);
 
@@ -3315,6 +3318,7 @@
         fileInput.value = '';
       });
     }
+    */
 
 
 
